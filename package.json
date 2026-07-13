@@ -1,0 +1,17 @@
+{
+  "name": "packbase-sdk-typescript",
+  "private": true,
+  "packageManager": "pnpm@8.5.0",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "bun run --cwd packages/sdk-ts build && bun run --cwd apps/docs build",
+    "dev": "bun run --cwd apps/docs dev",
+    "postinstall": "bun run --cwd apps/docs generate",
+    "test": "bun run --cwd packages/sdk-ts test",
+    "typecheck": "bun run --cwd packages/sdk-ts typecheck && bun run --cwd apps/docs types:check",
+    "verify": "bun run typecheck && bun run test && bun run build"
+  }
+}

@@ -1,0 +1,49 @@
+---
+title: pb.folders
+description: Organize howls into saved, tag-based folders.
+---
+
+Folders are saved collections built from howl tags. `pb.folders` lets the signed-in user create and manage their folders, and it can list another user's visible folders when you know that user's ID.
+
+## List folders
+
+```ts twoslash
+import { PackbaseSDK } from '@packbase/sdk-ts'
+const pb = new PackbaseSDK()
+// ---cut---
+const { folders } = await pb.folders.list('user-id')
+```
+
+Pass the profile UUID, not a username. The underlying endpoint requires this target user ID even when you're listing your own folders.
+
+## Create and update
+
+```ts twoslash
+import { PackbaseSDK } from '@packbase/sdk-ts'
+const pb = new PackbaseSDK()
+// ---cut---
+const { folder } = await pb.folders.create({
+  name: 'Landscapes',
+  emoji: '🏞️',
+  query: 'art,landscape',
+})
+
+await pb.folders.update(folder.id, {description: 'Landscape references'})
+```
+
+`name` is the visible folder name. `description` and `emoji` are optional display details, while `query` is a comma-separated list of tags such as `'art,landscape'`. Each account may create up to ten folders.
+
+## Fetch and delete
+
+```ts twoslash
+import { PackbaseSDK } from '@packbase/sdk-ts'
+const pb = new PackbaseSDK()
+declare const folderId: string
+// ---cut---
+const detail = await pb.folders.get(folderId)
+console.log(detail.folder.name, detail.profile.username)
+
+await pb.folders.delete(folderId)
+```
+
+`get()` returns an object containing both `folder` and its owner's `profile`; it doesn't return the folder alone. Only the owner can update or delete it.

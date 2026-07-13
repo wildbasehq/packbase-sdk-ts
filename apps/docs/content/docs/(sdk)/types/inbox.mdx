@@ -1,0 +1,60 @@
+---
+title: Notification
+description: Understand the notification objects returned by the inbox API.
+---
+
+## `Notification`
+
+`Notification` describes one item in the signed-in user's inbox. Fields with a `?` are optional, either because that notification doesn't need them or because the endpoint didn't include them.
+
+```ts
+interface Notification {
+  id: string
+  created_at: string
+  user_id: string
+  type: string
+  title: string
+  content?: string
+  read: boolean
+  read_at?: string | null
+  metadata?: unknown
+  related_id?: string | null
+}
+```
+
+### Field reference
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `id` | `string` | UUID of the notification. |
+| `created_at` | `string` | ISO 8601 creation timestamp. |
+| `user_id` | `string` | UUID of the recipient user. |
+| `type` | `string` | Notification type identifier (e.g. `'follow'`, `'comment'`, `'reaction'`). |
+| `title` | `string` | Human-readable title. |
+| `content` | `string?` | Full notification message, when supplied. |
+| `read` | `boolean` | Whether the notification has been read. |
+| `read_at` | `string \| null` | ISO 8601 timestamp when it was read, or `null` if unread. May be omitted. |
+| `metadata` | `unknown` | Optional context data. Its shape varies by notification `type`, so check it before use. |
+| `related_id` | `string \| null` | Optional UUID of the related entity. |
+
+## Usage example
+
+```ts
+const { data } = await pb.inbox.fetch({ unreadOnly: true })
+
+for (const notification of data) {
+  console.log(`[${notification.type}] ${notification.title}`)
+  if (!notification.read) {
+    console.log(' → UNREAD')
+  }
+}
+
+// Mark the notifications in this page as read.
+await pb.inbox.markRead(data.map(n => n.id))
+```
+
+## Import
+
+```ts
+import type { Notification } from '@packbase/sdk-ts'
+```

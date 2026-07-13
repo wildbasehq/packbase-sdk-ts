@@ -1,0 +1,47 @@
+---
+title: Packbase TypeScript SDK
+description: A friendly starting point for using the official Packbase API client.
+---
+
+The `@packbase/sdk-ts` package is the official TypeScript library for talking to the Packbase API. In less formal terms, it gives you ready-made methods like `pb.profiles()` and `pb.howls.create()` so you don't have to build every HTTP request yourself.
+
+It works in Node.js 18 or newer and in modern browsers. It also includes its own TypeScript types, so your editor can suggest available methods and point out mistakes before you run the code.
+
+<Callout type="warn">
+  The Packbase API is still being developed, so some methods or response fields may change. Check these docs when you update the package.
+</Callout>
+
+## A small example
+
+```ts
+import { PackbaseSDK } from '@packbase/sdk-ts'
+
+// `pb` is the client we'll use for every Packbase request.
+const pb = new PackbaseSDK({ apiKey: 'your-api-key' })
+
+// `await` pauses here until Packbase returns the profile.
+const profile = await pb.profiles('rek')
+console.log(profile.display_name)
+
+// Create a post (Packbase calls posts "howls") inside a pack.
+const howl = await pb.howls.create({
+  tenant_id: 'your-pack-id',
+  body: 'Hello from the SDK!',
+  tags: ['rating_safe'],
+})
+
+console.log(howl.id)
+```
+
+The values such as `'your-api-key'` and `'your-pack-id'` are placeholders. Replace them with real values from your Packbase account or application.
+
+## Where to go next
+
+If this is your first time using a JavaScript or TypeScript library, start with Installation and then follow the Quickstart in order. The reference pages are better once you already know what you want to call.
+
+<Cards>
+  <Card title="Installation" href="/getting-started/installation" description="Install the package and check that your project can import it." />
+  <Card title="Quickstart" href="/getting-started/quickstart" description="Create a client and make your first few API calls." />
+  <Card title="Authentication" href="/getting-started/authentication" description="Choose between an API key and a browser login session." />
+  <Card title="Error Handling" href="/getting-started/error-handling" description="Catch failed requests without crashing your app." />
+</Cards>

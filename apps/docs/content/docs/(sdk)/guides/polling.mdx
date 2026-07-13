@@ -1,0 +1,187 @@
+---
+title: Async Job Polling
+description: Understand why howl creation takes time and how the SDK waits for it to finish.
+---
+
+Some work takes longer than a normal API request. Creating a howl can involve processing images, video, or other uploaded files, so Packbase starts a background **job** and immediately gives the SDK a job ID. The actual work continues on the server.
+
+The SDK then **polls** the job: it asks “finished yet?” every second until the answer is yes, the job fails, or the wait times out. Normally `pb.howls.create()` handles this whole loop for you. You only need the options in this guide if you want progress updates or different timing.
+
+## How it works
+
+```
+pb.howls.create(data)
+  → POST /howl/create        (enqueues job, returns { id })
+  → GET /howl/create/status/:id   (polls every 1 s)
+  → GET /howl/create/status/:id   (polls every 1 s)
+  → ...
+  → GET /howl/:id            (job done; fetch the finished Howl)
+  → returns Howl
+```
+
+1. The SDK asks Packbase to create the howl. Packbase starts a job and returns `{ id }`.
+2. The SDK checks the job's status once per interval until it is `'completed'` or `'failed'`.
+3. When the job is complete, the SDK fetches the finished howl and returns it to your code.
+
+Those route names in the diagram are the HTTP requests made internally. You don't need to call them yourself.
+
+## Default behavior
+
+```ts twoslash
+import { PackbaseSDK } from '@packbase/sdk-ts'
+const pb = new PackbaseSDK()
+// ---cut---
+// Polls every 1 second, times out after 30 seconds
+const howl = await pb.howls.create({
+  tenant_id: 'pack-uuid',
+  body: 'Hello!',
+  tags: ['rating_safe'],
+})
+```
+
+From your application's point of view, this is still one promise: `await` resumes with a finished `Howl`.
+
+## Customizing polling options
+
+Pass a second options object to `create()` to override the defaults. Values ending in `Ms` are measured in milliseconds, so `500` is half a second and `120_000` is two minutes:
+
+```ts twoslash
+import { PackbaseSDK } from '@packbase/sdk-ts'
+const pb = new PackbaseSDK()
+// ---cut---
+const howl = await pb.howls.create(
+  {
+    tenant_id: 'pack-uuid',
+    body: null,
+    tags: ['rating_safe'],
+    asset_ids: ['asset-uuid'],
+  },
+  {
+    intervalMs: 500,    // poll every 500 ms (default: 1000)
+    timeoutMs: 120_000, // give up after 2 minutes (default: 30000)
+  },
+)
+```
+
+### `PollOptions` reference
+
+| Option | Type | Default | Description |
+| --- | --- | --- | --- |
+| `intervalMs` | `number` | `1000` | Milliseconds between each status check. |
+| `timeoutMs` | `number` | `30000` | Maximum total wait time before throwing a timeout error. |
+| `onProgress` | `(status: HowlJobStatus) => void` | Not set | Callback called after each status poll. |
+
+## Tracking progress
+
+`onProgress` is a callback, which means it's a function the SDK calls after each status check. You can use it to update a progress bar or print status text:
+
+```ts twoslash
+import { PackbaseSDK, type HowlJobStatus } from '@packbase/sdk-ts'
+const pb = new PackbaseSDK()
+// ---cut---
+const howl = await pb.howls.create(
+  {
+    tenant_id: 'pack-uuid',
+    body: null,
+    tags: ['rating_safe'],
+    asset_ids: ['asset-1', 'asset-2', 'asset-3'],
+  },
+  {
+    onProgress: ({ status, progress }: HowlJobStatus) => {
+      //           ^?
+      console.log(
+        `Job ${status}: ${progress.currentAsset}/${progress.totalAssets} assets`,
+      )
+    },
+  },
+)
+```
+
+TypeScript describes the callback value as `HowlJobStatus`. Its `status` field can be any of the following string values:
+
+```ts twoslash
+import type { HowlJobStatus } from '@packbase/sdk-ts'
+
+type _Status = HowlJobStatus['status']
+//   ^?
+```
+
+## Opting out of automatic polling
+
+Pass `{ poll: false }` when you don't want the SDK to wait. The call returns an object containing the job ID instead of a finished howl:
+
+```ts twoslash
+import { PackbaseSDK } from '@packbase/sdk-ts'
+const pb = new PackbaseSDK()
+// ---cut---
+const job = await pb.howls.create(
+  { tenant_id: 'pack-uuid', body: 'hi', tags: ['rating_safe'] },
+  { poll: false },
+)
+
+// job.id is the UUID of the howl once complete
+// Store this ID somewhere if you plan to check the job later.
+console.log(`Howl will be at: https://packbase.app/howl/${job.id}`)
+```
+
+## Handling timeout errors
+
+If the total wait exceeds `timeoutMs`, the SDK stops polling and throws a `PackbaseError` with status `408`:
+
+```ts twoslash
+import { PackbaseSDK, PackbaseError } from '@packbase/sdk-ts'
+
+const pb = new PackbaseSDK({ apiKey: 'my-key' })
+// ---cut---
+try {
+  const howl = await pb.howls.create(
+    { tenant_id: 'pack-uuid', body: 'Hello', tags: ['rating_safe'] },
+    { timeoutMs: 10_000 }, // tight deadline
+  )
+} catch (error) {
+  if (error instanceof PackbaseError && error.status === 408) {
+    console.log('Howl is still processing. Check back later using the job ID.')
+  }
+}
+```
+
+A timeout tells you that the client stopped waiting. The background job may still finish, so don't automatically submit the same howl again unless you're sure that won't create a duplicate.
+
+## Handling failed jobs
+
+If the server says the job itself failed, the SDK throws a `PackbaseError` with status `500`:
+
+```ts twoslash
+import { PackbaseSDK, PackbaseError } from '@packbase/sdk-ts'
+const pb = new PackbaseSDK()
+// ---cut---
+try {
+  const howl = await pb.howls.create({
+    tenant_id: 'pack-uuid', body: 'hi', tags: ['rating_safe'],
+  })
+} catch (error) {
+  if (error instanceof PackbaseError && error.isServerError) {
+    console.error('Howl creation failed:', error.summary)
+  }
+}
+```
+
+## Job ID equals Howl ID
+
+The job ID is also the finished howl's UUID. That means you can save the future howl ID before processing finishes. This is useful for an optimistic interface, where the app shows a pending item right away (though you should still make it visually clear that it isn't ready yet).
+
+```ts twoslash
+import { PackbaseSDK } from '@packbase/sdk-ts'
+const pb = new PackbaseSDK()
+// ---cut---
+const job = await pb.howls.create(
+  { tenant_id: 'pack-uuid', body: 'hi', tags: ['rating_safe'] },
+  { poll: false },
+)
+
+// Optimistically link to the howl before it's ready
+console.log(`https://packbase.app/howl/${job.id}`)
+
+// Later, fetch it once you know it's done
+const howl = await pb.howls(job.id)
+```

@@ -1,0 +1,61 @@
+---
+title: Reporting
+description: Accepted report reasons and the moderation ticket returned by report methods.
+---
+
+## `ReportReason`
+
+`ReportReason` is a constant object containing every reason accepted by `.report()` methods. Importing these named values is safer than typing a reason by hand, because TypeScript can catch a misspelling.
+
+```ts
+const ReportReason = {
+  Spam: 'Spam',
+  HarassmentOrBullying: 'Harassment or bullying',
+  HateSpeechOrDiscrimination: 'Hate speech or discrimination',
+  Misinformation: 'Misinformation',
+  SexualContent: 'Sexual content',
+  ViolenceOrThreats: 'Violence or threats',
+  SelfHarm: 'Self-harm',
+  Other: 'Other',
+} as const
+```
+
+Use it like this:
+
+```ts
+import { PackbaseSDK, ReportReason } from '@packbase/sdk-ts'
+
+const pb = new PackbaseSDK({ apiKey: 'your-api-key' })
+
+const ticket = await pb.howls('howl-id').report(
+  ReportReason.Spam,
+  'Optional context for the moderation team.',
+)
+
+console.log(ticket.id, ticket.status)
+```
+
+The first argument is required. The second is an optional note. Howls, packs, and profiles all use the same reason values.
+
+## `ReportReasonValue`
+
+`ReportReasonValue` is the union of the strings inside `ReportReason`. You'll rarely need to write it yourself, but it's useful when a function accepts a report reason:
+
+```ts
+import type { ReportReasonValue } from '@packbase/sdk-ts'
+
+function chooseReason(reason: ReportReasonValue) {
+  return reason
+}
+```
+
+## `ReportResult`
+
+Successful report methods return the moderation ticket created by Packbase:
+
+```ts
+interface ReportResult {
+  id: string
+  status: string
+}
+```

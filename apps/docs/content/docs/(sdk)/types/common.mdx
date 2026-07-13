@@ -1,0 +1,91 @@
+---
+title: Common Types
+description: Shared SDK types for paginated responses and client configuration.
+---
+
+## `Paginated<T>`
+
+Some endpoints return a long list in smaller pages. `Paginated<T>` describes one of those pages. The `T` is a placeholder for the kind of item in the list. For example, `Paginated<Notification>` means a page whose `data` array contains notifications.
+
+```ts
+interface Paginated<T> {
+  data: T[]
+  has_more: boolean
+  cursor?: string
+  total_count?: number
+}
+```
+
+### Field reference
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `data` | `T[]` | The current page of results. |
+| `has_more` | `boolean` | `true` if there are more pages available. |
+| `cursor` | `string?` | A server-generated bookmark to pass in the next request. Don't modify it. |
+| `total_count` | `number?` | Total matching items across all pages (not always returned). |
+
+### Usage
+
+```ts
+import type { Paginated } from '@packbase/sdk-ts'
+
+async function loadPage(cursor?: string): Promise<Paginated<Notification>> {
+  return pb.inbox.fetch({ limit: 50, cursor })
+}
+
+let page = await loadPage()
+while (page.has_more) {
+  page = await loadPage(page.cursor)
+}
+```
+
+---
+
+## `PackbaseSDKConfig`
+
+This is the shape of the optional object passed to `new PackbaseSDK(...)`. Every property has a `?`, so you may leave out options you don't need. You can also omit the whole object.
+
+```ts
+interface PackbaseSDKConfig {
+  /**
+   * Base URL of the Packbase API, without a trailing slash.
+   * @default 'https://vgs.packbase.app'
+   */
+  baseUrl?: string
+
+  /**
+   * Clerk JWT or API key.
+   * When set, the SDK sends Authorization: Bearer <apiKey> and disables cookies.
+   * When omitted, the SDK uses credentials: 'include' (browser session cookie).
+   */
+  apiKey?: string
+  cache?: boolean
+  cacheTtlMs?: number
+  cacheNamespace?: string
+}
+```
+
+### Examples
+
+```ts
+// Default (cookie auth, production API)
+const pb = new PackbaseSDK()
+
+// API key auth
+const pb = new PackbaseSDK({ apiKey: process.env.PACKBASE_KEY })
+
+// Custom base URL (staging or local dev)
+const pb = new PackbaseSDK({
+  apiKey: 'my-key',
+  baseUrl: 'http://localhost:3001',
+})
+```
+
+Caching is off unless `cache` is `true`. `cacheTtlMs` controls how long a cached GET response remains valid, in milliseconds, and `cacheNamespace` keeps cached data for different users or sessions separate.
+
+## Import
+
+```ts
+import type { Paginated, PackbaseSDKConfig } from '@packbase/sdk-ts'
+```

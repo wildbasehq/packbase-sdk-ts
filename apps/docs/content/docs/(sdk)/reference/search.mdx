@@ -1,0 +1,100 @@
+---
+title: pb.search
+description: API reference for the search endpoint and the from() query builder.
+---
+
+`pb.search()` runs one or more named queries in a single HTTP request. Use `from()` to build each query with editor hints for valid model fields, then call `.build()` before passing it to `pb.search()`.
+
+For a full tutorial, see the [Search guide](/guides/search).
+
+## `pb.search(queries)`: Execute search queries
+
+Fires `POST /search`.
+
+```ts twoslash
+import { PackbaseSDK, from, isErrorEntry } from '@packbase/sdk-ts'
+
+const pb = new PackbaseSDK()
+// ---cut---
+const results = await pb.search({
+  topPacks: from('packs').orderBy('last_activity_at').take(10).build(),
+  newProfiles: from('profiles').orderBy('created_at').take(5).build(),
+})
+
+if (!isErrorEntry(results.topPacks)) {
+  console.log(results.topPacks)
+  //                  ^?
+}
+```
+
+**Parameters:**
+
+| Param | Type | Description |
+| --- | --- | --- |
+| `queries` | `NamedQueryMap` | An object mapping query names to `QueryInput` objects. |
+
+**Returns:** `Promise<NamedResultMap>`. The object uses the same names you chose in `queries`. Each value is either an array of results or an `ErrorEntry`, so check it with `isErrorEntry()` before treating it as data.
+
+## `from(model)`: Query builder
+
+Creates a query builder for the chosen model. The chain doesn't send a request; `.build()` only produces the request data, and `pb.search()` sends it.
+
+```ts twoslash
+import { from } from '@packbase/sdk-ts'
+// ---cut---
+const query = from('packs')           // start a query on 'packs'
+//    ^?
+  .where({ owner_id: 'uuid' })       // filter
+  .orderBy('last_activity_at')       // sort
+  .take(20)                          // limit
+  .build()                           // serialize to QueryInput
+```
+
+### Builder methods
+
+| Method | Description |
+| --- | --- |
+| `.where(conditions)` | Add AND filter conditions. Merges on multiple calls. |
+| `.and(conditions[])` | Explicit AND across multiple condition objects. |
+| `.or(conditions[])` | OR across multiple condition objects. |
+| `.not(conditions)` | Exclude records matching conditions. |
+| `.orderBy(field, direction?)` | Sort by field. Default direction is `'desc'`. |
+| `.take(count)` | Limit results. |
+| `.skip(count)` | Offset results. |
+| `.page(page, pageSize?)` | Convenience for `.take(pageSize).skip((page-1)*pageSize)`. |
+| `.build()` | Returns a `QueryInput` to pass to `pb.search()`. |
+
+## `isErrorEntry(result)`: Type guard
+
+One named query can fail while other queries in the same request succeed. Use this helper to check whether a particular result is an error or actual data:
+
+```ts twoslash
+import { PackbaseSDK, from, isErrorEntry } from '@packbase/sdk-ts'
+const pb = new PackbaseSDK()
+// ---cut---
+const { packs } = await pb.search({
+  packs: from('packs').build(),
+})
+
+if (isErrorEntry(packs)) {
+  console.error(packs.__error)
+  //            ^?
+} else {
+  console.log(packs)
+  //          ^?
+}
+```
+
+## Type reference
+
+```ts twoslash
+import type { QueryInput, ModelName, SortDirection, ErrorEntry } from '@packbase/sdk-ts'
+
+// ModelName is a union of all queryable models
+type _Model = ModelName
+//   ^?
+
+// SortDirection
+type _Sort = SortDirection
+//   ^?
+```

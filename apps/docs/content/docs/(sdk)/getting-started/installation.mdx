@@ -1,0 +1,65 @@
+---
+title: Installation
+description: Install the Packbase TypeScript SDK and check that it works in your project.
+icon: Download
+---
+
+Installing a library just means adding someone else's reusable code to your project. Here, the library is `@packbase/sdk-ts`, and it gives your code a convenient way to call the Packbase API.
+
+## Before you start
+
+You'll need one of these environments:
+
+- Node.js 18 or newer
+- Bun
+- A modern browser project with the standard `fetch` API
+
+TypeScript is recommended because the SDK includes TypeScript types, but plain JavaScript works too. You don't need to install a separate `@types` package.
+
+## Install the package
+
+Run one of the following commands from your project's folder. Use the command that matches the package manager your project already uses (if you're unsure, `npm` is usually fine).
+
+<Tabs items={['npm', 'Bun', 'pnpm', 'Yarn']}>
+  <Tab value="npm">
+    ```sh
+    npm install @packbase/sdk-ts
+    ```
+  </Tab>
+  <Tab value="Bun">
+    ```sh
+    bun add @packbase/sdk-ts
+    ```
+  </Tab>
+  <Tab value="pnpm">
+    ```sh
+    pnpm add @packbase/sdk-ts
+    ```
+  </Tab>
+  <Tab value="Yarn">
+    ```sh
+    yarn add @packbase/sdk-ts
+    ```
+  </Tab>
+</Tabs>
+
+This adds the SDK to your `package.json` and downloads it into your project's dependencies.
+
+## Check the installation
+
+Create or open a TypeScript file and add:
+
+```ts
+import { PackbaseSDK } from '@packbase/sdk-ts'
+
+const pb = new PackbaseSDK()
+console.log('Packbase SDK is ready', pb)
+```
+
+If your editor recognizes `PackbaseSDK` and your project runs without an import error, the installation worked. This snippet doesn't call the API yet; it only creates a client object.
+
+<Callout type="info">
+  Seeing a TypeScript error on the import? Check that you ran the install command in the same project as the file you're editing. If the package is installed correctly, your `tsconfig.json` may need a modern module resolution setting such as `"moduleResolution": "Bundler"` or `"NodeNext"`.
+</Callout>
+
+Next, work through the [Quickstart](/getting-started/quickstart) to make an actual request.

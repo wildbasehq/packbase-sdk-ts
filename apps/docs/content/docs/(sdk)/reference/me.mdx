@@ -1,0 +1,101 @@
+---
+title: pb.me
+description: Fetch and update the authenticated profile, settings, friends, packs, badge, and storage usage.
+---
+
+`pb.me` is the resource for the current signed-in account. Every method on this page requires a valid browser session or API key; use `pb.profiles(username)` instead when you only need someone's public profile.
+
+## Fetch the current user
+
+```ts twoslash
+import { PackbaseSDK } from '@packbase/sdk-ts'
+const pb = new PackbaseSDK()
+// ---cut---
+const user = await pb.me()
+
+console.log(user.username)
+console.log(user.is_staff)
+```
+
+`pb.me()` sends `GET /user/me` and returns `Promise<Profile>`.
+
+## Update the profile
+
+```ts twoslash
+import { PackbaseSDK } from '@packbase/sdk-ts'
+const pb = new PackbaseSDK()
+// ---cut---
+const updated = await pb.me.update({
+  display_name: 'New Display Name',
+  about: { bio: 'Updated bio text' },
+  post_privacy: 'followers',
+  space_type: 'custom_free',
+})
+```
+
+This is a partial update, so include only the fields you want to change. Supported fields are `display_name`, `slug`, `about.bio`, `space_type`, `post_privacy`, and `images.header`. The response contains the fields written by the server rather than a newly fetched full profile; call `pb.me()` afterward if you need the complete result.
+
+## Settings
+
+```ts twoslash
+import { PackbaseSDK } from '@packbase/sdk-ts'
+const pb = new PackbaseSDK()
+// ---cut---
+const settings = await pb.me.settings()
+await pb.me.settings({
+  dark_mode: true,
+  notifications_email: false,
+})
+```
+
+Calling `settings()` with no argument reads the settings. Calling it with an object updates them. The read result is `Record<string, unknown>` because the settings schema isn't fixed in this SDK type yet, so check a value's type before relying on it.
+
+## Friends
+
+```ts twoslash
+import { PackbaseSDK } from '@packbase/sdk-ts'
+const pb = new PackbaseSDK()
+// ---cut---
+const { friends, count, message } = await pb.me.friends()
+
+for (const friend of friends) {
+  console.log(friend.username, friend.online)
+}
+```
+
+A friend is a mutual follow. The server returns up to 100 of them in an object containing `friends`, `count`, and sometimes `message`.
+
+## Packs
+
+```ts twoslash
+import { PackbaseSDK } from '@packbase/sdk-ts'
+const pb = new PackbaseSDK()
+// ---cut---
+const packs = await pb.me.packs()
+```
+
+This returns every pack the current user belongs to, including membership data. It isn't limited to packs they own.
+
+## Select a badge
+
+```ts twoslash
+import { PackbaseSDK } from '@packbase/sdk-ts'
+const pb = new PackbaseSDK()
+// ---cut---
+await pb.me.setBadge('founder-badge')
+```
+
+This sends `POST /user/me/badge` with an owned badge's store item ID. The server does not expose a corresponding badge `GET`; the active badge is available on the profile returned by `pb.me()`.
+
+## Storage usage
+
+```ts twoslash
+import { PackbaseSDK } from '@packbase/sdk-ts'
+const pb = new PackbaseSDK()
+// ---cut---
+const usage = await pb.me.storage()
+
+console.log(usage.totalBytes, usage.fileCount, usage.tier)
+```
+
+`pb.me.storage()` returns `StorageUsage`. On a storage-provider failure, the response includes `error` and `totalBytes: 0`.

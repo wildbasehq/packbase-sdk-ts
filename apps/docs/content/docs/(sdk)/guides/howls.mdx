@@ -1,0 +1,211 @@
+---
+title: Howls
+description: Create Packbase posts, work with their background jobs, and add interactions.
+---
+A **howl** is a post on Packbase. Every howl belongs to a **pack**, which is a Packbase community. A howl can contain text, sanitized HTML, uploaded media, or a mix of those.
+
+This guide starts with ordinary text howls, then covers the less obvious bits such as rating tags, uploads, and background processing.
+
+## Fetching a single howl
+
+```ts twoslash
+import { PackbaseSDK } from '@packbase/sdk-ts'
+const pb = new PackbaseSDK()
+// ---cut---
+const howl = await pb.howls('howl-uuid')
+
+console.log(howl.id)
+console.log(howl.body)
+console.log(howl.user.username)
+console.log(howl.reactions)
+```
+
+Replace `'howl-uuid'` with a real howl ID. `pb.howls('howl-uuid')` creates a lightweight `HowlHandle`; it doesn't make a request until you `await` it. The result is a `Howl` object containing the post, its author, and any related data returned by the endpoint.
+
+## Creating a howl
+
+Creating a howl can require media processing, so Packbase does the work in a background job. By default, `pb.howls.create()` starts that job, checks its status for you, and returns only when the finished howl is ready.
+
+```ts twoslash
+import { PackbaseSDK } from '@packbase/sdk-ts'
+const pb = new PackbaseSDK()
+// ---cut---
+const howl = await pb.howls.create({
+  tenant_id: 'your-pack-uuid',  // required: the pack to post in
+  body: '<p>Hello from the SDK! 🐾</p>',
+  tags: ['rating_safe'],        // must include exactly one rating tag
+})
+
+console.log(howl.id) // the finished Howl
+```
+
+`tenant_id` is the ID of the pack receiving the howl (the server calls pack IDs “tenant IDs” in this request). The current user must be allowed to post there.
+
+### Required fields
+
+TypeScript will catch missing fields in your editor, but it's still useful to know what each one means:
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `tenant_id` | `string` | UUID of the pack to post into. |
+| `content_type` | `'text'` | Optional. Authored howls always use `'text'`; omitted values default to `'text'`. |
+| `body` | `string \| null` | Plain text or HTML. The server sanitizes HTML. Use `null` for asset-only howls. |
+| `tags` | `[string, ...string[]]` | Must contain exactly one rating tag. |
+
+### Rating tags
+
+Every howl needs exactly one rating tag so clients know how to present its content. It can appear anywhere in the `tags` array, alongside ordinary topic tags:
+
+| Tag | Meaning |
+| --- | --- |
+| `rating_safe` | Safe for all audiences |
+| `rating_mature` | Mature content (non-explicit) |
+| `rating_suggestive` | Suggestive content |
+| `rating_explicit` | Explicit / adult content |
+
+```ts twoslash
+// Safe howl with additional tags
+const tags1: [string, ...string[]] = ['art', 'digital', 'rating_safe']
+
+// Mature howl
+const tags2: [string, ...string[]] = ['rating_mature', 'gore']
+```
+
+### Attaching uploaded assets
+
+The SDK's howl method doesn't upload files. Upload and finalize the assets through the REST API first, then pass their returned IDs in `asset_ids`:
+
+```ts twoslash
+import { PackbaseSDK } from '@packbase/sdk-ts'
+const pb = new PackbaseSDK()
+// ---cut---
+const howl = await pb.howls.create({
+  tenant_id: 'pack-uuid',
+  body: null,
+  tags: ['rating_safe'],
+  asset_ids: ['asset-uuid-1', 'asset-uuid-2'],
+})
+```
+
+## Tracking creation progress
+
+Pass an `onProgress` callback when your interface needs to show what the background job is doing:
+
+```ts twoslash
+import { PackbaseSDK, type HowlJobStatus } from '@packbase/sdk-ts'
+const pb = new PackbaseSDK()
+// ---cut---
+const howl = await pb.howls.create(
+  {
+    tenant_id: 'pack-uuid',
+    body: null,
+    tags: ['rating_safe'],
+    asset_ids: ['asset-uuid'],
+  },
+  {
+    onProgress: (status: HowlJobStatus) => {
+      const { currentAsset, totalAssets } = status.progress
+      console.log(`Processing asset ${currentAsset} / ${totalAssets}`)
+    },
+  },
+)
+```
+
+
+## Manual polling
+
+If you need to store the pending job and check it later, pass `{ poll: false }`. The method then returns the job ID immediately instead of waiting for a finished `Howl`:
+
+```ts twoslash
+import { PackbaseSDK } from '@packbase/sdk-ts'
+const pb = new PackbaseSDK()
+// ---cut---
+const job = await pb.howls.create(
+  { tenant_id: 'pack-uuid', body: 'hi', tags: ['rating_safe'] },
+  { poll: false },
+)
+
+// job.id === the howl's future UUID
+// Poll GET /howl/create/status/:id manually (or use a Poller directly)
+console.log('Job started:', job.id)
+```
+
+## Deleting a howl
+
+```ts twoslash
+import { PackbaseSDK } from '@packbase/sdk-ts'
+const pb = new PackbaseSDK()
+// ---cut---
+await pb.howls('howl-id').delete()
+```
+
+## Reacting
+
+```ts twoslash
+import { PackbaseSDK } from '@packbase/sdk-ts'
+const pb = new PackbaseSDK()
+// ---cut---
+// Add a reaction
+await pb.howls('howl-id').react('🔥')
+
+// Remove your reactions from the howl
+await pb.howls('howl-id').unreact()
+```
+
+Adding the same reaction twice returns a `400` error. `react()` adds; it doesn't toggle. Call `unreact()` when you want to remove the current user's reactions.
+
+## Commenting
+
+```ts twoslash
+import { PackbaseSDK } from '@packbase/sdk-ts'
+const pb = new PackbaseSDK()
+// ---cut---
+const { id: commentId } = await pb.howls('howl-id').comment('Great post!')
+```
+
+## Rehowling (repost)
+
+```ts twoslash
+import { PackbaseSDK } from '@packbase/sdk-ts'
+const pb = new PackbaseSDK()
+// ---cut---
+const { id: rehowlId } = await pb.howls('howl-id').rehowl()
+```
+
+## Reporting a howl
+
+`ReportReason` gives you the report categories accepted by the API. The optional second argument is a note for moderators, so include useful context rather than repeating the category.
+
+```ts twoslash
+import { PackbaseSDK, ReportReason } from '@packbase/sdk-ts'
+const pb = new PackbaseSDK()
+// ---cut---
+// Report with a reason
+await pb.howls('howl-id').report(ReportReason.Spam)
+
+// Report with a reason and additional notes
+await pb.howls('howl-id').report(ReportReason.Misinformation, 'Link to source material.')
+```
+
+Available reasons:
+
+| Enum value | Sent to server |
+| --- | --- |
+| `ReportReason.Spam` | `'Spam'` |
+| `ReportReason.HarassmentOrBullying` | `'Harassment or bullying'` |
+| `ReportReason.HateSpeechOrDiscrimination` | `'Hate speech or discrimination'` |
+| `ReportReason.Misinformation` | `'Misinformation'` |
+| `ReportReason.SexualContent` | `'Sexual content'` |
+| `ReportReason.ViolenceOrThreats` | `'Violence or threats'` |
+| `ReportReason.SelfHarm` | `'Self-harm'` |
+| `ReportReason.Other` | `'Other'` |
+
+## Content types
+
+| `content_type` | Description |
+| --- | --- |
+| `text` | Authored or asset-only howl. The body is plain text or sanitized HTML. |
+| `howling_alongside` | A collaborative repost with separate body. |
+| `howling_echo` | A plain echo/repost with no extra body. |
+
+`howling_alongside` and `howling_echo` may appear in data returned by Packbase, but you can't use them to create a howl through this method. Pass `text`, or simply leave out `content_type` and let the SDK supply it.

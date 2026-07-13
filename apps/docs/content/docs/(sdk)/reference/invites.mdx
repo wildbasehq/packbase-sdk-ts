@@ -1,0 +1,69 @@
+---
+title: pb.invites
+description: Send email invites and work with referrals before an account is created.
+---
+
+This resource covers two related but distinct flows. Email invitation methods are for signed-in Packbase users. Waitlist referral methods run before a Packbase account exists and identify the person with a Clerk waitlist entry ID.
+
+## Email invitations
+
+```ts twoslash
+import { PackbaseSDK } from '@packbase/sdk-ts'
+const pb = new PackbaseSDK()
+// ---cut---
+const existing = await pb.invites.list()
+const invite = await pb.invites.generate('person@example.com')
+
+console.log(invite.invite_id, invite.created_at)
+```
+
+`list()` returns invitations created by the current user. `generate(email)` asks Clerk to send an invitation email; it doesn't return a shareable invite code.
+
+Both methods use the `Invite` shape:
+
+```ts
+interface Invite {
+  invite_id: string
+  created_at: string
+}
+```
+
+## Get a waitlist referral
+
+```ts twoslash
+import { PackbaseSDK } from '@packbase/sdk-ts'
+const pb = new PackbaseSDK()
+declare const waitlistId: string
+// ---cut---
+const referral = await pb.invites.getWaitlistReferral(waitlistId)
+
+console.log(referral.url)
+console.log(referral.referrals, referral.priority)
+```
+
+This gets referral information for one Clerk waitlist entry. On the first request, the server also creates an eight-character referral code.
+
+```ts
+interface WaitlistReferral {
+  code: string
+  url: string
+  referrals: number
+  priority: number
+  referred_by?: string
+}
+```
+
+Treat the Clerk waitlist ID as sensitive because it identifies a pre-signup entry. Locked, rejected, completed, or unknown entries can't use this endpoint.
+
+## Redeem a waitlist referral
+
+```ts twoslash
+import { PackbaseSDK } from '@packbase/sdk-ts'
+const pb = new PackbaseSDK()
+declare const waitlistId: string
+// ---cut---
+const result = await pb.invites.redeemWaitlistReferral(waitlistId, 'ABCD1234')
+console.log(result.referrer_code)
+```
+
+The `waitlistId` identifies the person redeeming the code; the second argument is the referrer's code. Codes are case-insensitive, contain at most eight characters, and can be redeemed only once. Self-referrals are rejected.

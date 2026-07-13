@@ -1,0 +1,47 @@
+---
+title: pb.store
+description: Browse the Packbase store and purchase items for the signed-in user.
+---
+
+`pb.store` covers the Packbase item catalog, the current user's balance and ownership, and purchases. Browsing the public catalog doesn't need authentication; viewing personal ownership or buying an item does.
+
+## Store overview
+
+```ts twoslash
+import { PackbaseSDK } from '@packbase/sdk-ts'
+const pb = new PackbaseSDK()
+// ---cut---
+const store = await pb.store.list()
+
+console.log(store.trinketCount)
+for (const item of store.items) {
+  console.log(item.title, item.price, item.ownedAmount)
+}
+```
+
+`list()` requires authentication. It returns a `StoreOverview` object containing `items`, the current `trinketCount`, and relevant store history. It doesn't return a bare item array.
+
+## Public catalog
+
+```ts twoslash
+import { PackbaseSDK } from '@packbase/sdk-ts'
+const pb = new PackbaseSDK()
+// ---cut---
+const { items } = await pb.store.catalog()
+```
+
+`catalog()` lists public item information without fields tied to the current user's ownership.
+
+## Purchase an item
+
+```ts twoslash
+import { PackbaseSDK } from '@packbase/sdk-ts'
+const pb = new PackbaseSDK()
+// ---cut---
+const purchase = await pb.store.purchase('founder-badge', {quantity: 1})
+
+console.log(purchase.newTrinketBalance)
+console.log(purchase.inventory.amount)
+```
+
+The first argument is the store item's ID, and `quantity` is the number to buy. Staff callers may also pass `userId` in the options to purchase for another account. There is no method for fetching a single item by ID.

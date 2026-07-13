@@ -1,0 +1,71 @@
+---
+title: pb.profiles
+description: Fetch profiles, follow or unfollow users, inspect profile versions, and submit reports.
+---
+
+Call `pb.profiles(username)` with a Packbase username to get a lazy `ProfileHandle`. Creating the handle does nothing over the network. Await it to fetch the profile, or call an action such as `.follow()` directly; the action won't fetch the profile first.
+
+## Fetch a profile
+
+```ts twoslash
+import { PackbaseSDK } from '@packbase/sdk-ts'
+const pb = new PackbaseSDK()
+// ---cut---
+const profile = await pb.profiles('rek')
+
+console.log(profile.display_name)
+console.log(profile.about?.bio)
+```
+
+The result is a [`Profile`](/types/profile). Some properties are optional because public and authenticated requests may receive different amounts of information.
+
+## Follow and unfollow
+
+Following and unfollowing are separate server operations:
+
+```ts twoslash
+import { PackbaseSDK } from '@packbase/sdk-ts'
+const pb = new PackbaseSDK()
+// ---cut---
+await pb.profiles('rek').follow()   // POST /user/:username/follow
+await pb.profiles('rek').unfollow() // DELETE /user/:username/follow
+```
+
+Both methods finish without returning data (`Promise<void>`). Following an account you already follow, or unfollowing one you don't, returns a `PackbaseError` with status `400`.
+
+## Profile version history
+
+`history()` returns saved versions of the profile itself, including changes to its name, bio, and similar fields. It doesn't return the user's howls.
+
+```ts twoslash
+import { PackbaseSDK } from '@packbase/sdk-ts'
+const pb = new PackbaseSDK()
+// ---cut---
+const versions = await pb.profiles('rek').history({
+  from: new Date('2026-01-01T00:00:00Z'),
+  axis: 'transaction',
+  order: 'desc',
+  limit: 50,
+})
+
+console.log(versions[0]?.operation)
+console.log(versions[0]?.display_name)
+```
+
+`from` and `to` limit the date range. `axis` chooses whether those dates apply to transaction time or decision time, `order` chooses ascending or descending order, and `limit` must be from 1 to 500. For an audit-style history, `axis: 'transaction'` is usually the clearest choice.
+
+## Report a user
+
+```ts twoslash
+import { PackbaseSDK, ReportReason } from '@packbase/sdk-ts'
+const pb = new PackbaseSDK()
+// ---cut---
+const ticket = await pb.profiles('rek').report(
+  ReportReason.Spam,
+  'Repeated unsolicited posts.',
+)
+
+console.log(ticket.id, ticket.status)
+```
+
+This sends `POST /user/:username/report` and returns a `ReportResult`.

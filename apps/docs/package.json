@@ -1,0 +1,40 @@
+{
+  "name": "pbsdk-typescript-docs",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "generate": "fumadocs-mdx",
+    "prebuild": "bun run --cwd ../../packages/sdk-ts build",
+    "build": "next build --webpack",
+    "predev": "bun run --cwd ../../packages/sdk-ts build",
+    "dev": "next dev",
+    "start": "next start",
+    "pretypes:check": "bun run --cwd ../../packages/sdk-ts build",
+    "types:check": "bun run generate && next typegen && tsc --noEmit"
+  },
+  "dependencies": {
+    "@packbase/sdk-ts": "workspace:*",
+    "fumadocs-core": "16.7.14",
+    "fumadocs-mdx": "14.2.13",
+    "fumadocs-openapi": "10.6.8",
+    "fumadocs-twoslash": "^3.1.17",
+    "fumadocs-ui": "16.7.14",
+    "lucide-react": "^1.8.0",
+    "next": "16.2.3",
+    "react": "^19.2.5",
+    "react-dom": "^19.2.5",
+    "shiki": "^4.0.2",
+    "tailwind-merge": "^3.5.0",
+    "twoslash": "^0.3.7"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.2.2",
+    "@types/mdx": "^2.0.13",
+    "@types/node": "^25.6.0",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "postcss": "^8.5.9",
+    "tailwindcss": "^4.2.2",
+    "typescript": "^6.0.2"
+  }
+}

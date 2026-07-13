@@ -1,0 +1,169 @@
+---
+title: pb.packs
+description: Fetch, create, join, and manage packs with the TypeScript SDK.
+---
+
+A pack is a Packbase community. Call `pb.packs(id)` with a pack UUID to get a lazy `PackHandle`; no request is made until you await it or call one of its methods. List-wide methods such as `pb.packs.list()` and `.create()` live directly on `pb.packs`.
+
+## Fetch and list packs
+
+```ts twoslash
+import { PackbaseSDK } from '@packbase/sdk-ts'
+const pb = new PackbaseSDK()
+// ---cut---
+const pack = await pb.packs('00000000-0000-0000-0000-000000000000')
+const result = await pb.packs.list()
+
+console.log(pack.about?.bio)
+for (const listedPack of result.packs) {
+  console.log(listedPack.display_name)
+}
+console.log(`${result.hidden} packs hidden because you already belong to them`)
+```
+
+Awaiting a handle returns one `Pack`. `list()` returns a `PackList` object rather than a plain array because the response also includes pagination and visibility information:
+
+```ts
+interface PackList {
+  has_more: boolean
+  packs: Pack[]
+  hidden: number
+  total_count?: number
+}
+```
+
+## Create a pack
+
+```ts twoslash
+import { PackbaseSDK } from '@packbase/sdk-ts'
+const pb = new PackbaseSDK()
+// ---cut---
+const pack = await pb.packs.create({
+  display_name: 'My Art Community',
+  description: 'A place for digital artists.',
+})
+```
+
+The signed-in user becomes the owner. `display_name` is limited to 128 characters and `description` to 256 characters.
+
+## Members
+
+```ts twoslash
+import { PackbaseSDK } from '@packbase/sdk-ts'
+const pb = new PackbaseSDK()
+// ---cut---
+const members = await pb.packs('pack-id').members()
+
+for (const member of members) {
+  console.log(member.username, member.membership_id, member.roles)
+}
+```
+
+This returns all members in one `PackMember[]`; there is no cursor or page number for this endpoint.
+
+## Join and leave
+
+```ts twoslash
+import { PackbaseSDK } from '@packbase/sdk-ts'
+const pb = new PackbaseSDK()
+// ---cut---
+const membership = await pb.packs('pack-id').join()
+console.log(membership.tenant_id, membership.user_id)
+
+await pb.packs('pack-id').leave()
+```
+
+Both methods require authentication. Pack owners, and users whose default pack is the target, can't leave through this endpoint.
+
+## Edit pack details
+
+```ts twoslash
+import { PackbaseSDK } from '@packbase/sdk-ts'
+const pb = new PackbaseSDK()
+// ---cut---
+const updated = await pb.packs('pack-id').update({
+  display_name: 'New Name',
+  about: { bio: 'Updated description', flair: 'ART' },
+  images: { avatar: 'data:image/png;base64,...' },
+})
+```
+
+This requires the `ManagePack` permission. The response is a database-shaped `PackUpdateResult`, not the regular `Pack` object. Fetch the pack again if your UI needs its fully formatted current state.
+
+## Settings
+
+```ts twoslash
+import { PackbaseSDK } from '@packbase/sdk-ts'
+const pb = new PackbaseSDK()
+// ---cut---
+const settings = await pb.packs('pack-id').settings()
+
+for (const setting of settings) {
+  console.log(setting.key, setting.value, setting.definition)
+}
+```
+
+`settings()` sends `GET /pack/:id/settings` and returns `PackSetting[]`. The server currently has no pack-settings update route.
+
+## Roles
+
+Role management requires the `ManageRoles` permission. Permissions are numeric bit flags, and `|` combines several flags into one value.
+
+```ts twoslash
+import { PackbaseSDK, PackPermissionBits } from '@packbase/sdk-ts'
+const pb = new PackbaseSDK()
+const pack = pb.packs('pack-id')
+// ---cut---
+const role = await pack.createRole({
+  name: 'Moderator',
+  permissions: PackPermissionBits.BanMembers | PackPermissionBits.KickMembers,
+})
+
+const roles = await pack.roles()
+await pack.updateRole(role.id, {...role, name: 'Senior moderator'})
+await pack.setMemberRoles('user-id', [role.id])
+await pack.deleteRole(role.id)
+```
+
+`setMemberRoles()` takes the user's UUID, not the numeric membership record ID. The server strips the `Owner` permission bit from custom roles.
+
+## Moderate members
+
+```ts twoslash
+import { PackbaseSDK } from '@packbase/sdk-ts'
+const pb = new PackbaseSDK()
+const pack = pb.packs('pack-id')
+// ---cut---
+await pack.kick('user-id')
+await pack.ban('user-id')
+```
+
+Despite the route calling it `memberId`, the value passed to `kick()` and `ban()` is the user's UUID.
+
+## Pinned howls
+
+```ts twoslash
+import { PackbaseSDK } from '@packbase/sdk-ts'
+const pb = new PackbaseSDK()
+const pack = pb.packs('pack-id')
+// ---cut---
+const { data: pinned } = await pack.pins()
+await pack.pinHowl('howl-id', {expiresAt: '2026-12-31T23:59:00.000Z'})
+await pack.unpinHowl('howl-id')
+```
+
+Pinning requires `PinHowls`. A pack may have at most five active pins.
+
+## Report a pack
+
+```ts twoslash
+import { PackbaseSDK, ReportReason } from '@packbase/sdk-ts'
+const pb = new PackbaseSDK()
+// ---cut---
+const ticket = await pb.packs('pack-id').report(
+  ReportReason.HarassmentOrBullying,
+  'Additional context.',
+)
+```
+
+`report()` returns the created moderation ticket's `id` and `status`.

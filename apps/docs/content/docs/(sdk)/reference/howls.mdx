@@ -1,0 +1,94 @@
+---
+title: pb.howls
+description: Fetch, create, delete, react to, comment on, rehowl, and report howls.
+---
+
+Call `pb.howls(id)` with a howl UUID to get a lazy `HowlHandle`. “Lazy” means creating the handle doesn't send a request. Awaiting it fetches the howl; action methods such as `.react()` send only their own request.
+
+```ts twoslash
+import { PackbaseSDK } from '@packbase/sdk-ts'
+const pb = new PackbaseSDK()
+// ---cut---
+const howl = await pb.howls('howl-id')
+console.log(howl.body, howl.user.username)
+```
+
+## Create a howl
+
+```ts twoslash
+import { PackbaseSDK } from '@packbase/sdk-ts'
+const pb = new PackbaseSDK()
+// ---cut---
+const howl = await pb.howls.create({
+  tenant_id: 'pack-id',
+  body: 'Hello, world!',
+  tags: ['art', 'rating_safe'],
+})
+```
+
+Packbase creates howls in a background job. By default, the SDK starts the job, checks its status, and resolves with the finished `Howl`. In ordinary application code, the single `await` above is enough.
+
+`HowlCreateInput` accepts:
+
+| Field | Type | Notes |
+| --- | --- | --- |
+| `tenant_id` | `string` | Pack UUID. The caller must be a member. |
+| `parent_id` | `string?` | Parent howl UUID, when creating a reply through the creation job. |
+| `content_type` | `'text'?` | The SDK supplies `'text'` when omitted. |
+| `body` | `string \| null` | Plain text or HTML. Use `null` only when assets are present. |
+| `asset_ids` | `string[]?` | Finalized upload IDs, up to 100. |
+| `tags` | `[string, ...string[]]` | Must contain exactly one rating tag, in any position. |
+
+Pass `{ poll: false }` to receive only `{ id }` without waiting. See [Async Job Polling](/guides/polling) before using that option, since your app becomes responsible for tracking the unfinished job.
+
+## Delete
+
+```ts twoslash
+import { PackbaseSDK } from '@packbase/sdk-ts'
+const pb = new PackbaseSDK()
+// ---cut---
+await pb.howls('howl-id').delete()
+```
+
+Deleting requires the signed-in user to have permission. The server doesn't currently expose a howl edit route.
+
+## Reactions
+
+```ts twoslash
+import { PackbaseSDK } from '@packbase/sdk-ts'
+const pb = new PackbaseSDK()
+const howl = pb.howls('howl-id')
+// ---cut---
+await howl.react('🔥')
+await howl.unreact()
+```
+
+`react()` sends `POST /howl/:id/react`. Repeating the same reaction returns status 400; it does not toggle the reaction. `unreact()` sends `DELETE /howl/:id/react` and removes the caller's reactions from the howl.
+
+## Comments and rehowls
+
+```ts twoslash
+import { PackbaseSDK } from '@packbase/sdk-ts'
+const pb = new PackbaseSDK()
+const howl = pb.howls('howl-id')
+// ---cut---
+const { id: commentId } = await howl.comment('Good post.')
+const { id: rehowlId } = await howl.rehowl()
+await howl.unrehowl()
+```
+
+Comments are sanitized by the server and limited to 1,024 characters. `unrehowl()` targets the original howl ID.
+
+## Report
+
+```ts twoslash
+import { PackbaseSDK, ReportReason } from '@packbase/sdk-ts'
+const pb = new PackbaseSDK()
+// ---cut---
+const ticket = await pb.howls('howl-id').report(
+  ReportReason.Misinformation,
+  'Source material is available here.',
+)
+```
+
+The returned `ReportResult` contains the moderation ticket's `id` and `status`.

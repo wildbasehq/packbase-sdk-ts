@@ -1,0 +1,141 @@
+---
+title: pb.inbox
+description: Read, count, mark, and delete notifications for the signed-in user.
+---
+
+`pb.inbox` provides access to the signed-in user's notification inbox. Every method here requires authentication. If paginated responses are new to you, the [Pagination guide](/guides/pagination) is probably worth reading first.
+
+## Methods overview
+
+| Method | Description |
+| --- | --- |
+| `pb.inbox.fetch(options?)` | Fetch paginated notifications |
+| `pb.inbox.count()` | Get the unread notification count |
+| `pb.inbox.markRead(ids)` | Mark one, several, or all notifications as read |
+| `pb.inbox.delete(ids)` | Delete notifications |
+
+## `pb.inbox.fetch(options?)`: Fetch notifications
+
+Fires `GET /inbox/fetch`. The result contains one page of notifications in `data`. For the next page, pass back the `cursor` from the previous response; don't try to construct a cursor yourself.
+
+```ts twoslash
+import { PackbaseSDK } from '@packbase/sdk-ts'
+const pb = new PackbaseSDK()
+// ---cut---
+// First page
+const page = await pb.inbox.fetch({ limit: 20 })
+//    ^?
+
+const { data, has_more, cursor } = page
+for (const n of data) {
+  console.log(n.title, n.content, n.read)
+}
+
+// Next page
+if (has_more) {
+  const nextPage = await pb.inbox.fetch({ cursor })
+}
+```
+
+**Options:**
+
+| Option | Type | Default | Description |
+| --- | --- | --- | --- |
+| `limit` | `number` | server default | Max notifications per page. |
+| `cursor` | `string` | Not set | Pagination cursor from previous response. |
+| `unreadOnly` | `boolean` | `false` | When `true`, only unread notifications are returned. |
+
+**Returns:** `Promise<Paginated<Notification>>`
+
+### Unread-only feed
+
+```ts twoslash
+import { PackbaseSDK } from '@packbase/sdk-ts'
+const pb = new PackbaseSDK()
+// ---cut---
+const { data } = await pb.inbox.fetch({ unreadOnly: true })
+//      ^?
+
+console.log(`${data.length} unread notifications`)
+```
+
+### Fetch all notifications
+
+```ts twoslash
+import { PackbaseSDK, type Notification } from '@packbase/sdk-ts'
+const pb = new PackbaseSDK()
+// ---cut---
+async function fetchAll(): Promise<Notification[]> {
+  const all: Notification[] = []
+  let cursor: string | undefined
+  let has_more = true
+
+  do {
+    const page = await pb.inbox.fetch({ limit: 50, cursor })
+    //    ^?
+    all.push(...page.data)
+    cursor = page.cursor
+    has_more = page.has_more
+  } while (has_more)
+  return all
+}
+```
+
+## `pb.inbox.count()`: Unread count
+
+Fires `GET /inbox/count`. This works well for an unread badge because it returns only the count, without downloading the notification list.
+
+```ts twoslash
+import { PackbaseSDK } from '@packbase/sdk-ts'
+const pb = new PackbaseSDK()
+// ---cut---
+const result = await pb.inbox.count()
+//    ^?
+
+console.log(`${result.count} unread notifications`)
+```
+
+**Returns:** `Promise<{ count: number }>`
+
+## `pb.inbox.markRead(ids)`: Mark as read
+
+Fires `POST /inbox/read`. Pass an array of notification IDs for selected items or the exact string `'all'` for the entire inbox.
+
+```ts twoslash
+import { PackbaseSDK } from '@packbase/sdk-ts'
+const pb = new PackbaseSDK()
+// ---cut---
+// Mark specific notifications
+const r1 = await pb.inbox.markRead(['id1', 'id2', 'id3'])
+//    ^?
+
+// Mark all notifications as read
+const r2 = await pb.inbox.markRead('all')
+```
+
+**Parameters:**
+
+| Value | Description |
+| --- | --- |
+| `string[]` | Array of notification UUIDs to mark as read. |
+| `'all'` | Mark every notification as read at once. |
+
+**Returns:** `Promise<{ success: boolean; count: number }>`
+
+## `pb.inbox.delete(ids)`: Delete notifications
+
+Fires `POST /inbox/delete`.
+
+```ts twoslash
+import { PackbaseSDK } from '@packbase/sdk-ts'
+const pb = new PackbaseSDK()
+// ---cut---
+const result = await pb.inbox.delete(['id1', 'id2'])
+//    ^?
+
+await pb.inbox.delete('all')
+```
+
+Pass an array to delete selected notifications or `'all'` to clear the inbox. Deletion is permanent, so a UI should usually confirm before sending `'all'`.
+
+**Returns:** `Promise<{ success: boolean; count: number }>`

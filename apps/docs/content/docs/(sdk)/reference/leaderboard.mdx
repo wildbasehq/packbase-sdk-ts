@@ -1,0 +1,36 @@
+---
+title: pb.leaderboard
+description: Fetch ranked packs by activity and profiles by XP.
+---
+
+Leaderboard methods don't return plain pack or profile arrays. Each entry wraps the item with ranking information such as activity, XP, or movement, while the outer object contains information about the leaderboard as a whole.
+
+## Packs
+
+```ts twoslash
+import { PackbaseSDK } from '@packbase/sdk-ts'
+const pb = new PackbaseSDK()
+// ---cut---
+const { packs } = await pb.leaderboard.packs()
+
+for (const entry of packs) {
+  console.log(entry.activity, entry.pack.display_name)
+}
+```
+
+The result is `PackLeaderboard`, so read the array from its `packs` property as shown above.
+
+## Profiles
+
+```ts twoslash
+import { PackbaseSDK } from '@packbase/sdk-ts'
+const pb = new PackbaseSDK()
+// ---cut---
+const { profiles, update_in } = await pb.leaderboard.profiles()
+
+for (const entry of profiles) {
+  console.log(entry.xp, entry.movement, entry.delta, entry.profile.username)
+}
+```
+
+The result is `ProfileLeaderboard`. `update_in` is an ISO-formatted timestamp for the next refresh. Each entry also includes `since`, `movement`, and `delta` fields describing its ranking change.

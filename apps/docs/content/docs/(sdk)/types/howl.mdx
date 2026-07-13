@@ -1,0 +1,143 @@
+---
+title: Howl
+description: TypeScript shapes for howls, creation input, interactions, assets, and jobs.
+---
+
+## `Howl`
+
+`Howl` describes a post returned by Packbase. Quite a few fields are optional because different endpoints return different levels of detail. A field ending in `?` may be missing, so use a check or optional chaining before reading through it.
+
+```ts
+interface Howl {
+  id: string
+  rehowl_id?: string
+  canonical_id?: string
+  parent_post?: unknown
+  tenant_id?: string
+  content_type: 'text' | 'howling_alongside' | 'howling_echo'
+  created_at: string
+  body?: string
+  allow_rehowl?: boolean
+  rehowled_by?: Profile
+  user: Profile
+  assets?: HowlAsset[]
+  tags?: string[]
+  reactions?: HowlReaction[]
+  comments?: HowlComment[]
+  pack?: Pack
+  warning?: { reason: string }
+  meta?: {
+    rehowled: boolean
+    pinned?: boolean
+    pin_expires_at?: string
+    folder_count?: number
+  }
+}
+```
+
+`parent_post` can contain the original post for quote-like howls, but its exact shape isn't guaranteed yet, which is why its type is `unknown`. Check the value before using it. `rehowled_by` identifies the account that rehowled the post when that context is available.
+
+## Content and ratings
+
+```ts
+type HowlContentType = 'text' | 'howling_alongside' | 'howling_echo'
+type HowlRating =
+  | 'rating_safe'
+  | 'rating_mature'
+  | 'rating_suggestive'
+  | 'rating_explicit'
+```
+
+Howls you create directly use `text`. The other values describe rehowls returned by the API. Every creation request needs exactly one rating tag, though that tag can sit anywhere in the list.
+
+## Assets, reactions, and comments
+
+```ts
+interface HowlAsset {
+  type: 'image' | 'video' | 'audio' | 'file'
+  data: { name?: string; url: string }
+}
+
+interface HowlReaction {
+  key: string
+  emoji: string
+  count: number
+  reactedByMe?: boolean
+}
+
+interface HowlComment {
+  id: string
+  body: string
+  user: Profile
+  created_at: string
+  content_type: string
+  reactions?: HowlReaction[]
+  comments?: HowlComment[]
+}
+```
+
+## `HowlCreateInput`
+
+This is the object passed to `pb.howls.create()`. It is intentionally smaller than `Howl`: you provide only the information needed to create a post, while Packbase fills in fields such as `id`, `created_at`, and `user`.
+
+```ts
+interface HowlCreateInput {
+  tenant_id: string
+  parent_id?: string
+  content_type?: 'text'
+  body: string | null
+  asset_ids?: string[]
+  tags: [string, ...string[]]
+}
+```
+
+`body` must be a string or `null`, not a structured JSON object. Packbase sanitizes HTML in strings. Use `null` only when `asset_ids` supplies the howl's content.
+
+## Creation jobs
+
+Normally `pb.howls.create()` waits and returns a finished `Howl`. With `{ poll: false }`, it returns the smaller `HowlCreationJob` instead:
+
+```ts
+interface HowlCreationJob {
+  id: string
+}
+```
+
+The job ID is also the future howl ID. Each status check returns this shape:
+
+```ts
+interface HowlJobStatus {
+  id: string
+  status:
+    | 'pending'
+    | 'uploading'
+    | 'converting'
+    | 'processing'
+    | 'completed'
+    | 'failed'
+  progress: {
+    currentAsset: number
+    totalAssets: number
+    currentAssetProgress?: number
+  }
+  createdAt: number
+  updatedAt: number
+  error?: string
+}
+```
+
+## Import
+
+```ts
+import type {
+  Howl,
+  HowlCreateInput,
+  HowlCreationJob,
+  HowlJobStatus,
+  HowlContentType,
+  HowlRating,
+  HowlAsset,
+  HowlReaction,
+  HowlComment,
+} from '@packbase/sdk-ts'
+```

@@ -1,0 +1,228 @@
+---
+title: Search
+description: Build typed searches for posts, profiles, and packs without writing raw request objects.
+---
+
+Packbase search can find posts, profiles, and packs. The SDK includes a **query builder** named `from()` that helps you describe what you want: which model to search, which records to keep, how to sort them, and how many to return.
+
+You build a query by chaining small methods together, a bit like finishing a sentence. Then `.build()` turns that chain into the plain object that `pb.search()` sends to the API.
+
+## Quick example
+
+```ts twoslash
+import { PackbaseSDK, from, isErrorEntry } from '@packbase/sdk-ts'
+
+const pb = new PackbaseSDK()
+// ---cut---
+const results = await pb.search({
+  topPacks: from('packs').orderBy('last_activity_at').take(10).build(),
+  recentUsers: from('profiles').orderBy('created_at').take(5).build(),
+})
+
+if (!isErrorEntry(results.topPacks)) {
+  console.log(results.topPacks)
+  //                  ^?
+}
+```
+
+Here, `topPacks` and `recentUsers` are names chosen by the application, not special SDK keywords. The response uses those same names, which lets one HTTP request carry several independent searches.
+
+## Queryable models
+
+| Model | Fields available |
+| --- | --- |
+| `'posts'` | `id`, `created_at`, `tenant_id`, `content_type`, `body`, `user_id`, `parent`, `tags`, `assets` |
+| `'profiles'` | `id`, `created_at`, `username`, `bio`, `slug`, `display_name`, `images_avatar`, `images_header`, `type`, `space_type`, `is_r18` |
+| `'packs'` | `id`, `created_at`, `display_name`, `images_avatar`, `description`, `owner_id`, `images_header`, `last_activity_at` |
+
+The model name decides which fields TypeScript allows later in the chain. If you search `'packs'` and accidentally use a profile-only field, your editor should flag it before the request is sent.
+
+## Building a query: `from(model)`
+
+Start each query with `from()` and the kind of data you want to search:
+
+```ts twoslash
+import { from } from '@packbase/sdk-ts'
+// ---cut---
+const query = from('packs').build()
+```
+
+This example doesn't filter anything yet. You can now chain the methods below, then call `.build()` when the query is ready to send.
+
+## Filtering: `.where()`
+
+`.where()` keeps only records that match a condition. Multiple calls are combined with AND, meaning every condition must match:
+
+```ts twoslash
+import { from } from '@packbase/sdk-ts'
+// ---cut---
+// Exact match (shorthand for { equals: 'rek' })
+const q1 = from('profiles').where({ username: 'rek' })
+
+// Operator map
+const q2 = from('profiles').where({ username: { startsWith: 'r' } })
+
+// Multiple conditions (chained .where() calls are merged)
+const q3 = from('packs')
+  .where({ owner_id: 'some-uuid' })
+  .where({ display_name: { contains: 'art' } })
+```
+
+### Available filter operators
+
+A simple value such as `{ username: 'rek' }` means “exactly equal to `rek`.” Use an operator object when you need a different comparison:
+
+| Operator | Use case |
+| --- | --- |
+| `equals` | Exact match (default for scalars) |
+| `not` | Negate an equality check |
+| `in` | Match any value in an array |
+| `notIn` | Exclude values in an array |
+| `lt` / `lte` | Less-than / less-than-or-equal |
+| `gt` / `gte` | Greater-than / greater-than-or-equal |
+| `contains` | Substring / array contains |
+| `startsWith` | Prefix match |
+| `endsWith` | Suffix match |
+| `mode` | Case-insensitive (`'insensitive'`) |
+| `has` | JSON array contains value |
+| `hasSome` | JSON array has any of these values |
+| `hasEvery` | JSON array has all of these values |
+| `isEmpty` | JSON array is empty |
+
+## AND / OR / NOT clauses
+
+Use these methods when a filter needs explicit logic. AND requires every condition, OR requires at least one, and NOT removes matching records:
+
+```ts twoslash
+import { from } from '@packbase/sdk-ts'
+// ---cut---
+// AND: both conditions must match
+const q1 = from('posts').and([
+  { created_at: { gte: '2024-01-01' } },
+  { created_at: { lte: '2024-12-31' } },
+])
+
+// OR: either condition matches
+const q2 = from('profiles').or([
+  { username: 'alice' },
+  { username: 'bob' },
+])
+
+// NOT: exclude matching records
+const q3 = from('profiles').not({ type: 'ALUMNI' })
+```
+
+## Sorting: `.orderBy()`
+
+```ts twoslash
+import { from } from '@packbase/sdk-ts'
+// ---cut---
+// Single sort
+const q1 = from('packs').orderBy('last_activity_at', 'desc')
+
+// Multiple sort keys: first call has highest priority
+const q2 = from('packs')
+  .orderBy('last_activity_at', 'desc')
+  .orderBy('display_name', 'asc')
+```
+
+The direction can be `'asc'` (smallest or oldest first) or `'desc'` (largest or newest first). It defaults to `'desc'` when omitted.
+
+## Limiting results: `.take()`
+
+`.take()` caps the number of records returned. Keeping this reasonably small makes the response faster and lighter:
+
+```ts twoslash
+import { from } from '@packbase/sdk-ts'
+// ---cut---
+const q = from('packs').take(20)
+```
+
+## Offset pagination: `.skip()` and `.page()`
+
+`.skip()` ignores a number of matching records before returning results. `.page()` calculates the skip value for you and starts counting pages at 1:
+
+```ts twoslash
+import { from } from '@packbase/sdk-ts'
+// ---cut---
+// Manual offset
+const q1 = from('posts').take(25).skip(50) // items 51-75
+
+// Page-based (1-indexed)
+const q2 = from('posts').page(3, 25) // page 3, 25 items per page → items 51-75
+```
+
+## Executing queries: `pb.search()`
+
+Give `pb.search()` an object containing one or more built queries. The property names are yours to choose, and the result comes back under the same names:
+
+```ts twoslash
+import { PackbaseSDK, from } from '@packbase/sdk-ts'
+const pb = new PackbaseSDK()
+// ---cut---
+const { activePacks, newUsers } = await pb.search({
+  activePacks: from('packs').orderBy('last_activity_at').take(10).build(),
+  newUsers: from('profiles').orderBy('created_at', 'asc').take(10).build(),
+})
+```
+
+## Handling per-query errors: `isErrorEntry()`
+
+Because one request may contain several queries, one query can fail while the others succeed. `isErrorEntry()` tells TypeScript and your code whether a particular result is data or an error:
+
+```ts twoslash
+import { PackbaseSDK, from, isErrorEntry } from '@packbase/sdk-ts'
+const pb = new PackbaseSDK()
+// ---cut---
+const { packs } = await pb.search({
+  packs: from('packs').where({ display_name: { contains: 'art' } }).build(),
+})
+
+if (isErrorEntry(packs)) {
+  console.error('Query failed:', packs.__error)
+  //                             ^?
+} else {
+  console.log('Packs found:', packs.length)
+  //                          ^?
+}
+```
+
+## Combining it all
+
+This longer example reads almost like its requirements: search packs, keep the ones owned by this user, put the most recently active first, and return at most 50.
+
+```ts
+import { PackbaseSDK, from, isErrorEntry } from '@packbase/sdk-ts'
+
+const pb = new PackbaseSDK()
+// ---cut---
+// Find all packs owned by a user, most recently active first
+const { myPacks } = await pb.search({
+  myPacks: from('packs')
+    .where({ owner_id: 'user-uuid' })
+    .orderBy('last_activity_at', 'desc')
+    .take(50)
+    .build(),
+})
+
+if (!isErrorEntry(myPacks)) {
+  for (const pack of myPacks) {
+    console.log(pack.display_name, pack.last_activity_at)
+  }
+}
+```
+
+## TypeScript tips
+
+You don't need to write a generic type argument yourself. TypeScript infers it from `from('packs')` and restricts `.where()` and `.orderBy()` to fields that exist on packs:
+
+```ts twoslash
+import { from } from '@packbase/sdk-ts'
+// ---cut---
+// ✅ fine
+from('packs').where({ display_name: { contains: 'art' } })
+
+// @errors: 2353
+// ❌ TypeScript error: 'email' is not a field on 'packs'
+from('packs').where({ email: 'foo@bar.com' })
+```

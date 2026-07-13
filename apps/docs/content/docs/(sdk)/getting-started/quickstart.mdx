@@ -1,0 +1,143 @@
+---
+title: Quickstart
+description: Create a Packbase client and make your first API calls, one step at a time.
+icon: Zap
+---
+
+This guide starts with an empty file and gets you to a real Packbase API request. We'll fetch public data first, then look at calls that need a logged-in user. No need to understand every type or option yet.
+
+## 1. Import the SDK and create a client
+
+```ts twoslash
+import { PackbaseSDK } from '@packbase/sdk-ts'
+
+const pb = new PackbaseSDK()
+//    ^?
+```
+
+`PackbaseSDK` is the class provided by the library. `new PackbaseSDK()` creates one client, and `pb` is just a short variable name for it. You'll call methods on `pb` whenever you want to talk to Packbase.
+
+Create one client and reuse it across your app. You don't need a new one for every request.
+
+With no API key, this client can read public endpoints. In a browser it can also use the current user's Packbase login cookie. We'll come back to that in step 3.
+
+## 2. Fetch a public profile
+
+```ts twoslash
+import { PackbaseSDK } from '@packbase/sdk-ts'
+const pb = new PackbaseSDK()
+// ---cut---
+const profile = await pb.profiles('rek')
+//    ^?
+
+console.log(profile.id)
+console.log(profile.display_name)
+console.log(profile.about?.bio)
+```
+
+`pb.profiles('rek')` means “get the profile whose username is `rek`.” The request takes time, so we put `await` in front of it. Your function will need to be `async` unless your environment supports top-level `await`.
+
+The result is a `Profile` object. The `?.` in `profile.about?.bio` safely handles profiles that don't have an `about` section.
+
+## 3. Make an authenticated request
+
+Some data is private to the current user. For example, `pb.me()` asks Packbase for the profile that's currently signed in:
+
+```ts twoslash
+import { PackbaseSDK } from '@packbase/sdk-ts'
+
+const pb = new PackbaseSDK({ apiKey: 'your-api-key' })
+// ---cut---
+const me = await pb.me()
+//    ^?
+
+console.log(me.username)
+```
+
+Replace `'your-api-key'` with a real API key or Clerk JWT. Don't put a secret key directly into source code that you'll commit; load it from an environment variable instead. In a browser app where the user is already signed in to Packbase, you can omit `apiKey` and let the browser send the session cookie.
+
+<Callout type="info">
+  `pb.me()` needs a valid API key or browser session. If Packbase can't identify the user, the request fails with status `401`, which means “not authenticated.”
+</Callout>
+
+The [Authentication guide](/getting-started/authentication) explains both approaches in a bit more detail.
+
+## 4. List packs
+
+A pack is a Packbase community. The list response contains a `packs` array plus a few bits of information about the list itself.
+
+```ts twoslash
+import { PackbaseSDK } from '@packbase/sdk-ts'
+const pb = new PackbaseSDK()
+// ---cut---
+const result = await pb.packs.list()
+//    ^?
+
+for (const pack of result.packs) {
+  console.log(pack.display_name)
+}
+```
+
+To fetch one known pack, pass its real UUID:
+
+```ts twoslash
+import { PackbaseSDK } from '@packbase/sdk-ts'
+const pb = new PackbaseSDK()
+// ---cut---
+const pack = await pb.packs('00000000-0000-0000-0000-000000000000')
+console.log(pack.display_name)
+```
+
+The all-zero UUID only shows the expected format. It won't identify a real pack.
+
+## 5. Create a howl
+
+Packbase calls posts “howls.” Creating one requires authentication, a pack ID, some content, and one rating tag.
+
+```ts twoslash
+import { PackbaseSDK } from '@packbase/sdk-ts'
+const pb = new PackbaseSDK({ apiKey: 'your-api-key' })
+// ---cut---
+const howl = await pb.howls.create({
+  tenant_id: 'your-pack-uuid',
+  body: 'Hello, Packbase! 🐾',
+  tags: ['rating_safe'],
+})
+
+console.log('Howl created:', howl.id)
+```
+
+Replace the placeholder values before running this. The signed-in user also needs permission to post in that pack.
+
+Howl creation happens in a background job on the server. The SDK checks that job for you and waits until the finished howl is ready, so the code above still feels like one normal `await`. See the [Howls guide](/guides/howls) when you need uploads, progress updates, or manual polling.
+
+## 6. Catch request errors
+
+Real requests fail sometimes because of a wrong ID, an expired key, or server trouble. Wrap calls that can fail in `try`/`catch`:
+
+```ts twoslash
+import { PackbaseSDK, PackbaseError } from '@packbase/sdk-ts'
+const pb = new PackbaseSDK()
+// ---cut---
+try {
+  const profile = await pb.profiles('rek')
+  console.log(profile.display_name)
+} catch (error) {
+  if (error instanceof PackbaseError) {
+    console.error(`Packbase returned ${error.status}: ${error.summary}`)
+  } else {
+    console.error('The request could not reach Packbase', error)
+  }
+}
+```
+
+That's enough to get moving. The reference pages list every method, while the guides explain the less obvious workflows.
+
+## Next steps
+
+<Cards>
+  <Card title="Authentication" href="/getting-started/authentication" description="Use an API key or an existing browser session safely." />
+  <Card title="Error Handling" href="/getting-started/error-handling" description="Respond to API and network failures." />
+  <Card title="Howls" href="/guides/howls" description="Create posts, attach assets, and track processing." />
+  <Card title="Search" href="/guides/search" description="Filter and sort Packbase data with the query builder." />
+</Cards>

@@ -1,0 +1,52 @@
+{
+  "name": "@packbase/sdk-ts",
+  "version": "0.1.0",
+  "description": "Typed, dependency-free TypeScript client for the Packbase API.",
+  "license": "MIT",
+  "sideEffects": false,
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "keywords": [
+    "packbase",
+    "sdk",
+    "api-client",
+    "typescript"
+  ],
+  "scripts": {
+    "clean": "node -e \"require('node:fs').rmSync('dist', { recursive: true, force: true })\"",
+    "build": "bun run clean && bun run build:types && bun run build:js",
+    "build:js": "bun build ./src/index.ts --outdir ./dist --format esm --target browser",
+    "build:types": "tsc --project tsconfig.build.json",
+    "typecheck": "tsc --noEmit",
+    "watch": "bun build ./src/index.ts --outdir ./dist --format esm --target browser --watch",
+    "test": "bun test",
+    "verify": "bun run typecheck && bun run test && bun run build && bun run verify:package",
+    "verify:package": "node --input-type=module -e \"import('./dist/index.js')\" && npm pack --dry-run",
+    "prepublishOnly": "bun run verify"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "typescript": "^5.9.3"
+  }
+}

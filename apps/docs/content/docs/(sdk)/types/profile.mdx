@@ -1,0 +1,89 @@
+---
+title: Profile
+description: TypeScript shapes for profiles, updates, friends, storage, and history.
+---
+
+## `Profile`
+
+`Profile` describes a Packbase account. Only `id`, `username`, and `display_name` are always present in this type. Fields ending in `?` may be missing, so optional chaining such as `profile.about?.bio` is often useful.
+
+```ts
+interface Profile {
+  id: string
+  username: string
+  display_name: string
+  slug?: string
+  badge?: string
+  xp?: number
+  about?: { bio?: string; flair?: string }
+  space_type?: 'default' | 'custom_free' | 'custom_unrestricted'
+  post_privacy?: 'everyone' | 'followers' | 'friends' | 'private'
+  images?: { avatar?: string; header?: string }
+  following?: boolean
+  is_staff?: boolean
+  is_content_moderator?: boolean
+  is_dx?: boolean
+  type?: 'PRIVILEDGED' | 'ALUMNI'
+  created_at?: string
+}
+```
+
+`following` answers “does the current signed-in user follow this profile?” It may be absent on an anonymous request. Staff flags and fields such as `xp` can also be omitted when an endpoint returns a smaller profile summary.
+
+## `UpdateProfileInput`
+
+This is the object accepted by `pb.me.update()`. Every field is optional because the method performs a partial update: include only the values you want to change.
+
+```ts
+interface UpdateProfileInput {
+  display_name?: string
+  slug?: string
+  about?: { bio?: string }
+  space_type?: 'default' | 'custom_free' | 'custom_unrestricted'
+  post_privacy?: 'everyone' | 'followers' | 'friends' | 'private'
+  images?: { header?: string }
+}
+```
+
+`pb.me.update()` returns `UpdateProfileResult`, which adds `id` and sometimes `username` to the submitted fields. It isn't a freshly fetched full `Profile`. Call `pb.me()` afterward if you need the complete current profile.
+
+## Friends and storage
+
+`pb.me.friends()` returns `FriendsResponse`:
+
+```ts
+interface FriendsResponse {
+  count: number
+  friends: FriendProfile[]
+  message?: string
+}
+```
+
+`pb.me.storage()` returns `StorageUsage`:
+
+```ts
+interface StorageUsage {
+  totalBytes: number
+  fileCount?: number
+  tier?: string
+  error?: string
+}
+```
+
+## Profile history
+
+`ProfileHistoryEntry` is a saved version of a profile plus metadata describing when and why that version changed. The metadata fields are `history_id`, `entity_id`, `transaction_time`, `decision_time`, `operation`, and `changed_by`. See [`pb.profiles`](/reference/profiles) for the available date and ordering options.
+
+## Import
+
+```ts
+import type {
+  Profile,
+  UpdateProfileInput,
+  UpdateProfileResult,
+  FriendsResponse,
+  StorageUsage,
+  ProfileHistoryEntry,
+  ProfileHistoryOptions,
+} from '@packbase/sdk-ts'
+```

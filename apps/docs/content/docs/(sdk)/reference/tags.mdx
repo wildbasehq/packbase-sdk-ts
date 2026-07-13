@@ -1,0 +1,47 @@
+---
+title: pb.tags
+description: Fetch the tags that can be attached to Packbase howls.
+---
+
+`pb.tags()` fetches the current list of tags available for howls. It returns strings, which makes it useful for building a tag picker or validating a user's selection.
+
+## `pb.tags()`: Fetch all tags
+
+The result is a flat array. There is no surrounding `data` object and no pagination.
+
+```ts twoslash
+import { PackbaseSDK } from '@packbase/sdk-ts'
+const pb = new PackbaseSDK()
+// ---cut---
+const tags = await pb.tags()
+//    ^?
+
+console.log(tags) // ['rating_safe', 'rating_mature', 'art', 'digital', ...]
+```
+
+**Returns:** `Promise<string[]>`
+
+## Usage example
+
+You can use the tag list to populate a tag selector in your UI:
+
+```ts twoslash
+import { PackbaseSDK } from '@packbase/sdk-ts'
+
+const pb = new PackbaseSDK()
+// ---cut---
+const allTags = await pb.tags()
+//    ^?
+
+// Keep rating choices separate from ordinary topic tags.
+const contentTags = allTags.filter(t => !t.startsWith('rating_'))
+//    ^?
+
+console.log('Available content tags:', contentTags)
+```
+
+## Notes
+
+- Tags are returned as plain strings.
+- Every new howl needs exactly one rating tag (`rating_safe`, `rating_mature`, `rating_suggestive`, or `rating_explicit`). Its position does not matter.
+- Additional tags beyond the rating are optional and free-form.

@@ -1,0 +1,34 @@
+---
+title: FeedPage
+description: Understand the regular and pinned howls returned in a feed page.
+---
+
+## `FeedPage`
+
+`pb.feeds(id).fetch()` doesn't return a bare `Howl[]`. It returns a `FeedPage` object, which keeps normal feed items, pinned items, and pagination information in separate fields.
+
+```ts
+interface FeedPage {
+  data: Howl[]
+  pins: Howl[]
+  has_more: boolean
+  total_count?: number
+}
+```
+
+### Field reference
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `data` | `Howl[]` | The paginated feed items for the requested page. |
+| `pins` | `Howl[]` | Pinned howls that should stay visible at the top of the feed. Search responses do not include this. |
+| `has_more` | `boolean` | Whether another page of non-pinned feed items exists. |
+| `total_count` | `number?` | Optional total count of non-pinned feed items. |
+
+The `?` after `total_count` means the property is optional. Check that it exists before treating it as a number.
+
+## Import
+
+```ts
+import type { FeedPage } from '@packbase/sdk-ts'
+```

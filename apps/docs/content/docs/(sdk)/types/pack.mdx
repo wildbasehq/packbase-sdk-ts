@@ -1,0 +1,121 @@
+---
+title: Pack
+description: TypeScript shapes for packs, members, roles, lists, and updates.
+---
+
+## `Pack`
+
+`Pack` describes a Packbase community returned by the API. Optional fields end in `?`; they may be absent depending on the endpoint and whether the caller is signed in.
+
+```ts
+interface Pack {
+  id: string
+  display_name: string
+  about?: { bio?: string; flair?: string }
+  images?: { avatar?: string; header?: string }
+  owner_id?: string
+  membership?: {
+    id: number
+    user_id: string
+    permissions: number
+  }
+  statistics?: {
+    members: number
+    heartbeat?: number
+  }
+  created_at: string
+}
+```
+
+The list endpoint wraps its array in `PackList` so it can return pagination and visibility information beside the packs. It also omits the per-pack `heartbeat` field:
+
+```ts
+interface PackList {
+  has_more: boolean
+  packs: Pack[]
+  hidden: number
+  total_count?: number
+}
+```
+
+## `PackMember`
+
+`extends Profile` means a `PackMember` has the normal profile fields plus membership-specific fields:
+
+```ts
+interface PackMember extends Profile {
+  membership_id: number
+  joined_at: string
+  permissions: number
+  online?: boolean
+  last_online?: string
+  roles?: PackRoleSummary[]
+}
+```
+
+## Roles and permissions
+
+Permissions are stored as bit flags: several yes/no permissions packed into one number. Use the exported `PackPermissionBits` values and the bitwise OR operator (`|`) to combine them rather than hard-coding totals.
+
+```ts
+interface PackRole {
+  id: string
+  tenant_id: string
+  name: string
+  permissions: number
+  created_at: string
+  updated_at: string
+}
+```
+
+```ts
+const PackPermissionBits = {
+  Owner: 1,
+  Administrator: 2,
+  BanMembers: 4,
+  KickMembers: 8,
+  ManageRoles: 16,
+  DeleteHowls: 128,
+  CreateHowls: 256,
+  ManagePack: 512,
+  PinHowls: 1024,
+} as const
+```
+
+Custom roles cannot carry the `Owner` bit.
+
+For example, `PackPermissionBits.BanMembers | PackPermissionBits.KickMembers` creates the permission number for a role that can do both.
+
+## Create and edit input
+
+```ts
+interface PackCreateInput {
+  display_name: string
+  description: string
+}
+
+interface PackEditInput {
+  display_name?: string
+  about?: { bio?: string; flair?: string }
+  images?: { header?: string; avatar?: string }
+}
+```
+
+The edit endpoint returns `PackUpdateResult`, which mirrors the database update result rather than a fully formatted `Pack`. If you need the normal response shape after an edit, fetch the pack again.
+
+## Import
+
+```ts
+import type {
+  Pack,
+  PackList,
+  PackMember,
+  PackRole,
+  PackRoleInput,
+  PackRoleSummary,
+  PackCreateInput,
+  PackEditInput,
+  PackUpdateResult,
+  PackSetting,
+} from '@packbase/sdk-ts'
+```

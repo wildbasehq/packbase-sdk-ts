@@ -1,0 +1,87 @@
+---
+title: Authentication
+description: Help Packbase identify the user with an API key, JWT, or browser session cookie.
+icon: KeyRound
+---
+
+Authentication is how Packbase knows who is making a request. Public calls may work without it, but anything tied to an account needs a signed-in user. That includes creating a howl, reading an inbox, and calling `pb.me()`.
+
+The SDK supports two approaches. You can pass a token to `apiKey`, or, in a browser, let the existing Packbase session cookie do the work.
+
+## Option 1: Pass an API key or token
+
+Use this approach in server code, scripts, command-line tools, and CI jobs. Pass the key when you create the client:
+
+```ts
+import { PackbaseSDK } from '@packbase/sdk-ts'
+
+const pb = new PackbaseSDK({
+  apiKey: process.env.PACKBASE_API_KEY,
+})
+```
+
+The option is named `apiKey`, but it can contain either a long-lived Packbase API key or a Clerk JWT. A JWT is a short-lived token that represents a user.
+
+For each request, the SDK sends the value in an HTTP header that looks like this:
+
+```text
+Authorization: Bearer your-key-or-token
+```
+
+You don't need to build that header yourself. When `apiKey` is set, the SDK also avoids sending browser cookies.
+
+<Callout type="warn">
+  Don't commit a real API key to Git or put it in code sent to a browser. Keep server-side secrets in environment variables, and make sure the environment variable is actually configured where your app runs.
+</Callout>
+
+In Next.js, for example, read the key in a Server Component, Route Handler, or Server Action. Avoid environment variable names beginning with `NEXT_PUBLIC_`, because those values are included in browser code.
+
+Clerk JWTs expire. If you're using one, request a fresh token when a new server-side session begins rather than storing it indefinitely.
+
+## Option 2: Use the browser session cookie
+
+If someone is already signed in to Packbase in the browser, create the client without `apiKey`:
+
+```ts twoslash
+import { PackbaseSDK } from '@packbase/sdk-ts'
+
+const pb = new PackbaseSDK()
+//    ^?
+```
+
+The SDK uses `credentials: 'include'`, which asks the browser to include the Packbase session cookie with requests. You generally won't read or handle the cookie yourself (and, for security reasons, JavaScript often can't read it anyway).
+
+Cookie authentication is a good fit for front-end web apps and custom clients running in the browser.
+
+<Callout type="warn">
+  Creating a client without `apiKey` doesn't magically sign anyone in. The browser must already have a valid Packbase session cookie. On a server, cookies are not forwarded automatically; your application has to pass the incoming cookie along explicitly.
+</Callout>
+
+## Public requests without authentication
+
+You can also create `new PackbaseSDK()` and call public read-only endpoints without being signed in. An endpoint that requires a user will return a `401` error instead. If you aren't sure whether a method needs authentication, its reference page will say so.
+
+## Use a different API server
+
+The SDK calls `https://vgs.packbase.app` by default. For local development, staging, or a self-hosted instance, pass `baseUrl`:
+
+```ts
+import { PackbaseSDK } from '@packbase/sdk-ts'
+// ---cut---
+const pb = new PackbaseSDK({
+  apiKey: process.env.PACKBASE_API_KEY,
+  baseUrl: 'http://localhost:3001',
+})
+```
+
+Leave off the trailing slash. The SDK adds the endpoint path for each request.
+
+## Quick comparison
+
+| Approach | What you pass | Usually used in |
+| --- | --- | --- |
+| API key or Clerk JWT | `{ apiKey: '...' }` | Servers, scripts, CLI tools, and CI |
+| Session cookie | Nothing | Browser apps with an existing Packbase login |
+| Public access only | Nothing | Any environment calling public endpoints |
+
+If an authenticated call still returns `401`, check that the key hasn't expired, the environment variable isn't empty, or the browser really is signed in. Then head to [Error Handling](/getting-started/error-handling) for a clean way to handle the failure in code.
