@@ -36,7 +36,7 @@
   "scripts": {
     "clean": "node -e \"require('node:fs').rmSync('dist', { recursive: true, force: true })\"",
     "build": "bun run clean && bun run build:types && bun run build:js",
-    "build:js": "bun build ./src/index.ts --outdir ./dist --format esm --target browser",
+    "build:js": "bun build ./src/index.ts --outdir ./dist --format esm --target browser --minify",
     "build:types": "tsc --project tsconfig.build.json",
     "typecheck": "tsc --noEmit",
     "watch": "bun build ./src/index.ts --outdir ./dist --format esm --target browser --watch",
