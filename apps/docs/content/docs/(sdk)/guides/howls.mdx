@@ -73,7 +73,26 @@ const tags2: [string, ...string[]] = ['rating_mature', 'gore']
 
 ### Attaching uploaded assets
 
-The SDK's howl method doesn't upload files. Upload and finalize the assets through the REST API first, then pass their returned IDs in `asset_ids`:
+Use `pb.howls.upload` to initialize an asset, append one or more binary segments, finalize it, and inspect its status. Upload response bodies are currently `JsonObject` because the server has not published stable response schemas.
+
+```ts twoslash
+import { PackbaseSDK } from '@packbase/sdk-ts'
+const pb = new PackbaseSDK()
+declare const assetId: string
+declare const file: Blob
+// ---cut---
+await pb.howls.upload.init({ totalBytes: file.size, assetType: file.type })
+await pb.howls.upload.append({
+  assetId,
+  segmentIndex: 0,
+  asset: file,
+  fileName: 'upload.bin',
+})
+await pb.howls.upload.finalize(assetId)
+const status = await pb.howls.upload.status(assetId)
+```
+
+The SDK supplies the protocol commands and sends appended assets as multipart `FormData`. Once finalized, pass the returned asset IDs to howl creation:
 
 ```ts twoslash
 import { PackbaseSDK } from '@packbase/sdk-ts'

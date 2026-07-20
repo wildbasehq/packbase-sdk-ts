@@ -33,7 +33,7 @@ if (!isErrorEntry(results.topPacks)) {
 | --- | --- | --- |
 | `queries` | `NamedQueryMap` | An object mapping query names to `QueryInput` objects. |
 
-**Returns:** `Promise<NamedResultMap>`. The object uses the same names you chose in `queries`. Each value is either an array of results or an `ErrorEntry`, so check it with `isErrorEntry()` before treating it as data.
+**Returns:** a typed named result map. The object uses the same names you chose in `queries`. Each value is either flat `SearchPost[]`, `SearchProfile[]`, or `SearchPack[]`, or an `ErrorEntry`, so check it with `isErrorEntry()` before treating it as data. Search rows deliberately retain database names such as `images_avatar` rather than normalized nested resource fields.
 
 ## `from(model)`: Query builder
 

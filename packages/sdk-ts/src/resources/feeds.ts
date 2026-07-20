@@ -8,17 +8,17 @@ export class FeedHandle {
         private readonly id: string,
     ) {}
 
-    fetch(options?: {
-        page?: number
-        includePinsFrom?: string
-        cache?: RequestOptions['cache']
-        cacheTtlMs?: RequestOptions['cacheTtlMs']
-    }): Promise<FeedPage> {
+    fetch(options?: FeedFetchOptions): Promise<FeedPage> {
         return this.http.get<FeedPage>(`/feed/${this.id}`, {
             page: options?.page,
             include_pins_from: options?.includePinsFrom,
         }, options)
     }
+}
+
+export interface FeedFetchOptions extends RequestOptions {
+    page?: number
+    includePinsFrom?: string
 }
 
 export type FeedsFn = {

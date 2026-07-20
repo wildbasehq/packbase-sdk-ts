@@ -2,6 +2,7 @@ import type { HttpClient } from '../http'
 import type { RequestOptions } from '../cache'
 import type { Poller, PollOptions } from '../poll'
 import type { Howl, HowlCreateInput, HowlCreationJob } from '../types/howl'
+import type { JsonObject } from '../types/json'
 import type { ReportReasonValue, ReportResult } from '../types/report'
 import { ThenableResource } from './base'
 
@@ -31,8 +32,8 @@ export class HowlHandle extends ThenableResource<Howl> {
      *
      * @returns Resolves when the howl has been deleted.
      */
-    delete(): Promise<void> {
-        return this.http.delete<void>(`/howl/${this.id}`)
+    delete(options?: RequestOptions): Promise<void> {
+        return this.http.delete<void>(`/howl/${this.id}`, undefined, options)
     }
 
     /**
@@ -41,8 +42,8 @@ export class HowlHandle extends ThenableResource<Howl> {
      * @param body - The comment text.
      * @returns An object containing the new comment's ID.
      */
-    comment(body: string): Promise<{ id: string }> {
-        return this.http.post<{ id: string }>(`/howl/${this.id}/comment`, { body })
+    comment(body: string, options?: RequestOptions): Promise<{ id: string }> {
+        return this.http.post<{ id: string }>(`/howl/${this.id}/comment`, { body }, undefined, options)
     }
 
     /**
@@ -50,13 +51,13 @@ export class HowlHandle extends ThenableResource<Howl> {
      *
      * @param emoji - The emoji to react with, e.g. `'🔥'`.
      */
-    react(emoji: string): Promise<void> {
-        return this.http.post<void>(`/howl/${this.id}/react`, { slot: emoji })
+    react(emoji: string, options?: RequestOptions): Promise<void> {
+        return this.http.post<void>(`/howl/${this.id}/react`, { slot: emoji }, undefined, options)
     }
 
     /** Removes the caller's reactions from this howl (`DELETE /howl/:id/react`). */
-    unreact(): Promise<void> {
-        return this.http.delete<void>(`/howl/${this.id}/react`)
+    unreact(options?: RequestOptions): Promise<void> {
+        return this.http.delete<void>(`/howl/${this.id}/react`, undefined, options)
     }
 
     /**
@@ -64,8 +65,8 @@ export class HowlHandle extends ThenableResource<Howl> {
      *
      * @returns An object containing the new rehowl's ID.
      */
-    rehowl(): Promise<{ id: string }> {
-        return this.http.post<{ id: string }>(`/howl/${this.id}/rehowl`)
+    rehowl(options?: RequestOptions): Promise<{ id: string }> {
+        return this.http.post<{ id: string }>(`/howl/${this.id}/rehowl`, undefined, undefined, options)
     }
 
     /**
@@ -76,8 +77,8 @@ export class HowlHandle extends ThenableResource<Howl> {
      *
      * @returns Resolves when the rehowl has been removed.
      */
-    unrehowl(): Promise<void> {
-        return this.http.delete<void>(`/howl/${this.id}/rehowl`)
+    unrehowl(options?: RequestOptions): Promise<void> {
+        return this.http.delete<void>(`/howl/${this.id}/rehowl`, undefined, options)
     }
 
     /**
@@ -95,8 +96,8 @@ export class HowlHandle extends ThenableResource<Howl> {
      * await pb.howls('howl-id').report(ReportReason.Misinformation, 'Link to source.')
      * ```
      */
-    report(reason: ReportReasonValue, notes?: string): Promise<ReportResult> {
-        return this.http.post<ReportResult>(`/howl/${this.id}/report`, { reason, notes })
+    report(reason: ReportReasonValue, notes?: string, options?: RequestOptions): Promise<ReportResult> {
+        return this.http.post<ReportResult>(`/howl/${this.id}/report`, { reason, notes }, undefined, options)
     }
 
     /** Fetches `GET /howl/:id`. */
@@ -119,6 +120,25 @@ export interface CreateHowlOptions extends PollOptions {
      * @default true
      */
     poll?: boolean
+}
+
+export interface HowlUploadInitInput {
+    totalBytes: number
+    assetType: string
+}
+
+export interface HowlUploadAppendInput {
+    assetId: string
+    segmentIndex: number
+    asset: Blob
+    fileName?: string
+}
+
+export interface HowlUploadResource {
+    init(input: HowlUploadInitInput, options?: RequestOptions): Promise<JsonObject>
+    append(input: HowlUploadAppendInput, options?: RequestOptions): Promise<JsonObject>
+    finalize(assetId: string, options?: RequestOptions): Promise<JsonObject>
+    status(assetId: string, options?: RequestOptions): Promise<JsonObject>
 }
 
 /**
@@ -166,6 +186,8 @@ export type HowlsFn = {
     create(data: HowlCreateInput, options: CreateHowlOptions & {poll: false}): Promise<HowlCreationJob>
     create(data: HowlCreateInput, options?: CreateHowlOptions & {poll?: true}): Promise<Howl>
     create(data: HowlCreateInput, options?: CreateHowlOptions): Promise<Howl | HowlCreationJob>
+    /** Multipart howl-asset upload endpoints. */
+    upload: HowlUploadResource
 }
 
 /**
@@ -199,7 +221,7 @@ export function makeHowls(http: HttpClient, poller: Poller): HowlsFn {
         const { id } = await http.post<{ id: string }>('/howl/create', {
             ...data,
             content_type: 'text',
-        })
+        }, undefined, {signal: options.signal})
 
         if (!poll) {
             return {id}
@@ -207,6 +229,33 @@ export function makeHowls(http: HttpClient, poller: Poller): HowlsFn {
 
         return poller.waitFor(id, pollOptions)
     }
+
+    const upload: HowlUploadResource = {
+        init: (input, requestOptions) => http.post<JsonObject>('/howl/upload/init', {
+            command: 'INIT',
+            total_bytes: input.totalBytes,
+            asset_type: input.assetType,
+        }, undefined, requestOptions),
+        append: (input, requestOptions) => {
+            if (!Number.isInteger(input.segmentIndex) || input.segmentIndex < 0) {
+                throw new TypeError('Howl upload segmentIndex must be a non-negative integer.')
+            }
+            const form = new FormData()
+            form.set('command', 'APPEND')
+            form.set('asset_id', input.assetId)
+            form.set('segment_index', String(input.segmentIndex))
+            form.set('asset', input.asset, input.fileName)
+            return http.postForm<JsonObject>('/howl/upload/append', form, requestOptions)
+        },
+        finalize: (assetId, requestOptions) => http.post<JsonObject>('/howl/upload/finalize', {
+            command: 'FINALIZE',
+            asset_id: assetId,
+        }, undefined, requestOptions),
+        status: (assetId, requestOptions) => http.get<JsonObject>('/howl/upload/status', {
+            asset_id: assetId,
+        }, requestOptions),
+    }
+    Object.assign(howls, {upload})
 
     return howls as HowlsFn
 }

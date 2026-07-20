@@ -26,6 +26,8 @@ const { packs } = await pb.packs.list()
 When no `apiKey` is supplied, the SDK uses cookie-based authentication. This is useful in browser applications where the Packbase session cookie is already set.
 
 ```ts
+import { PackbaseSDK, type Profile } from '@packbase/sdk-ts'
+
 const pb = new PackbaseSDK()
 
 pb.on('ready', profile => {
@@ -35,14 +37,21 @@ pb.on('ready', profile => {
 pb.on('error', error => {
     console.error('Unable to authenticate', error)
 })
+
+const onReady = (profile: Profile) => console.log(profile.username)
+pb.on('ready', onReady)
+pb.off('ready', onReady)
 ```
+
+For public-only use, disable the automatic `me()` request with
+`new PackbaseSDK({autoLogin: false})`.
 
 ## Resources
 
 - `pb.me()` gets the authenticated profile; `pb.me.update()` updates it.
 - `pb.profiles(id)` returns a lazy, awaitable profile handle.
 - `pb.packs(id)` returns a lazy, awaitable pack handle; `pb.packs.list()` and `.create()` work with packs in bulk.
-- `pb.howls(id)` returns a lazy, awaitable howl handle; `pb.howls.create()` creates a howl and waits for its job by default.
+- `pb.howls(id)` returns a lazy, awaitable howl handle; `pb.howls.create()` creates a howl and `pb.howls.upload` manages assets.
 - `pb.feeds(id).fetch()` fetches a paginated feed.
 - `pb.inbox` manages notifications.
 - `pb.invites` manages authenticated invite codes and pre-signup waitlist referrals with `getWaitlistReferral()` and `redeemWaitlistReferral()`.
@@ -71,6 +80,7 @@ const pb = new PackbaseSDK({
     cache: true,
     cacheNamespace: 'current-user-id',
     cacheTtlMs: 5 * 60 * 1000,
+    autoLogin: false,
 })
 ```
 
@@ -87,6 +97,14 @@ Read calls can override the configured policy:
 await pb.packs('00000000-0000-0000-0000-000000000000', {cache: false})
 await pb.packs.list({cache: true, cacheTtlMs: 30_000})
 await pb.feeds('universe:home').fetch({page: 2, cache: false})
+```
+
+Every request accepts an `AbortSignal`, either directly through
+`RequestOptions` or alongside its operation-specific options:
+
+```ts
+const controller = new AbortController()
+await pb.packs.list({search: 'art', signal: controller.signal})
 ```
 
 ## Development

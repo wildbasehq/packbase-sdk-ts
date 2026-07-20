@@ -48,7 +48,22 @@ await pb.me.settings({
 })
 ```
 
-Calling `settings()` with no argument reads the settings. Calling it with an object updates them. The read result is `Record<string, unknown>` because the settings schema isn't fixed in this SDK type yet, so check a value's type before relying on it.
+Calling `settings()` with no argument reads the settings. Calling it with an object updates them. The read result is `Record<string, unknown>`, so decode every key you intend to use instead of casting the whole record.
+
+```ts twoslash
+import { PackbaseSDK, decodeSettings } from '@packbase/sdk-ts'
+const pb = new PackbaseSDK()
+// ---cut---
+const raw = await pb.me.settings()
+const settings = decodeSettings(raw, {
+  dark_mode: (value): boolean => {
+    if (typeof value !== 'boolean') throw new TypeError('dark_mode must be boolean')
+    return value
+  },
+})
+```
+
+To cancel a settings read without confusing request options with update keys, pass `undefined` first: `pb.me.settings(undefined, { signal })`.
 
 ## Friends
 

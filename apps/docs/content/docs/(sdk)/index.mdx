@@ -35,6 +35,19 @@ console.log(howl.id)
 
 The values such as `'your-api-key'` and `'your-pack-id'` are placeholders. Replace them with real values from your Packbase account or application.
 
+## Lifecycle events
+
+`on()` remains chainable, and `off()` removes the exact listener when a component or process no longer needs it:
+
+```ts twoslash
+import { PackbaseSDK, type Profile } from '@packbase/sdk-ts'
+const pb = new PackbaseSDK()
+// ---cut---
+const onReady = (profile: Profile) => console.log(profile.username)
+pb.on('ready', onReady)
+pb.off('ready', onReady)
+```
+
 ## Where to go next
 
 If this is your first time using a JavaScript or TypeScript library, start with Installation and then follow the Quickstart in order. The reference pages are better once you already know what you want to call.

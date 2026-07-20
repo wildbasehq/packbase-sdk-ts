@@ -47,3 +47,15 @@ await pb.folders.delete(folderId)
 ```
 
 `get()` returns an object containing both `folder` and its owner's `profile`; it doesn't return the folder alone. Only the owner can update or delete it.
+
+## Add and remove howls
+
+```ts twoslash
+import { PackbaseSDK } from '@packbase/sdk-ts'
+const pb = new PackbaseSDK()
+// ---cut---
+await pb.folders.addHowl('folder-id', 'howl-id')
+await pb.folders.removeHowl('folder-id', 'howl-id')
+```
+
+`addHowl()` sends the howl ID in the documented POST body. `removeHowl()` encodes both IDs in the DELETE path.

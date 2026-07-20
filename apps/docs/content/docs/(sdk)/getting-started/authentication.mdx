@@ -59,7 +59,16 @@ Cookie authentication is a good fit for front-end web apps and custom clients ru
 
 ## Public requests without authentication
 
-You can also create `new PackbaseSDK()` and call public read-only endpoints without being signed in. An endpoint that requires a user will return a `401` error instead. If you aren't sure whether a method needs authentication, its reference page will say so.
+For a public-only client, disable the constructor's automatic `pb.me()` request:
+
+```ts twoslash
+import { PackbaseSDK } from '@packbase/sdk-ts'
+// ---cut---
+const pb = new PackbaseSDK({ autoLogin: false })
+const packs = await pb.packs.list()
+```
+
+This prevents an anonymous client from producing an expected login error. It does not disable authenticated methods; an explicit `pb.me()` still makes its normal request.
 
 ## Use a different API server
 
@@ -82,6 +91,6 @@ Leave off the trailing slash. The SDK adds the endpoint path for each request.
 | --- | --- | --- |
 | API key or Clerk JWT | `{ apiKey: '...' }` | Servers, scripts, CLI tools, and CI |
 | Session cookie | Nothing | Browser apps with an existing Packbase login |
-| Public access only | Nothing | Any environment calling public endpoints |
+| Public access only | `{ autoLogin: false }` | Any environment calling public endpoints |
 
 If an authenticated call still returns `401`, check that the key hasn't expired, the environment variable isn't empty, or the browser really is signed in. Then head to [Error Handling](/getting-started/error-handling) for a clean way to handle the failure in code.

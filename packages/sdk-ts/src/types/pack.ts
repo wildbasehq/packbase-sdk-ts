@@ -1,4 +1,5 @@
 import type { Profile } from './profile'
+import type { JsonValue } from './json'
 
 export interface Pack {
     id: string
@@ -67,7 +68,6 @@ export interface PackEditInput {
 
 /** Wrapper returned by `GET /packs`. */
 export interface PackList {
-    has_more: boolean
     packs: Pack[]
     hidden: number
     total_count?: number
@@ -84,9 +84,54 @@ export interface PackUpdateResult {
     created_at: string
 }
 
-/** A pack setting together with its schema definition. */
-export interface PackSetting {
+interface PackSettingDefinitionBase<TType extends string, TDefault> {
+    type: TType
+    default: TDefault
+    user_modifiable: boolean
+    display_name: string
+    description?: string
+    category?: string
+    not_implemented?: boolean
+    requires?: Record<string, JsonValue>
+    [key: string]: unknown
+}
+
+export interface BooleanPackSettingDefinition
+    extends PackSettingDefinitionBase<'boolean', boolean> {}
+
+export interface StringPackSettingDefinition
+    extends PackSettingDefinitionBase<'string', string> {
+    values?: string[]
+}
+
+export interface NumberPackSettingDefinition
+    extends PackSettingDefinitionBase<'number', number> {
+    range?: [minimum: number, maximum: number]
+}
+
+export interface ArrayPackSettingDefinition
+    extends PackSettingDefinitionBase<'array', string | JsonValue[]> {}
+
+export type PackSettingDefinition =
+    | BooleanPackSettingDefinition
+    | StringPackSettingDefinition
+    | NumberPackSettingDefinition
+    | ArrayPackSettingDefinition
+
+export type PackSetting = {
     key: string
-    value: unknown
-    definition: unknown
+    value: boolean
+    definition: BooleanPackSettingDefinition
+} | {
+    key: string
+    value: string
+    definition: StringPackSettingDefinition
+} | {
+    key: string
+    value: number
+    definition: NumberPackSettingDefinition
+} | {
+    key: string
+    value: string | JsonValue[]
+    definition: ArrayPackSettingDefinition
 }

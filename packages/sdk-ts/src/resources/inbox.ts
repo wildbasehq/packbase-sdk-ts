@@ -68,14 +68,14 @@ export interface InboxResource {
      * await pb.inbox.markRead('all')
      * ```
      */
-    markRead(ids: string[] | 'all'): Promise<{ success: boolean; count: number }>
+    markRead(ids: string[] | 'all', options?: RequestOptions): Promise<{ success: boolean; count: number }>
 
     /**
      * Deletes one or more notifications (`POST /inbox/delete`).
      *
      * @param ids - Notification UUIDs, or `'all'`.
      */
-    delete(ids: string[] | 'all'): Promise<{ success: boolean; count: number }>
+    delete(ids: string[] | 'all', options?: RequestOptions): Promise<{ success: boolean; count: number }>
 }
 
 /**
@@ -96,17 +96,19 @@ export function makeInbox(http: HttpClient): InboxResource {
         count: (options?: RequestOptions): Promise<{ count: number }> =>
             http.get<{ count: number }>('/inbox/count', undefined, options),
 
-        markRead: (ids: string[] | 'all'): Promise<{ success: boolean; count: number }> => {
+        markRead: (ids: string[] | 'all', options?: RequestOptions): Promise<{ success: boolean; count: number }> => {
             if (ids === 'all') {
-                return http.post<{ success: boolean; count: number }>('/inbox/read', { all: true })
+                return http.post<{ success: boolean; count: number }>('/inbox/read', { all: true }, undefined, options)
             }
-            return http.post<{ success: boolean; count: number }>('/inbox/read', { ids })
+            return http.post<{ success: boolean; count: number }>('/inbox/read', { ids }, undefined, options)
         },
 
-        delete: (ids: string[] | 'all'): Promise<{ success: boolean; count: number }> =>
+        delete: (ids: string[] | 'all', options?: RequestOptions): Promise<{ success: boolean; count: number }> =>
             http.post<{ success: boolean; count: number }>(
                 '/inbox/delete',
                 ids === 'all' ? {all: true} : {ids},
+                undefined,
+                options,
             ),
     }
 }

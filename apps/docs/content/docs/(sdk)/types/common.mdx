@@ -60,6 +60,8 @@ interface PackbaseSDKConfig {
    * When omitted, the SDK uses credentials: 'include' (browser session cookie).
    */
   apiKey?: string
+  /** Disable the constructor's automatic `pb.me()` request. @default true */
+  autoLogin?: boolean
   cache?: boolean
   cacheTtlMs?: number
   cacheNamespace?: string
@@ -83,6 +85,22 @@ const pb = new PackbaseSDK({
 ```
 
 Caching is off unless `cache` is `true`. `cacheTtlMs` controls how long a cached GET response remains valid, in milliseconds, and `cacheNamespace` keeps cached data for different users or sessions separate.
+
+`autoLogin` defaults to `true`. Set it to `false` for a public-only client. The exported SDK surface is authoritative; documentation files do not imply resources that `PackbaseSDK` does not export.
+
+## `RequestOptions`
+
+Read and write methods accept shared request controls. Operation-specific option types extend this shape.
+
+```ts
+interface RequestOptions {
+  cache?: boolean
+  cacheTtlMs?: number
+  signal?: AbortSignal
+}
+```
+
+`signal` cancels native fetches and howl polling. Cache fields apply only to reads.
 
 ## Import
 

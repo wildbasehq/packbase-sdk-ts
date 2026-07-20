@@ -32,15 +32,15 @@ export class ProfileHandle extends ThenableResource<Profile> {
     /**
      * Follows this user (`POST /user/:username/follow`).
      */
-    follow(): Promise<void> {
-        return this.http.post<void>(`/user/${encodeURIComponent(this.username)}/follow`)
+    follow(options?: RequestOptions): Promise<void> {
+        return this.http.post<void>(`/user/${encodeURIComponent(this.username)}/follow`, undefined, undefined, options)
     }
 
     /**
      * Unfollows this user (`DELETE /user/:username/follow`).
      */
-    unfollow(): Promise<void> {
-        return this.http.delete<void>(`/user/${encodeURIComponent(this.username)}/follow`)
+    unfollow(options?: RequestOptions): Promise<void> {
+        return this.http.delete<void>(`/user/${encodeURIComponent(this.username)}/follow`, undefined, options)
     }
 
     /**
@@ -66,10 +66,12 @@ export class ProfileHandle extends ThenableResource<Profile> {
      * @param reason - The report category.
      * @param notes - Optional context for the moderation team.
      */
-    report(reason: ReportReasonValue, notes?: string): Promise<ReportResult> {
+    report(reason: ReportReasonValue, notes?: string, options?: RequestOptions): Promise<ReportResult> {
         return this.http.post<ReportResult>(
             `/user/${encodeURIComponent(this.username)}/report`,
             {reason, notes},
+            undefined,
+            options,
         )
     }
 }

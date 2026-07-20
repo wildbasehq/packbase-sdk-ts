@@ -27,16 +27,17 @@ interface Pack {
 }
 ```
 
-The list endpoint wraps its array in `PackList` so it can return pagination and visibility information beside the packs. It also omits the per-pack `heartbeat` field:
+The list endpoint wraps its array in `PackList` so it can return visibility information beside the packs. It also omits the per-pack `heartbeat` field:
 
 ```ts
 interface PackList {
-  has_more: boolean
   packs: Pack[]
   hidden: number
   total_count?: number
 }
 ```
+
+`pb.packs.list({ search })` is all-at-once; the SDK does not expose a continuation flag without a usable continuation parameter.
 
 ## `PackMember`
 

@@ -21,16 +21,17 @@ for (const listedPack of result.packs) {
 console.log(`${result.hidden} packs hidden because you already belong to them`)
 ```
 
-Awaiting a handle returns one `Pack`. `list()` returns a `PackList` object rather than a plain array because the response also includes pagination and visibility information:
+Awaiting a handle returns one `Pack`. `list()` returns a `PackList` object rather than a plain array because the response also includes visibility information:
 
 ```ts
 interface PackList {
-  has_more: boolean
   packs: Pack[]
   hidden: number
   total_count?: number
 }
 ```
+
+Pass `{ search: 'text' }` to filter the complete list. This endpoint has no continuation parameter, so the SDK removes the server's unusable `has_more` field.
 
 ## Create a pack
 
@@ -103,7 +104,16 @@ for (const setting of settings) {
 }
 ```
 
-`settings()` sends `GET /pack/:id/settings` and returns `PackSetting[]`. The server currently has no pack-settings update route.
+`settings()` sends `GET /pack/:id/settings` and returns a discriminated `PackSetting[]`. Definitions expose `type`, a matching typed `default`, `user_modifiable`, display metadata, and type-specific fields such as `values` or `range`.
+
+This route is read-only. For a definition with `user_modifiable: true`, update the current user's value through `pb.me.settings()`:
+
+```ts twoslash
+import { PackbaseSDK } from '@packbase/sdk-ts'
+const pb = new PackbaseSDK()
+// ---cut---
+await pb.me.settings({ allow_rehowl: false })
+```
 
 ## Roles
 

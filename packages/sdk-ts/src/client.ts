@@ -10,6 +10,15 @@ class EventEmitter<TMap extends { [K in keyof TMap]: unknown[] }> {
         return this
     }
 
+    off<K extends keyof TMap>(event: K, listener: (...args: TMap[K]) => void): this {
+        const bucket = this._listeners.get(event)
+        if (!bucket) return this
+        const index = bucket.indexOf(listener)
+        if (index !== -1) bucket.splice(index, 1)
+        if (bucket.length === 0) this._listeners.delete(event)
+        return this
+    }
+
     emit<K extends keyof TMap>(event: K, ...args: TMap[K]): void {
         this._listeners.get(event)?.forEach(fn => fn(...args))
     }
@@ -43,6 +52,13 @@ export interface PackbaseSDKConfig extends Partial<SDKConfig> {
      * @default 'https://vgs.packbase.app'
      */
     baseUrl?: string
+
+    /**
+     * Whether construction should automatically fetch and hydrate `me`.
+     * Disable this for anonymous, public-only clients.
+     * @default true
+     */
+    autoLogin?: boolean
 }
 
 /**
@@ -275,8 +291,9 @@ export class PackbaseSDK {
         this.invites = makeInvites(this.http)
         this.folders = makeFolders(this.http)
 
-        // Attempt login
-        void this.attemptLogin()
+        if (config.autoLogin ?? true) {
+            void this.attemptLogin()
+        }
     }
 
     /**
@@ -305,6 +322,15 @@ export class PackbaseSDK {
         return this
     }
 
+    /** Removes a previously registered SDK lifecycle listener. */
+    off<K extends keyof PackbaseSDKEvents>(
+        event: K,
+        listener: (...args: PackbaseSDKEvents[K]) => void,
+    ): this {
+        this._events.off(event, listener)
+        return this
+    }
+
     /**
      * Fetches all available tags (`GET /tags`).
      *
@@ -329,6 +355,7 @@ export class PackbaseSDK {
      * return a per-query error without failing the whole request.
      *
      * @param queries - A map of query names to `QueryInput` objects.
+     * @param options
      * @returns A map of query names to their results.
      *
      * @example
@@ -346,8 +373,11 @@ export class PackbaseSDK {
      * }
      * ```
      */
-    search<Q extends NamedQueryMap>(queries: Q): Promise<TypedNamedResultMap<Q>> {
-        return this.http.post<TypedNamedResultMap<Q>>('/search', queries)
+    search<Q extends NamedQueryMap>(
+        queries: Q,
+        options?: RequestOptions,
+    ): Promise<TypedNamedResultMap<Q>> {
+        return this.http.post<TypedNamedResultMap<Q>>('/search', queries, undefined, options)
     }
 
     /** @internal Emits a typed SDK event. Not exposed on the public API. */

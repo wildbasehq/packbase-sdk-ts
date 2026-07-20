@@ -154,10 +154,11 @@ export class HttpClient {
         query?: Record<string, unknown>,
         options: RequestOptions = {},
     ): Promise<T> {
+        this.throwIfAborted(options.signal)
         const url = this.buildUrl(path, query)
         const shouldCache = options.cache ?? this.cacheEnabled
 
-        if (!shouldCache) return this.fetchGet<T>(url)
+        if (!shouldCache) return this.fetchGet<T>(url, options)
 
         const key = `${this.cacheNamespace}:${url}`
         const store = getCacheStore()
@@ -167,11 +168,12 @@ export class HttpClient {
             await store.delete(key)
         }
 
-        const pending = this.pendingReads.get(key)
+        const pending = options.signal ? undefined : this.pendingReads.get(key)
         if (pending) return pending as Promise<T>
 
         const generation = this.cacheGeneration
-        const request = this.fetchGet<T>(url).then(async value => {
+        const request = this.fetchGet<T>(url, options).then(async value => {
+            this.throwIfAborted(options.signal)
             const ttl = options.cacheTtlMs ?? this.cacheTtlMs
             if (ttl > 0 && generation === this.cacheGeneration) {
                 await store.set(key, {value, expiresAt: Date.now() + ttl})
@@ -183,13 +185,17 @@ export class HttpClient {
             }
         })
 
-        this.pendingReads.set(key, request)
+        if (!options.signal) this.pendingReads.set(key, request)
         return request
     }
 
     /** @internal Performs a side-effecting legacy GET and invalidates cached reads. */
-    async getMutation<T>(path: string, query?: Record<string, unknown>): Promise<T> {
-        const value = await this.fetchGet<T>(this.buildUrl(path, query))
+    async getMutation<T>(
+        path: string,
+        query?: Record<string, unknown>,
+        options: RequestOptions = {},
+    ): Promise<T> {
+        const value = await this.fetchGet<T>(this.buildUrl(path, query), options)
         await this.invalidateCache()
         return value
     }
@@ -207,7 +213,13 @@ export class HttpClient {
      * const pack = await http.post<Pack>('/pack/create', { display_name: 'My Pack', description: '...' })
      * ```
      */
-    async post<T>(path: string, body?: unknown, query?: Record<string, unknown>): Promise<T> {
+    async post<T>(
+        path: string,
+        body?: unknown,
+        query?: Record<string, unknown>,
+        options: RequestOptions = {},
+    ): Promise<T> {
+        this.throwIfAborted(options.signal)
         const res = await fetch(this.buildUrl(path, query), {
             method: 'POST',
             headers: {
@@ -216,6 +228,7 @@ export class HttpClient {
             },
             credentials: this.apiKey ? 'omit' : 'include',
             body: body !== undefined ? JSON.stringify(body) : undefined,
+            signal: options.signal,
         })
         const value = await this.handleResponse<T>(res)
         await this.invalidateCache()
@@ -229,7 +242,8 @@ export class HttpClient {
      * @param body - Data to JSON-serialize as the request body.
      * @returns The parsed response body.
      */
-    async patch<T>(path: string, body?: unknown): Promise<T> {
+    async patch<T>(path: string, body?: unknown, options: RequestOptions = {}): Promise<T> {
+        this.throwIfAborted(options.signal)
         const res = await fetch(this.buildUrl(path), {
             method: 'PATCH',
             headers: {
@@ -238,6 +252,7 @@ export class HttpClient {
             },
             credentials: this.apiKey ? 'omit' : 'include',
             body: body !== undefined ? JSON.stringify(body) : undefined,
+            signal: options.signal,
         })
         const value = await this.handleResponse<T>(res)
         await this.invalidateCache()
@@ -251,7 +266,8 @@ export class HttpClient {
      * @param body - Data to JSON-serialize as the request body.
      * @returns The parsed response body.
      */
-    async put<T>(path: string, body?: unknown): Promise<T> {
+    async put<T>(path: string, body?: unknown, options: RequestOptions = {}): Promise<T> {
+        this.throwIfAborted(options.signal)
         const res = await fetch(this.buildUrl(path), {
             method: 'PUT',
             headers: {
@@ -260,6 +276,7 @@ export class HttpClient {
             },
             credentials: this.apiKey ? 'omit' : 'include',
             body: body !== undefined ? JSON.stringify(body) : undefined,
+            signal: options.signal,
         })
         const value = await this.handleResponse<T>(res)
         await this.invalidateCache()
@@ -269,17 +286,17 @@ export class HttpClient {
     /**
      * Sends a DELETE request, optionally with a JSON body.
      *
-     * @param path - API path, e.g. `/dm/messages/some-id`.
+     * @param path - API path, e.g. `/folder/some-id`.
      * @param body - Optional body for DELETE requests that accept one (e.g. batch deletes).
      * @returns The parsed response body.
      *
      * @example
      * ```ts
-     * await http.delete('/dm/messages/some-id')
      * await http.delete('/folder/some-id')
      * ```
      */
-    async delete<T>(path: string, body?: unknown): Promise<T> {
+    async delete<T>(path: string, body?: unknown, options: RequestOptions = {}): Promise<T> {
+        this.throwIfAborted(options.signal)
         const res = await fetch(this.buildUrl(path), {
             method: 'DELETE',
             headers: {
@@ -288,13 +305,30 @@ export class HttpClient {
             },
             credentials: this.apiKey ? 'omit' : 'include',
             body: body !== undefined ? JSON.stringify(body) : undefined,
+            signal: options.signal,
         })
         const value = await this.handleResponse<T>(res)
         await this.invalidateCache()
         return value
     }
 
-    private async fetchGet<T>(url: string): Promise<T> {
+    /** Sends a multipart POST without setting Content-Type, allowing fetch to add the boundary. */
+    async postForm<T>(path: string, body: FormData, options: RequestOptions = {}): Promise<T> {
+        this.throwIfAborted(options.signal)
+        const res = await fetch(this.buildUrl(path), {
+            method: 'POST',
+            headers: this.authHeaders(),
+            credentials: this.apiKey ? 'omit' : 'include',
+            body,
+            signal: options.signal,
+        })
+        const value = await this.handleResponse<T>(res)
+        await this.invalidateCache()
+        return value
+    }
+
+    private async fetchGet<T>(url: string, options: RequestOptions = {}): Promise<T> {
+        this.throwIfAborted(options.signal)
         const res = await fetch(url, {
             method: 'GET',
             headers: {
@@ -302,8 +336,15 @@ export class HttpClient {
                 ...this.authHeaders(),
             },
             credentials: this.apiKey ? 'omit' : 'include',
+            signal: options.signal,
         })
         return this.handleResponse<T>(res)
+    }
+
+    private throwIfAborted(signal?: AbortSignal): void {
+        if (!signal?.aborted) return
+        if (typeof signal.throwIfAborted === 'function') signal.throwIfAborted()
+        throw signal.reason ?? new DOMException('The operation was aborted', 'AbortError')
     }
 
     private async invalidateCache(): Promise<void> {

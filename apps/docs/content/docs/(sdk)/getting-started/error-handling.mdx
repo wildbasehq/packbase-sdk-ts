@@ -123,6 +123,27 @@ try {
 
 This timeout means the SDK stopped waiting. It doesn't necessarily mean the server cancelled the job.
 
+## Cancel a request
+
+All SDK requests accept an `AbortSignal`. Howl creation carries the same signal through the initial request, polling delays, status checks, and final fetch.
+
+```ts twoslash
+import { PackbaseSDK } from '@packbase/sdk-ts'
+const pb = new PackbaseSDK({ autoLogin: false })
+// ---cut---
+const controller = new AbortController()
+const request = pb.packs.list({ signal: controller.signal })
+controller.abort()
+
+try {
+  await request
+} catch (error) {
+  if (error instanceof DOMException && error.name === 'AbortError') {
+    console.log('Request cancelled')
+  }
+}
+```
+
 ## Network failures
 
 The SDK doesn't wrap low-level errors thrown by `fetch`. In most runtimes those failures are `TypeError` values:

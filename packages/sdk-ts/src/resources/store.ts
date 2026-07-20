@@ -1,5 +1,6 @@
 import type { RequestOptions } from '../cache'
 import type { HttpClient } from '../http'
+import type { JsonValue } from '../types/json'
 
 export interface StoreItem {
     id: string
@@ -15,7 +16,7 @@ export interface StoreItem {
 export interface StoreHistoryEntry {
     id: string
     action: string
-    model_object: unknown
+    model_object: JsonValue
 }
 
 export interface StoreOverview {
@@ -41,7 +42,12 @@ export interface StoreResource {
     /** Lists the public item catalog without ownership information. */
     catalog(options?: RequestOptions): Promise<{items: StoreItem[]}>
     /** Purchases a store item. `userId` is accepted only for staff purchases. */
-    purchase(itemId: string, options?: {quantity?: number; userId?: string}): Promise<StorePurchase>
+    purchase(itemId: string, options?: StorePurchaseOptions): Promise<StorePurchase>
+}
+
+export interface StorePurchaseOptions extends RequestOptions {
+    quantity?: number
+    userId?: string
 }
 
 export function makeStore(http: HttpClient): StoreResource {
@@ -54,6 +60,8 @@ export function makeStore(http: HttpClient): StoreResource {
                 quantity: options.quantity,
                 user_id: options.userId,
             },
+            undefined,
+            options,
         ),
     }
 }

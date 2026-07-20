@@ -1,10 +1,12 @@
 import type { HttpClient } from '../http'
 import type { RequestOptions } from '../cache'
+import type { JsonValue } from '../types/json'
 
 /** An email invitation created through Clerk. */
 export interface Invite {
     invite_id: string
     created_at: string
+    [key: string]: JsonValue
 }
 
 /** A waitlist member's referral details. */
@@ -44,7 +46,7 @@ export interface InvitesResource {
      * @param email - Address to invite.
      * @returns The created invitation record.
      */
-    generate(email: string): Promise<Invite>
+    generate(email: string, options?: RequestOptions): Promise<Invite>
 
     /**
      * Gets or creates referral details for a Clerk waitlist entry.
@@ -79,7 +81,11 @@ export interface InvitesResource {
      * await pb.invites.redeemWaitlistReferral(waitlist.id, 'ABCD1234')
      * ```
      */
-    redeemWaitlistReferral(waitlistId: string, code: string): Promise<RedeemWaitlistReferralResult>
+    redeemWaitlistReferral(
+        waitlistId: string,
+        code: string,
+        options?: RequestOptions,
+    ): Promise<RedeemWaitlistReferralResult>
 }
 
 /**
@@ -91,14 +97,16 @@ export interface InvitesResource {
 export function makeInvites(http: HttpClient): InvitesResource {
     return {
         list: (options?: RequestOptions) => http.get<Invite[]>('/invite/list', undefined, options),
-        generate: (email: string) => http.post<Invite>('/invite/generate', {email}),
+        generate: (email: string, options?: RequestOptions) =>
+            http.post<Invite>('/invite/generate', {email}, undefined, options),
         getWaitlistReferral: (waitlistId: string, options?: RequestOptions) =>
             http.get<WaitlistReferral>('/invite/my-referral', { id: waitlistId }, options),
-        redeemWaitlistReferral: (waitlistId: string, code: string) =>
+        redeemWaitlistReferral: (waitlistId: string, code: string, options?: RequestOptions) =>
             http.post<RedeemWaitlistReferralResult>(
                 '/invite/redeem-referral',
                 { code },
                 { id: waitlistId },
+                options,
             ),
     }
 }

@@ -41,6 +41,24 @@ Packbase creates howls in a background job. By default, the SDK starts the job, 
 
 Pass `{ poll: false }` to receive only `{ id }` without waiting. See [Async Job Polling](/guides/polling) before using that option, since your app becomes responsible for tracking the unfinished job.
 
+## Upload assets
+
+`pb.howls.upload` exposes `init`, `append`, `finalize`, and `status`. The SDK injects protocol commands and uses multipart `FormData` for appended blobs.
+
+```ts twoslash
+import { PackbaseSDK } from '@packbase/sdk-ts'
+const pb = new PackbaseSDK()
+declare const file: Blob
+declare const assetId: string
+// ---cut---
+await pb.howls.upload.init({ totalBytes: file.size, assetType: file.type })
+await pb.howls.upload.append({ assetId, segmentIndex: 0, asset: file })
+await pb.howls.upload.finalize(assetId)
+await pb.howls.upload.status(assetId)
+```
+
+Upload responses are open `JsonObject` values until the server publishes stable response schemas.
+
 ## Delete
 
 ```ts twoslash

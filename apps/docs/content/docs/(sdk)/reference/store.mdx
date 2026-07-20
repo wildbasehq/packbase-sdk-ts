@@ -21,6 +21,8 @@ for (const item of store.items) {
 
 `list()` requires authentication. It returns a `StoreOverview` object containing `items`, the current `trinketCount`, and relevant store history. It doesn't return a bare item array.
 
+Each history entry has a known `id` and `action`, plus a `model_object: JsonValue`. Handle known actions with tailored UI and use a recursive key/value or formatted-JSON fallback for actions and payloads added later.
+
 ## Public catalog
 
 ```ts twoslash

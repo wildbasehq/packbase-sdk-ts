@@ -17,7 +17,7 @@ interface Notification {
   content?: string
   read: boolean
   read_at?: string | null
-  metadata?: unknown
+  metadata?: JsonValue
   related_id?: string | null
 }
 ```
@@ -34,7 +34,7 @@ interface Notification {
 | `content` | `string?` | Full notification message, when supplied. |
 | `read` | `boolean` | Whether the notification has been read. |
 | `read_at` | `string \| null` | ISO 8601 timestamp when it was read, or `null` if unread. May be omitted. |
-| `metadata` | `unknown` | Optional context data. Its shape varies by notification `type`, so check it before use. |
+| `metadata` | `JsonValue` | Optional context data. Its shape varies by notification `type`, so check it before use. |
 | `related_id` | `string \| null` | Optional UUID of the related entity. |
 
 ## Usage example
@@ -52,6 +52,8 @@ for (const notification of data) {
 // Mark the notifications in this page as read.
 await pb.inbox.markRead(data.map(n => n.id))
 ```
+
+Render metadata specially for notification types your application recognizes. For unknown types, fall back to recursively displaying JSON primitives, arrays, and object keys—or use formatted `JSON.stringify` output—so new server metadata never produces a blank notification.
 
 ## Import
 

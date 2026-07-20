@@ -25,8 +25,11 @@ Both methods use the `Invite` shape:
 interface Invite {
   invite_id: string
   created_at: string
+  [key: string]: JsonValue
 }
 ```
+
+Invitation providers may add JSON fields beyond the two stable keys. Render recognized fields deliberately and retain a generic JSON fallback for additional record data.
 
 ## Get a waitlist referral
 

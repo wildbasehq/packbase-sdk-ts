@@ -3,6 +3,9 @@ export type { PackbaseSDKConfig, PackbaseSDKEvents } from './client'
 
 export { PackbaseError } from './errors'
 export type { RequestOptions } from './cache'
+export { decodeSettings } from './settings'
+export type { SettingDecoder, SettingDecoderMap } from './settings'
+export type { JsonPrimitive, JsonObject, JsonValue } from './types/json'
 
 export { from, SearchQuery, isErrorEntry } from './search'
 export type {
@@ -16,6 +19,11 @@ export type {
     NamedResultMap,
     QueryResult,
     ErrorEntry,
+    SearchPost,
+    SearchProfile,
+    SearchPack,
+    ModelResultMap,
+    TypedNamedResultMap,
 } from './search'
 
 export type {
@@ -39,6 +47,11 @@ export type {
     PackList,
     PackUpdateResult,
     PackSetting,
+    PackSettingDefinition,
+    BooleanPackSettingDefinition,
+    StringPackSettingDefinition,
+    NumberPackSettingDefinition,
+    ArrayPackSettingDefinition,
 } from './types/pack'
 export { PackPermissionBits } from './types/pack'
 export type { PackPermissionBit } from './types/pack'
@@ -60,9 +73,15 @@ export { ReportReason } from './types/report'
 export type { ReportReasonValue, ReportResult } from './types/report'
 
 export type { ProfileHandle } from './resources/profiles'
-export type { PackHandle } from './resources/packs'
-export type { FeedHandle } from './resources/feeds'
-export type { HowlHandle, CreateHowlOptions } from './resources/howls'
+export type { PackHandle, PackListOptions, PinHowlOptions } from './resources/packs'
+export type { FeedHandle, FeedFetchOptions } from './resources/feeds'
+export type {
+    HowlHandle,
+    CreateHowlOptions,
+    HowlUploadResource,
+    HowlUploadInitInput,
+    HowlUploadAppendInput,
+} from './resources/howls'
 export type { InboxResource, FetchInboxOptions } from './resources/inbox'
 export type {
     Invite,
@@ -90,4 +109,5 @@ export type {
     StoreOverview,
     StorePurchase,
     StoreResource,
+    StorePurchaseOptions,
 } from './resources/store'

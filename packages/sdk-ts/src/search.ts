@@ -1,3 +1,5 @@
+import type { JsonValue } from './types/json'
+
 // ---------------------------------------------------------------------------
 // ALLOWED MODELS & FIELDS
 // ---------------------------------------------------------------------------
@@ -26,6 +28,46 @@ export type ModelField<M extends ModelName> = (typeof ALLOWED_FIELDS)[M][number]
 // ---------------------------------------------------------------------------
 // TYPES
 // ---------------------------------------------------------------------------
+
+/** Flat database row returned by searches over `posts`. */
+export interface SearchPost {
+    id: string
+    created_at: string
+    tenant_id: string
+    content_type: import('./types/howl').HowlContentType
+    body: string | null
+    user_id: string
+    parent: string | null
+    tags: string[]
+    assets: JsonValue
+}
+
+/** Flat database row returned by searches over `profiles`. */
+export interface SearchProfile {
+    id: string
+    created_at: string
+    username: string
+    bio: string | null
+    slug: string | null
+    display_name: string
+    images_avatar: string | null
+    images_header: string | null
+    type: NonNullable<import('./types/profile').Profile['type']> | null
+    space_type: NonNullable<import('./types/profile').Profile['space_type']>
+    is_r18: boolean
+}
+
+/** Flat database row returned by searches over `packs`. */
+export interface SearchPack {
+    id: string
+    created_at: string
+    display_name: string
+    images_avatar: string | null
+    description: string | null
+    owner_id: string | null
+    images_header: string | null
+    last_activity_at: string | null
+}
 
 /** Sort direction for `orderBy`. */
 export type SortDirection = 'asc' | 'desc'
@@ -74,9 +116,9 @@ export type NamedQueryMap = Record<string, QueryInput>
 
 /** Maps each `ModelName` to the TypeScript entity type it returns. */
 export type ModelResultMap = {
-    posts: import('./types/howl').Howl
-    profiles: import('./types/profile').Profile
-    packs: import('./types/pack').Pack
+    posts: SearchPost
+    profiles: SearchProfile
+    packs: SearchPack
 }
 
 /**

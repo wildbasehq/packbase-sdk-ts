@@ -37,6 +37,8 @@ Here, `topPacks` and `recentUsers` are names chosen by the application, not spec
 
 The model name decides which fields TypeScript allows later in the chain. If you search `'packs'` and accidentally use a profile-only field, your editor should flag it before the request is sent.
 
+Search results use these same flat database column names. They are typed as `SearchPost`, `SearchProfile`, and `SearchPack`, not as the normalized `Howl`, `Profile`, and `Pack` resources. For example, a searched pack has `images_avatar` and `last_activity_at`; it does not have a nested `images` object.
+
 ## Building a query: `from(model)`
 
 Start each query with `from()` and the kind of data you want to search:

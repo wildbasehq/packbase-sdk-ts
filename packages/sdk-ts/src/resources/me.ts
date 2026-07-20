@@ -41,7 +41,7 @@ export type MeFn = Profile & {
      * @param data - Partial profile fields to update.
      * @returns The updated profile.
      */
-    update(data: UpdateProfileInput): Promise<UpdateProfileResult>
+    update(data: UpdateProfileInput, options?: RequestOptions): Promise<UpdateProfileResult>
 
     /**
      * Fetches all user settings (`GET /user/me/settings`).
@@ -51,6 +51,7 @@ export type MeFn = Profile & {
      * @returns The current settings object.
      */
     settings(): Promise<Record<string, unknown>>
+    settings(data: undefined, options?: RequestOptions): Promise<Record<string, unknown>>
 
     /**
      * Updates user settings (`POST /user/me/settings`).
@@ -61,7 +62,7 @@ export type MeFn = Profile & {
      * @param data - Key-value pairs to merge into the user's settings.
      * @returns A success flag.
      */
-    settings(data: Record<string, unknown>): Promise<{ success: boolean }>
+    settings(data: Record<string, unknown>, options?: RequestOptions): Promise<{ success: boolean }>
 
     /**
      * Fetches the user's friends list (`GET /user/me/friends`).
@@ -82,7 +83,7 @@ export type MeFn = Profile & {
      *
      * @param badge - Store item ID of the badge to display.
      */
-    setBadge(badge: string): Promise<void>
+    setBadge(badge: string, options?: RequestOptions): Promise<void>
 
     /**
      * Fetches the authenticated user's storage quota usage (`GET /user/me/storage`).
@@ -109,8 +110,8 @@ export function makeMe(http: HttpClient): MeFn & { hydrate(profile: Profile): vo
         return http.get<Profile>('/user/me', undefined, options)
     }
 
-    me.update = (data: UpdateProfileInput): Promise<UpdateProfileResult> =>
-        http.post<UpdateProfileResult>('/user/me', data)
+    me.update = (data: UpdateProfileInput, options?: RequestOptions): Promise<UpdateProfileResult> =>
+        http.post<UpdateProfileResult>('/user/me', data, undefined, options)
 
     /**
      * Fetches or updates the authenticated user's settings.
@@ -122,11 +123,11 @@ export function makeMe(http: HttpClient): MeFn & { hydrate(profile: Profile): vo
      * @returns The current settings object when called without arguments, or a
      *          success object when called with settings to update.
      */
-    me.settings = ((data?: Record<string, unknown>) => {
+    me.settings = ((data?: Record<string, unknown>, options?: RequestOptions) => {
         if (data !== undefined) {
-            return http.post<{ success: boolean }>('/user/me/settings', data)
+            return http.post<{ success: boolean }>('/user/me/settings', data, undefined, options)
         }
-        return http.get<Record<string, unknown>>('/user/me/settings')
+        return http.get<Record<string, unknown>>('/user/me/settings', undefined, options)
     }) as MeFn['settings']
 
     /**
@@ -148,8 +149,8 @@ export function makeMe(http: HttpClient): MeFn & { hydrate(profile: Profile): vo
     /**
      * Selects the authenticated user's active badge (`POST /user/me/badge`).
      */
-    me.setBadge = (badge: string): Promise<void> =>
-        http.post<void>('/user/me/badge', {badge})
+    me.setBadge = (badge: string, options?: RequestOptions): Promise<void> =>
+        http.post<void>('/user/me/badge', {badge}, undefined, options)
 
     /**
      * Fetches the authenticated user's storage quota usage (`GET /user/me/storage`).

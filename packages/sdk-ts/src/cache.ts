@@ -4,6 +4,8 @@ export interface RequestOptions {
     cache?: boolean
     /** Time-to-live for this response in milliseconds. */
     cacheTtlMs?: number
+    /** Cancels the request when the signal is aborted. */
+    signal?: AbortSignal
 }
 
 interface CacheEntry {
@@ -56,12 +58,11 @@ class IndexedDBCacheStore implements CacheStore {
     async get(key: string): Promise<CacheEntry | undefined> {
         try {
             const database = await this.database()
-            const entry = await new Promise<CacheEntry | undefined>((resolve, reject) => {
+            return await new Promise<CacheEntry | undefined>((resolve, reject) => {
                 const request = database.transaction(STORE_NAME).objectStore(STORE_NAME).get(key)
                 request.onsuccess = () => resolve(request.result as CacheEntry | undefined)
                 request.onerror = () => reject(request.error)
             })
-            return entry
         } catch {
             return this.fallback.get(key)
         }

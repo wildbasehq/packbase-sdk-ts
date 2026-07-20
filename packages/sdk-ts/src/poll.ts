@@ -3,12 +3,30 @@ import type { HttpClient } from './http'
 import type { Howl, HowlJobStatus } from './types/howl'
 
 /** Sleeps for the given number of milliseconds. */
-function sleep(ms: number): Promise<void> {
-    return new Promise((resolve) => setTimeout(resolve, ms))
+function sleep(ms: number, signal?: AbortSignal): Promise<void> {
+    if (signal?.aborted) {
+        return Promise.reject(signal.reason ?? new DOMException('The operation was aborted', 'AbortError'))
+    }
+
+    return new Promise((resolve, reject) => {
+        const timeout = setTimeout(() => {
+            signal?.removeEventListener('abort', onAbort)
+            resolve()
+        }, ms)
+        const onAbort = () => {
+            clearTimeout(timeout)
+            signal?.removeEventListener('abort', onAbort)
+            reject(signal?.reason ?? new DOMException('The operation was aborted', 'AbortError'))
+        }
+        signal?.addEventListener('abort', onAbort, {once: true})
+    })
 }
 
 /** Options for controlling the polling loop in `Poller.waitFor`. */
 export interface PollOptions {
+    /** Cancels the current request and the polling delay. */
+    signal?: AbortSignal
+
     /**
      * How long to wait between status checks, in milliseconds.
      * @default 1000
@@ -71,27 +89,27 @@ export class Poller {
      * ```
      */
     async waitFor(jobId: string, options: PollOptions = {}): Promise<Howl> {
-        const { intervalMs = 1000, timeoutMs = 30_000, onProgress } = options
+        const { intervalMs = 1000, timeoutMs = 30_000, onProgress, signal } = options
         const deadline = Date.now() + timeoutMs
 
         while (Date.now() < deadline) {
             const status = await this.http.get<HowlJobStatus>(
                 `/howl/create/status/${jobId}`,
                 undefined,
-                {cache: false},
+                {cache: false, signal},
             )
 
             onProgress?.(status)
 
             if (status.status === 'completed') {
-                return this.http.get<Howl>(`/howl/${jobId}`, undefined, {cache: false})
+                return this.http.get<Howl>(`/howl/${jobId}`, undefined, {cache: false, signal})
             }
 
             if (status.status === 'failed') {
                 throw new PackbaseError(500, status.error ?? 'Howl creation failed')
             }
 
-            await sleep(intervalMs)
+            await sleep(intervalMs, signal)
         }
 
         throw new PackbaseError(408, `Howl creation job ${jobId} timed out after ${timeoutMs}ms`)

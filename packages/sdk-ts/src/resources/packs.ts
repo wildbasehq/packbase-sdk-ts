@@ -56,25 +56,25 @@ export class PackHandle extends ThenableResource<Pack> {
     }
 
     /** Creates a role for this pack (`POST /pack/:id/roles`). */
-    createRole(data: PackRoleInput): Promise<PackRole> {
-        return this.http.post<PackRole>(`/pack/${this.id}/roles`, data)
+    createRole(data: PackRoleInput, options?: RequestOptions): Promise<PackRole> {
+        return this.http.post<PackRole>(`/pack/${this.id}/roles`, data, undefined, options)
     }
 
     /** Updates a role for this pack (`PUT /pack/:id/roles/:roleId`). */
-    updateRole(roleId: string, data: PackRoleInput): Promise<PackRole> {
-        return this.http.put<PackRole>(`/pack/${this.id}/roles/${roleId}`, data)
+    updateRole(roleId: string, data: PackRoleInput, options?: RequestOptions): Promise<PackRole> {
+        return this.http.put<PackRole>(`/pack/${this.id}/roles/${roleId}`, data, options)
     }
 
     /** Deletes a role from this pack (`DELETE /pack/:id/roles/:roleId`). */
-    deleteRole(roleId: string): Promise<{ success: boolean }> {
-        return this.http.delete<{ success: boolean }>(`/pack/${this.id}/roles/${roleId}`)
+    deleteRole(roleId: string, options?: RequestOptions): Promise<{ success: boolean }> {
+        return this.http.delete<{ success: boolean }>(`/pack/${this.id}/roles/${roleId}`, undefined, options)
     }
 
     /** Replaces the roles assigned to a member (`PUT /pack/:id/member/:memberId/roles`). */
-    setMemberRoles(memberId: string, roleIds: string[]): Promise<{ roles: PackRoleSummary[]; permissions: number }> {
+    setMemberRoles(memberId: string, roleIds: string[], options?: RequestOptions): Promise<{ roles: PackRoleSummary[]; permissions: number }> {
         return this.http.put<{ roles: PackRoleSummary[]; permissions: number }>(`/pack/${this.id}/member/${memberId}/roles`, {
             role_ids: roleIds,
-        })
+        }, options)
     }
 
     /**
@@ -84,13 +84,13 @@ export class PackHandle extends ThenableResource<Pack> {
      *
      * @returns The pack and user IDs for the new membership.
      */
-    join(): Promise<{ tenant_id: string; user_id: string }> {
-        return this.http.post(`/pack/${this.id}/join`)
+    join(options?: RequestOptions): Promise<{ tenant_id: string; user_id: string }> {
+        return this.http.post(`/pack/${this.id}/join`, undefined, undefined, options)
     }
 
     /** Leaves this pack (`DELETE /pack/:id/join`). */
-    leave(): Promise<void> {
-        return this.http.delete<void>(`/pack/${this.id}/join`)
+    leave(options?: RequestOptions): Promise<void> {
+        return this.http.delete<void>(`/pack/${this.id}/join`, undefined, options)
     }
 
     /**
@@ -101,8 +101,8 @@ export class PackHandle extends ThenableResource<Pack> {
      * @param data - Fields to update.
      * @returns The updated pack.
      */
-    update(data: PackEditInput): Promise<PackUpdateResult> {
-        return this.http.post<PackUpdateResult>(`/pack/${this.id}`, data)
+    update(data: PackEditInput, options?: RequestOptions): Promise<PackUpdateResult> {
+        return this.http.post<PackUpdateResult>(`/pack/${this.id}`, data, undefined, options)
     }
 
     /**
@@ -121,8 +121,8 @@ export class PackHandle extends ThenableResource<Pack> {
      *
      * @param memberId - The user's UUID.
      */
-    ban(memberId: string): Promise<void> {
-        return this.http.post<void>(`/pack/${this.id}/member/${memberId}/ban`)
+    ban(memberId: string, options?: RequestOptions): Promise<void> {
+        return this.http.post<void>(`/pack/${this.id}/member/${memberId}/ban`, undefined, undefined, options)
     }
 
     /**
@@ -132,8 +132,8 @@ export class PackHandle extends ThenableResource<Pack> {
      *
      * @param memberId - The user's UUID.
      */
-    kick(memberId: string): Promise<void> {
-        return this.http.post<void>(`/pack/${this.id}/member/${memberId}/kick`)
+    kick(memberId: string, options?: RequestOptions): Promise<void> {
+        return this.http.post<void>(`/pack/${this.id}/member/${memberId}/kick`, undefined, undefined, options)
     }
 
     /**
@@ -151,8 +151,8 @@ export class PackHandle extends ThenableResource<Pack> {
      * await pb.packs('pack-id').report(ReportReason.Other, 'Additional context.')
      * ```
      */
-    report(reason: ReportReasonValue, notes?: string): Promise<ReportResult> {
-        return this.http.post<ReportResult>(`/pack/${this.id}/report`, { reason, notes })
+    report(reason: ReportReasonValue, notes?: string, options?: RequestOptions): Promise<ReportResult> {
+        return this.http.post<ReportResult>(`/pack/${this.id}/report`, { reason, notes }, undefined, options)
     }
 
     /**
@@ -171,12 +171,12 @@ export class PackHandle extends ThenableResource<Pack> {
      *
      * @param howlId - The howl UUID to pin.
      */
-    pinHowl(howlId: string, options?: { expiresAt?: string | Date | null }): Promise<{ success: boolean }> {
+    pinHowl(howlId: string, options?: PinHowlOptions): Promise<{ success: boolean }> {
         return this.http.post<{ success: boolean }>(`/pack/${this.id}/pins/${howlId}`, {
             expires_at: options?.expiresAt instanceof Date
                 ? options.expiresAt.toISOString()
                 : (options?.expiresAt ?? null),
-        })
+        }, undefined, options)
     }
 
     /**
@@ -186,14 +186,22 @@ export class PackHandle extends ThenableResource<Pack> {
      *
      * @param howlId - The howl UUID to unpin.
      */
-    unpinHowl(howlId: string): Promise<{ success: boolean }> {
-        return this.http.delete<{ success: boolean }>(`/pack/${this.id}/pins/${howlId}`)
+    unpinHowl(howlId: string, options?: RequestOptions): Promise<{ success: boolean }> {
+        return this.http.delete<{ success: boolean }>(`/pack/${this.id}/pins/${howlId}`, undefined, options)
     }
 
     /** Fetches `GET /pack/:id` using the pack UUID. */
     protected fetch(): Promise<Pack> {
         return this.http.get<Pack>(`/pack/${this.id}`, undefined, this.requestOptions)
     }
+}
+
+export interface PinHowlOptions extends RequestOptions {
+    expiresAt?: string | Date | null
+}
+
+export interface PackListOptions extends RequestOptions {
+    search?: string
 }
 
 /**
@@ -215,14 +223,14 @@ export type PacksFn = {
      *
      * @returns The pack list together with hidden-pack metadata.
      */
-    list(options?: RequestOptions): Promise<PackList>
+    list(options?: PackListOptions): Promise<PackList>
     /**
      * Creates a new pack (`POST /pack/create`).
      *
      * @param data - Required pack creation fields.
      * @returns The newly created pack.
      */
-    create(data: PackCreateInput): Promise<Pack>
+    create(data: PackCreateInput, options?: RequestOptions): Promise<Pack>
 }
 
 /**
@@ -237,11 +245,16 @@ export function makePacks(http: HttpClient): PacksFn {
         return new PackHandle(http, id, options)
     }
 
-    packs.list = (options?: RequestOptions): Promise<PackList> =>
-        http.get<PackList>('/packs', undefined, options)
+    packs.list = async (options?: PackListOptions): Promise<PackList> => {
+        const result = await http.get<PackList & {has_more?: boolean}>('/packs', {
+            search: options?.search,
+        }, options)
+        const {has_more: _hasMore, ...list} = result
+        return list
+    }
 
-    packs.create = (data: PackCreateInput): Promise<Pack> =>
-        http.post<Pack>('/pack/create', data)
+    packs.create = (data: PackCreateInput, options?: RequestOptions): Promise<Pack> =>
+        http.post<Pack>('/pack/create', data, undefined, options)
 
     return packs as PacksFn
 }

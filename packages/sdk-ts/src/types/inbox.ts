@@ -1,3 +1,5 @@
+import type { JsonValue } from './json'
+
 export interface Notification {
     id: string
     created_at: string
@@ -7,6 +9,6 @@ export interface Notification {
     content?: string
     read: boolean
     read_at?: string | null
-    metadata?: unknown
+    metadata?: JsonValue
     related_id?: string | null
 }
