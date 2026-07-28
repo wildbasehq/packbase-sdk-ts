@@ -5,7 +5,7 @@ description: Understand the regular and pinned howls returned in a feed page.
 
 ## `FeedPage`
 
-`pb.feeds(id).fetch()` doesn't return a bare `Howl[]`. It returns a `FeedPage` object, which keeps normal feed items, pinned items, and pagination information in separate fields.
+`pb.feeds(id).fetch()` does not return a `Howl[]` directly. It returns a `FeedPage` object. This object keeps standard feed items, pinned items, and pagination data in separate fields.
 
 ```ts
 interface FeedPage {

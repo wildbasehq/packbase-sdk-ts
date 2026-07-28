@@ -3,9 +3,9 @@ title: Async Job Polling
 description: Understand why howl creation takes time and how the SDK waits for it to finish.
 ---
 
-Some work takes longer than a normal API request. Creating a howl can involve processing images, video, or other uploaded files, so Packbase starts a background **job** and immediately gives the SDK a job ID. The actual work continues on the server.
+Some operations take more time than an API request. Howl creation can process images, video, or other uploaded files. Thus, Packbase starts a background **job** and immediately gives the SDK a job ID. The work continues on the server.
 
-The SDK then **polls** the job: it asks “finished yet?” every second until the answer is yes, the job fails, or the wait times out. Normally `pb.howls.create()` handles this whole loop for you. You only need the options in this guide if you want progress updates or different timing.
+The SDK then **polls** the job every second. Polling continues until the job is complete, the job fails, or the wait times out. By default, `pb.howls.create()` controls this loop. Use the options in this guide for progress updates or different timing.
 
 ## How it works
 
@@ -23,7 +23,7 @@ pb.howls.create(data)
 2. The SDK checks the job's status once per interval until it is `'completed'` or `'failed'`.
 3. When the job is complete, the SDK fetches the finished howl and returns it to your code.
 
-Those route names in the diagram are the HTTP requests made internally. You don't need to call them yourself.
+The route names in the diagram are internal HTTP requests. Do not call them directly.
 
 ## Default behavior
 
@@ -39,11 +39,11 @@ const howl = await pb.howls.create({
 })
 ```
 
-From your application's point of view, this is still one promise: `await` resumes with a finished `Howl`.
+The application receives one promise. `await` resumes with a completed `Howl`.
 
 ## Customizing polling options
 
-Pass a second options object to `create()` to override the defaults. Values ending in `Ms` are measured in milliseconds, so `500` is half a second and `120_000` is two minutes:
+Pass a second options object to `create()` to override the defaults. The unit for values that end in `Ms` is milliseconds. Thus, `500` is 0.5 seconds and `120_000` is 2 minutes:
 
 ```ts twoslash
 import { PackbaseSDK } from '@packbase/sdk-ts'
@@ -73,7 +73,7 @@ const howl = await pb.howls.create(
 
 ## Tracking progress
 
-`onProgress` is a callback, which means it's a function the SDK calls after each status check. You can use it to update a progress bar or print status text:
+`onProgress` is a callback that the SDK calls after each status check. Use it to update a progress bar or show status text:
 
 ```ts twoslash
 import { PackbaseSDK, type HowlJobStatus } from '@packbase/sdk-ts'
@@ -108,7 +108,7 @@ type _Status = HowlJobStatus['status']
 
 ## Opting out of automatic polling
 
-Pass `{ poll: false }` when you don't want the SDK to wait. The call returns an object containing the job ID instead of a finished howl:
+Pass `{ poll: false }` to prevent the SDK from waiting. The call returns an object that contains the job ID. It does not return a completed howl:
 
 ```ts twoslash
 import { PackbaseSDK } from '@packbase/sdk-ts'
@@ -145,7 +145,7 @@ try {
 }
 ```
 
-A timeout tells you that the client stopped waiting. The background job may still finish, so don't automatically submit the same howl again unless you're sure that won't create a duplicate.
+A timeout means that the client stopped the wait. The background job can continue. Do not submit the same howl again until you make sure that this action cannot create a duplicate.
 
 ## Handling failed jobs
 
@@ -168,7 +168,7 @@ try {
 
 ## Job ID equals Howl ID
 
-The job ID is also the finished howl's UUID. That means you can save the future howl ID before processing finishes. This is useful for an optimistic interface, where the app shows a pending item right away (though you should still make it visually clear that it isn't ready yet).
+The job ID is also the UUID of the completed howl. You can save the howl ID before processing is complete. An application can use this ID to show a pending item immediately. Make sure that the interface identifies the item as not ready.
 
 ```ts twoslash
 import { PackbaseSDK } from '@packbase/sdk-ts'
@@ -179,9 +179,9 @@ const job = await pb.howls.create(
   { poll: false },
 )
 
-// Optimistically link to the howl before it's ready
+// Link to the howl before it is ready.
 console.log(`https://packbase.app/howl/${job.id}`)
 
-// Later, fetch it once you know it's done
+// Fetch the howl after the job is complete.
 const howl = await pb.howls(job.id)
 ```

@@ -4,21 +4,21 @@ description: Install the Packbase TypeScript SDK and check that it works in your
 icon: Download
 ---
 
-Installing a library just means adding someone else's reusable code to your project. Here, the library is `@packbase/sdk-ts`, and it gives your code a convenient way to call the Packbase API.
+The `@packbase/sdk-ts` library contains reusable code for your project. Use the library to call the Packbase API.
 
 ## Before you start
 
-You'll need one of these environments:
+Use one of these environments:
 
 - Node.js 18 or newer
 - Bun
 - A modern browser project with the standard `fetch` API
 
-TypeScript is recommended because the SDK includes TypeScript types, but plain JavaScript works too. You don't need to install a separate `@types` package.
+TypeScript is recommended because the SDK includes TypeScript types. You can also use JavaScript. You do not have to install a separate `@types` package.
 
 ## Install the package
 
-Run one of the following commands from your project's folder. Use the command that matches the package manager your project already uses (if you're unsure, `npm` is usually fine).
+Run one of the following commands from your project directory. Use the command for your package manager. If you do not know which command to use, use `npm`.
 
 <Tabs items={['npm', 'Bun', 'pnpm', 'Yarn']}>
   <Tab value="npm">
@@ -43,7 +43,7 @@ Run one of the following commands from your project's folder. Use the command th
   </Tab>
 </Tabs>
 
-This adds the SDK to your `package.json` and downloads it into your project's dependencies.
+The command adds the SDK to `package.json`. It also downloads the SDK to the project dependencies.
 
 ## Check the installation
 
@@ -56,10 +56,10 @@ const pb = new PackbaseSDK()
 console.log('Packbase SDK is ready', pb)
 ```
 
-If your editor recognizes `PackbaseSDK` and your project runs without an import error, the installation worked. This snippet doesn't call the API yet; it only creates a client object.
+Make sure that your editor recognizes `PackbaseSDK`. Then, run the project. If there is no import error, the installation is correct. This example creates a client object but does not call the API.
 
 <Callout type="info">
-  Seeing a TypeScript error on the import? Check that you ran the install command in the same project as the file you're editing. If the package is installed correctly, your `tsconfig.json` may need a modern module resolution setting such as `"moduleResolution": "Bundler"` or `"NodeNext"`.
+  If the import has a TypeScript error, make sure that you installed the package in the applicable project. If the error continues, set `moduleResolution` in `tsconfig.json`. Use `"Bundler"` or `"NodeNext"`.
 </Callout>
 
-Next, work through the [Quickstart](/getting-started/quickstart) to make an actual request.
+Then, complete the [Quickstart](/getting-started/quickstart) to make a request.

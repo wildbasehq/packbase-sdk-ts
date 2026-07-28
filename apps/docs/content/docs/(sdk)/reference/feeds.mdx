@@ -3,7 +3,7 @@ title: pb.feeds
 description: Fetch one page of a Packbase feed, including any pinned howls.
 ---
 
-Call `pb.feeds(id)` with a feed name or pack ID to create a `FeedHandle`. Creating the handle doesn't fetch anything yet; call `.fetch()` when you're ready to load a page.
+Call `pb.feeds(id)` with a feed name or pack ID to create a `FeedHandle`. This action does not fetch data. Call `.fetch()` to load a page.
 
 ## Signatures
 
@@ -41,6 +41,6 @@ Built-in feed IDs include `universe:home` and `gossip:network`. A pack UUID also
 | `page` | `number` | Page number, starting at 1. |
 | `includePinsFrom` | `string` | Optional pack ID whose pins should be included in the feed. |
 
-The response separates pinned howls in `page.pins` from ordinary items in `page.data`. A pinned howl may include `meta.pin_expires_at` when a moderator set it to expire automatically.
+The response puts pinned howls in `page.pins` and standard items in `page.data`. A pinned howl can include `meta.pin_expires_at` if a moderator set an automatic expiration.
 
 **Returns:** [`FeedPage`](/types/feed)

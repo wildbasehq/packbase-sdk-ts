@@ -5,7 +5,7 @@ description: Understand the notification objects returned by the inbox API.
 
 ## `Notification`
 
-`Notification` describes one item in the signed-in user's inbox. Fields with a `?` are optional, either because that notification doesn't need them or because the endpoint didn't include them.
+`Notification` describes one item in the signed-in user's inbox. Fields with a `?` are optional. A notification can omit a field when it does not require the field. The endpoint can also omit fields.
 
 ```ts
 interface Notification {
@@ -53,7 +53,7 @@ for (const notification of data) {
 await pb.inbox.markRead(data.map(n => n.id))
 ```
 
-Render metadata specially for notification types your application recognizes. For unknown types, fall back to recursively displaying JSON primitives, arrays, and object keys—or use formatted `JSON.stringify` output—so new server metadata never produces a blank notification.
+Use a separate metadata format for each known notification type. For unknown types, show JSON primitives, arrays, and object keys recursively. Alternatively, show formatted `JSON.stringify` output. This prevents a new server metadata type from producing a blank notification.
 
 ## Import
 

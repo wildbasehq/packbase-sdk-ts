@@ -3,7 +3,7 @@ title: pb.store
 description: Browse the Packbase store and purchase items for the signed-in user.
 ---
 
-`pb.store` covers the Packbase item catalog, the current user's balance and ownership, and purchases. Browsing the public catalog doesn't need authentication; viewing personal ownership or buying an item does.
+`pb.store` includes the Packbase item catalog, the current user's balance and ownership, and purchases. The public catalog does not require authentication. Personal ownership and purchases require authentication.
 
 ## Store overview
 
@@ -19,9 +19,9 @@ for (const item of store.items) {
 }
 ```
 
-`list()` requires authentication. It returns a `StoreOverview` object containing `items`, the current `trinketCount`, and relevant store history. It doesn't return a bare item array.
+`list()` requires authentication. It returns a `StoreOverview` object. The object contains `items`, the current `trinketCount`, and applicable store history. It does not return an item array directly.
 
-Each history entry has a known `id` and `action`, plus a `model_object: JsonValue`. Handle known actions with tailored UI and use a recursive key/value or formatted-JSON fallback for actions and payloads added later.
+Each history entry has a known `id`, `action`, and `model_object: JsonValue`. Use a separate display format for each known action. For new actions and payloads, show a recursive key-value view or formatted JSON.
 
 ## Public catalog
 
@@ -46,4 +46,4 @@ console.log(purchase.newTrinketBalance)
 console.log(purchase.inventory.amount)
 ```
 
-The first argument is the store item's ID, and `quantity` is the number to buy. Staff callers may also pass `userId` in the options to purchase for another account. There is no method for fetching a single item by ID.
+The first argument is the store item ID. `quantity` is the number to buy. Staff callers can pass `userId` in the options to purchase for another account. The SDK does not supply a method to fetch one item by ID.

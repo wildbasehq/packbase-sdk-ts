@@ -4,7 +4,7 @@ description: Create Packbase posts, work with their background jobs, and add int
 ---
 A **howl** is a post on Packbase. Every howl belongs to a **pack**, which is a Packbase community. A howl can contain text, sanitized HTML, uploaded media, or a mix of those.
 
-This guide starts with ordinary text howls, then covers the less obvious bits such as rating tags, uploads, and background processing.
+This guide starts with text howls. It then explains rating tags, uploads, and background processing.
 
 ## Fetching a single howl
 
@@ -20,11 +20,11 @@ console.log(howl.user.username)
 console.log(howl.reactions)
 ```
 
-Replace `'howl-uuid'` with a real howl ID. `pb.howls('howl-uuid')` creates a lightweight `HowlHandle`; it doesn't make a request until you `await` it. The result is a `Howl` object containing the post, its author, and any related data returned by the endpoint.
+Replace `'howl-uuid'` with a howl ID. `pb.howls('howl-uuid')` creates a `HowlHandle`. It does not make a request until you `await` it. The result is a `Howl` object. This object contains the post, its author, and related data from the endpoint.
 
 ## Creating a howl
 
-Creating a howl can require media processing, so Packbase does the work in a background job. By default, `pb.howls.create()` starts that job, checks its status for you, and returns only when the finished howl is ready.
+A howl can require media processing. Thus, Packbase does the work in a background job. By default, `pb.howls.create()` starts the job and checks its status. The method returns when the completed howl is available.
 
 ```ts twoslash
 import { PackbaseSDK } from '@packbase/sdk-ts'
@@ -43,7 +43,7 @@ console.log(howl.id) // the finished Howl
 
 ### Required fields
 
-TypeScript will catch missing fields in your editor, but it's still useful to know what each one means:
+TypeScript shows missing fields in your editor. The table describes each field:
 
 | Field | Type | Description |
 | --- | --- | --- |
@@ -54,7 +54,7 @@ TypeScript will catch missing fields in your editor, but it's still useful to kn
 
 ### Rating tags
 
-Every howl needs exactly one rating tag so clients know how to present its content. It can appear anywhere in the `tags` array, alongside ordinary topic tags:
+Each howl requires exactly one rating tag. Clients use this tag to present the content. The rating tag can occur at any position in the `tags` array:
 
 | Tag | Meaning |
 | --- | --- |
@@ -92,7 +92,7 @@ await pb.howls.upload.finalize(assetId)
 const status = await pb.howls.upload.status(assetId)
 ```
 
-The SDK supplies the protocol commands and sends appended assets as multipart `FormData`. Once finalized, pass the returned asset IDs to howl creation:
+The SDK supplies the protocol commands. It sends appended assets as multipart `FormData`. After finalization, pass the returned asset IDs to howl creation:
 
 ```ts twoslash
 import { PackbaseSDK } from '@packbase/sdk-ts'
@@ -133,7 +133,7 @@ const howl = await pb.howls.create(
 
 ## Manual polling
 
-If you need to store the pending job and check it later, pass `{ poll: false }`. The method then returns the job ID immediately instead of waiting for a finished `Howl`:
+To store the pending job and check it later, pass `{ poll: false }`. The method immediately returns the job ID. It does not wait for a completed `Howl`:
 
 ```ts twoslash
 import { PackbaseSDK } from '@packbase/sdk-ts'
@@ -171,7 +171,7 @@ await pb.howls('howl-id').react('🔥')
 await pb.howls('howl-id').unreact()
 ```
 
-Adding the same reaction twice returns a `400` error. `react()` adds; it doesn't toggle. Call `unreact()` when you want to remove the current user's reactions.
+If you add the same reaction two times, the server returns a `400` error. `react()` adds a reaction. It does not toggle a reaction. Call `unreact()` to remove the current user's reactions.
 
 ## Commenting
 
@@ -193,7 +193,7 @@ const { id: rehowlId } = await pb.howls('howl-id').rehowl()
 
 ## Reporting a howl
 
-`ReportReason` gives you the report categories accepted by the API. The optional second argument is a note for moderators, so include useful context rather than repeating the category.
+`ReportReason` contains the report categories that the API accepts. The optional second argument is a note for moderators. Use it to give information that is not in the category.
 
 ```ts twoslash
 import { PackbaseSDK, ReportReason } from '@packbase/sdk-ts'
@@ -227,4 +227,4 @@ Available reasons:
 | `howling_alongside` | A collaborative repost with separate body. |
 | `howling_echo` | A plain echo/repost with no extra body. |
 
-`howling_alongside` and `howling_echo` may appear in data returned by Packbase, but you can't use them to create a howl through this method. Pass `text`, or simply leave out `content_type` and let the SDK supply it.
+Packbase can return `howling_alongside` and `howling_echo` in response data. You cannot use them to create a howl with this method. Pass `text`, or omit `content_type`. If you omit it, the SDK supplies `text`.

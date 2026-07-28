@@ -3,7 +3,7 @@ title: pb.me
 description: Fetch and update the authenticated profile, settings, friends, packs, badge, and storage usage.
 ---
 
-`pb.me` is the resource for the current signed-in account. Every method on this page requires a valid browser session or API key; use `pb.profiles(username)` instead when you only need someone's public profile.
+`pb.me` is the resource for the current signed-in account. Each method on this page requires a valid browser session or API key. Use `pb.profiles(username)` if you require only a public profile.
 
 ## Fetch the current user
 
@@ -33,7 +33,7 @@ const updated = await pb.me.update({
 })
 ```
 
-This is a partial update, so include only the fields you want to change. Supported fields are `display_name`, `slug`, `about.bio`, `space_type`, `post_privacy`, and `images.header`. The response contains the fields written by the server rather than a newly fetched full profile; call `pb.me()` afterward if you need the complete result.
+This is a partial update. Include only the fields that you want to change. Supported fields are `display_name`, `slug`, `about.bio`, `space_type`, `post_privacy`, and `images.header`. The response contains the fields that the server wrote. It does not contain a new full profile. Call `pb.me()` after the update if you require the full result.
 
 ## Settings
 
@@ -48,7 +48,7 @@ await pb.me.settings({
 })
 ```
 
-Calling `settings()` with no argument reads the settings. Calling it with an object updates them. The read result is `Record<string, unknown>`, so decode every key you intend to use instead of casting the whole record.
+Call `settings()` with no argument to read the settings. Call it with an object to update them. The read result is `Record<string, unknown>`. Decode each key that you use. Do not cast the full record.
 
 ```ts twoslash
 import { PackbaseSDK, decodeSettings } from '@packbase/sdk-ts'
@@ -89,7 +89,7 @@ const pb = new PackbaseSDK()
 const packs = await pb.me.packs()
 ```
 
-This returns every pack the current user belongs to, including membership data. It isn't limited to packs they own.
+This method returns each pack that the current user belongs to. The response includes membership data. The result is not limited to packs that the user owns.
 
 ## Select a badge
 
@@ -100,7 +100,7 @@ const pb = new PackbaseSDK()
 await pb.me.setBadge('founder-badge')
 ```
 
-This sends `POST /user/me/badge` with an owned badge's store item ID. The server does not expose a corresponding badge `GET`; the active badge is available on the profile returned by `pb.me()`.
+This method sends `POST /user/me/badge` with the store item ID of an owned badge. The server does not supply a related badge `GET` operation. The profile from `pb.me()` contains the active badge.
 
 ## Storage usage
 

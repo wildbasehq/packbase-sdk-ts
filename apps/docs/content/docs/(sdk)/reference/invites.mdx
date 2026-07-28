@@ -3,7 +3,7 @@ title: pb.invites
 description: Send email invites and work with referrals before an account is created.
 ---
 
-This resource covers two related but distinct flows. Email invitation methods are for signed-in Packbase users. Waitlist referral methods run before a Packbase account exists and identify the person with a Clerk waitlist entry ID.
+This resource has two related flows. Email invitation methods are for signed-in Packbase users. Waitlist referral methods operate before a Packbase account exists. These methods identify the person with a Clerk waitlist entry ID.
 
 ## Email invitations
 
@@ -17,7 +17,7 @@ const invite = await pb.invites.generate('person@example.com')
 console.log(invite.invite_id, invite.created_at)
 ```
 
-`list()` returns invitations created by the current user. `generate(email)` asks Clerk to send an invitation email; it doesn't return a shareable invite code.
+`list()` returns invitations that the current user created. `generate(email)` asks Clerk to send an invitation email. It does not return a shareable invite code.
 
 Both methods use the `Invite` shape:
 
@@ -56,7 +56,7 @@ interface WaitlistReferral {
 }
 ```
 
-Treat the Clerk waitlist ID as sensitive because it identifies a pre-signup entry. Locked, rejected, completed, or unknown entries can't use this endpoint.
+Treat the Clerk waitlist ID as sensitive because it identifies a pre-signup entry. Locked, rejected, completed, or unknown entries cannot use this endpoint.
 
 ## Redeem a waitlist referral
 
@@ -69,4 +69,4 @@ const result = await pb.invites.redeemWaitlistReferral(waitlistId, 'ABCD1234')
 console.log(result.referrer_code)
 ```
 
-The `waitlistId` identifies the person redeeming the code; the second argument is the referrer's code. Codes are case-insensitive, contain at most eight characters, and can be redeemed only once. Self-referrals are rejected.
+The `waitlistId` identifies the person who redeems the code. The second argument is the referrer's code. Codes are case-insensitive and contain a maximum of eight characters. A person can redeem a code only one time. The server rejects self-referrals.

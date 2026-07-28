@@ -3,7 +3,7 @@ title: pb.howls
 description: Fetch, create, delete, react to, comment on, rehowl, and report howls.
 ---
 
-Call `pb.howls(id)` with a howl UUID to get a lazy `HowlHandle`. “Lazy” means creating the handle doesn't send a request. Awaiting it fetches the howl; action methods such as `.react()` send only their own request.
+Call `pb.howls(id)` with a howl UUID to get a lazy `HowlHandle`. Creating the handle does not send a request. Await the handle to fetch the howl. Action methods such as `.react()` send only their applicable request.
 
 ```ts twoslash
 import { PackbaseSDK } from '@packbase/sdk-ts'
@@ -26,7 +26,7 @@ const howl = await pb.howls.create({
 })
 ```
 
-Packbase creates howls in a background job. By default, the SDK starts the job, checks its status, and resolves with the finished `Howl`. In ordinary application code, the single `await` above is enough.
+Packbase creates howls in a background job. By default, the SDK starts the job and checks its status. The promise resolves with the completed `Howl`. Application code requires only the `await` above.
 
 `HowlCreateInput` accepts:
 
@@ -39,7 +39,7 @@ Packbase creates howls in a background job. By default, the SDK starts the job, 
 | `asset_ids` | `string[]?` | Finalized upload IDs, up to 100. |
 | `tags` | `[string, ...string[]]` | Must contain exactly one rating tag, in any position. |
 
-Pass `{ poll: false }` to receive only `{ id }` without waiting. See [Async Job Polling](/guides/polling) before using that option, since your app becomes responsible for tracking the unfinished job.
+Pass `{ poll: false }` to receive only `{ id }` without a wait. Read [Async Job Polling](/guides/polling) before you use this option. Your application must then monitor the incomplete job.
 
 ## Upload assets
 
@@ -68,7 +68,7 @@ const pb = new PackbaseSDK()
 await pb.howls('howl-id').delete()
 ```
 
-Deleting requires the signed-in user to have permission. The server doesn't currently expose a howl edit route.
+The signed-in user must have permission to delete a howl. The server does not currently supply a howl edit route.
 
 ## Reactions
 
@@ -81,7 +81,7 @@ await howl.react('🔥')
 await howl.unreact()
 ```
 
-`react()` sends `POST /howl/:id/react`. Repeating the same reaction returns status 400; it does not toggle the reaction. `unreact()` sends `DELETE /howl/:id/react` and removes the caller's reactions from the howl.
+`react()` sends `POST /howl/:id/react`. If you repeat the same reaction, the server returns status `400`. The method does not toggle the reaction. `unreact()` sends `DELETE /howl/:id/react`. It removes the caller's reactions from the howl.
 
 ## Comments and rehowls
 

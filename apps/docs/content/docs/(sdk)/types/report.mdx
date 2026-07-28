@@ -5,7 +5,7 @@ description: Accepted report reasons and the moderation ticket returned by repor
 
 ## `ReportReason`
 
-`ReportReason` is a constant object containing every reason accepted by `.report()` methods. Importing these named values is safer than typing a reason by hand, because TypeScript can catch a misspelling.
+`ReportReason` is a constant object that contains each reason accepted by `.report()` methods. Import these named values. TypeScript can then find a spelling error.
 
 ```ts
 const ReportReason = {
@@ -39,7 +39,7 @@ The first argument is required. The second is an optional note. Howls, packs, an
 
 ## `ReportReasonValue`
 
-`ReportReasonValue` is the union of the strings inside `ReportReason`. You'll rarely need to write it yourself, but it's useful when a function accepts a report reason:
+`ReportReasonValue` is the union of the strings in `ReportReason`. Use this type when a function accepts a report reason:
 
 ```ts
 import type { ReportReasonValue } from '@packbase/sdk-ts'

@@ -5,7 +5,7 @@ description: TypeScript shapes for packs, members, roles, lists, and updates.
 
 ## `Pack`
 
-`Pack` describes a Packbase community returned by the API. Optional fields end in `?`; they may be absent depending on the endpoint and whether the caller is signed in.
+`Pack` describes a Packbase community that the API returns. Optional fields end in `?`. These fields can be absent because of the endpoint or authentication state.
 
 ```ts
 interface Pack {
@@ -41,7 +41,7 @@ interface PackList {
 
 ## `PackMember`
 
-`extends Profile` means a `PackMember` has the normal profile fields plus membership-specific fields:
+`extends Profile` means that a `PackMember` has the standard profile fields and membership-specific fields:
 
 ```ts
 interface PackMember extends Profile {
@@ -56,7 +56,7 @@ interface PackMember extends Profile {
 
 ## Roles and permissions
 
-Permissions are stored as bit flags: several yes/no permissions packed into one number. Use the exported `PackPermissionBits` values and the bitwise OR operator (`|`) to combine them rather than hard-coding totals.
+Permissions are bit flags. One number contains multiple Boolean permissions. Use the exported `PackPermissionBits` values. Combine them with the bitwise OR operator (`|`). Do not use hard-coded totals.
 
 ```ts
 interface PackRole {
@@ -102,7 +102,7 @@ interface PackEditInput {
 }
 ```
 
-The edit endpoint returns `PackUpdateResult`, which mirrors the database update result rather than a fully formatted `Pack`. If you need the normal response shape after an edit, fetch the pack again.
+The edit endpoint returns `PackUpdateResult`. This type matches the database update result, not a formatted `Pack`. To get the standard response structure after an edit, fetch the pack again.
 
 ## Import
 

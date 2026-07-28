@@ -3,7 +3,7 @@ title: pb.search
 description: API reference for the search endpoint and the from() query builder.
 ---
 
-`pb.search()` runs one or more named queries in a single HTTP request. Use `from()` to build each query with editor hints for valid model fields, then call `.build()` before passing it to `pb.search()`.
+`pb.search()` runs one or more named queries in one HTTP request. Use `from()` to build each query with editor hints for valid model fields. Then, call `.build()` before you pass the query to `pb.search()`.
 
 For a full tutorial, see the [Search guide](/guides/search).
 
@@ -33,11 +33,11 @@ if (!isErrorEntry(results.topPacks)) {
 | --- | --- | --- |
 | `queries` | `NamedQueryMap` | An object mapping query names to `QueryInput` objects. |
 
-**Returns:** a typed named result map. The object uses the same names you chose in `queries`. Each value is either flat `SearchPost[]`, `SearchProfile[]`, or `SearchPack[]`, or an `ErrorEntry`, so check it with `isErrorEntry()` before treating it as data. Search rows deliberately retain database names such as `images_avatar` rather than normalized nested resource fields.
+**Returns:** A typed named result map. The object uses the names from `queries`. Each value is a `SearchPost[]`, `SearchProfile[]`, `SearchPack[]`, or `ErrorEntry`. Use `isErrorEntry()` before you process the value as data. Search rows keep database names such as `images_avatar`. They do not use normalized nested resource fields.
 
 ## `from(model)`: Query builder
 
-Creates a query builder for the chosen model. The chain doesn't send a request; `.build()` only produces the request data, and `pb.search()` sends it.
+Creates a query builder for the selected model. The chain does not send a request. `.build()` makes the request data, and `pb.search()` sends it.
 
 ```ts twoslash
 import { from } from '@packbase/sdk-ts'
@@ -61,12 +61,12 @@ const query = from('packs')           // start a query on 'packs'
 | `.orderBy(field, direction?)` | Sort by field. Default direction is `'desc'`. |
 | `.take(count)` | Limit results. |
 | `.skip(count)` | Offset results. |
-| `.page(page, pageSize?)` | Convenience for `.take(pageSize).skip((page-1)*pageSize)`. |
+| `.page(page, pageSize?)` | Calls `.take(pageSize).skip((page-1)*pageSize)`. |
 | `.build()` | Returns a `QueryInput` to pass to `pb.search()`. |
 
 ## `isErrorEntry(result)`: Type guard
 
-One named query can fail while other queries in the same request succeed. Use this helper to check whether a particular result is an error or actual data:
+One named query can fail while other queries in the same request are successful. Use this helper to identify whether a specified result is an error or data:
 
 ```ts twoslash
 import { PackbaseSDK, from, isErrorEntry } from '@packbase/sdk-ts'

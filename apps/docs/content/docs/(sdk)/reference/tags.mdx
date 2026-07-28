@@ -3,7 +3,7 @@ title: pb.tags
 description: Fetch the tags that can be attached to Packbase howls.
 ---
 
-`pb.tags()` fetches the current list of tags available for howls. It returns strings, which makes it useful for building a tag picker or validating a user's selection.
+`pb.tags()` fetches the current list of tags for howls. It returns strings. Use these strings to make a tag selector or validate a user's selection.
 
 ## `pb.tags()`: Fetch all tags
 
@@ -23,7 +23,7 @@ console.log(tags) // ['rating_safe', 'rating_mature', 'art', 'digital', ...]
 
 ## Usage example
 
-You can use the tag list to populate a tag selector in your UI:
+Use the tag list to populate a tag selector in the user interface:
 
 ```ts twoslash
 import { PackbaseSDK } from '@packbase/sdk-ts'

@@ -3,7 +3,7 @@ title: pb.leaderboard
 description: Fetch ranked packs by activity and profiles by XP.
 ---
 
-Leaderboard methods don't return plain pack or profile arrays. Each entry wraps the item with ranking information such as activity, XP, or movement, while the outer object contains information about the leaderboard as a whole.
+Leaderboard methods do not return pack or profile arrays directly. Each entry contains an item and its ranking data. Ranking data includes activity, XP, or movement. The outer object contains data about the full leaderboard.
 
 ## Packs
 
@@ -33,4 +33,4 @@ for (const entry of profiles) {
 }
 ```
 
-The result is `ProfileLeaderboard`. `update_in` is an ISO-formatted timestamp for the next refresh. Each entry also includes `since`, `movement`, and `delta` fields describing its ranking change.
+The result is `ProfileLeaderboard`. `update_in` is an ISO-formatted timestamp for the next refresh. Each entry also includes `since`, `movement`, and `delta`. These fields describe the ranking change.

@@ -4,12 +4,12 @@ description: Catch failed Packbase requests and show a useful response to the us
 icon: TriangleAlert
 ---
 
-An API request can fail even when your code is valid. A user might not be signed in, an ID might not exist, or the server might fail. The SDK reports these failures by throwing an error, so calls made with `await` should usually live inside a `try`/`catch` block.
+An API request can fail when your code is valid. The user can be signed out. An ID can be incorrect. The server can have an error. The SDK throws an error for these failures. Put applicable calls that use `await` in a `try`/`catch` block.
 
 There are two broad kinds of failure:
 
-- `PackbaseError` means the request reached Packbase and the server replied with an error status.
-- A native error such as `TypeError` usually means the request never received an HTTP response, perhaps because the device is offline or DNS failed.
+- `PackbaseError` means that Packbase received the request and sent an error status.
+- A native error such as `TypeError` usually means that the request did not receive an HTTP response. For example, the device can be offline or DNS can fail.
 
 ## Catch a failed request
 
@@ -30,29 +30,29 @@ try {
 }
 ```
 
-JavaScript lets anything be thrown, so a caught value starts out as `unknown` in TypeScript. The `instanceof PackbaseError` check narrows it to the SDK's error class and makes properties such as `status` available safely.
+JavaScript can throw a value of any type. Thus, TypeScript initially gives a caught value the `unknown` type. The `instanceof PackbaseError` check changes it to the SDK error class. You can then use properties such as `status`.
 
-## What's inside `PackbaseError`?
+## `PackbaseError` properties
 
-| Property | What it tells you |
+| Property | Description |
 | --- | --- |
 | `status` | The HTTP status number, such as `401`, `404`, or `500`. |
 | `summary` | A readable explanation returned by Packbase. |
 | `code` | An optional machine-readable code for a more specific case. |
-| `raw` | The full parsed error response, mainly useful while debugging. |
+| `raw` | The full parsed error response. Use it for fault isolation. |
 | `message` | The standard JavaScript `Error` message; it matches `summary`. |
 
-HTTP status codes can look a bit cryptic at first. These convenience properties cover the common ones:
+These properties identify frequently used HTTP status codes:
 
 | Property | Status | Usual meaning |
 | --- | --- | --- |
-| `isUnauthorized` | `401` | The user isn't signed in, or the key is invalid. |
-| `isForbidden` | `403` | The user is known but doesn't have permission. |
-| `isNotFound` | `404` | The requested item doesn't exist. |
-| `isConflict` | `409` | The request clashes with the current state. |
-| `isServerError` | `500` or higher | Something failed on the server. |
+| `isUnauthorized` | `401` | The user is not signed in, or the key is invalid. |
+| `isForbidden` | `403` | The user does not have permission. |
+| `isNotFound` | `404` | The requested item does not exist. |
+| `isConflict` | `409` | The request conflicts with the current state. |
+| `isServerError` | `500` or higher | The server has an error. |
 
-Here's a slightly more useful UI flow:
+This example gives the user a message for each error type:
 
 ```ts twoslash
 import { PackbaseSDK, PackbaseError } from '@packbase/sdk-ts'
@@ -69,7 +69,7 @@ try {
   } else if (error.isUnauthorized) {
     console.error('Please sign in and try again.')
   } else if (error.isForbidden) {
-    console.error("You're signed in, but you don't have access to that pack.")
+    console.error('You are signed in, but you do not have access to that pack.')
   } else {
     console.error(`Packbase error: ${error.summary}`)
   }
@@ -78,7 +78,7 @@ try {
 
 ## Check a specific error code
 
-Sometimes two failures share the same HTTP status. The optional `code` gives your app a more precise reason when the server provides one.
+Two failures can have the same HTTP status. The optional `code` property gives a more specific cause when the server supplies one.
 
 ```ts twoslash
 import { PackbaseSDK, PackbaseError } from '@packbase/sdk-ts'
@@ -97,11 +97,11 @@ try {
 }
 ```
 
-Notice the final `throw error`. It passes unexpected failures to the surrounding error handler instead of hiding them. Swallowing errors makes debugging much harder later.
+The final `throw error` passes unexpected failures to the surrounding error handler. Do not ignore these errors. Ignored errors make subsequent fault isolation difficult.
 
 ## Timeouts while creating a howl
 
-The server creates howls in a background job. If the SDK waits longer than the configured timeout, it throws a `PackbaseError` with status `408`:
+The server creates howls in a background job. If the wait time is more than the configured timeout, the SDK throws a `PackbaseError` with status `408`:
 
 ```ts twoslash
 import { PackbaseSDK, PackbaseError } from '@packbase/sdk-ts'
@@ -121,7 +121,7 @@ try {
 }
 ```
 
-This timeout means the SDK stopped waiting. It doesn't necessarily mean the server cancelled the job.
+This timeout means that the SDK stopped the wait. The server can continue the job.
 
 ## Cancel a request
 
@@ -146,7 +146,7 @@ try {
 
 ## Network failures
 
-The SDK doesn't wrap low-level errors thrown by `fetch`. In most runtimes those failures are `TypeError` values:
+The SDK does not wrap low-level errors that `fetch` throws. In most runtimes, these failures are `TypeError` values:
 
 ```ts twoslash
 import { PackbaseSDK, PackbaseError } from '@packbase/sdk-ts'
@@ -178,4 +178,4 @@ const error = PackbaseError.fromResponse(422, {
 })
 ```
 
-The SDK uses this internally. Most applications won't call it directly, but it's useful when a unit test needs to imitate an API failure.
+The SDK uses this method internally. Most applications do not call it directly. Use it in a unit test to simulate an API failure.

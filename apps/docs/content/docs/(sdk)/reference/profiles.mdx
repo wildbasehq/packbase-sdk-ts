@@ -3,7 +3,7 @@ title: pb.profiles
 description: Fetch profiles, follow or unfollow users, inspect profile versions, and submit reports.
 ---
 
-Call `pb.profiles(username)` with a Packbase username to get a lazy `ProfileHandle`. Creating the handle does nothing over the network. Await it to fetch the profile, or call an action such as `.follow()` directly; the action won't fetch the profile first.
+Call `pb.profiles(username)` with a Packbase username to get a lazy `ProfileHandle`. This action does not make a network request. Await the handle to fetch the profile. Alternatively, call an action such as `.follow()` directly. The action does not fetch the profile first.
 
 ## Fetch a profile
 
@@ -17,7 +17,7 @@ console.log(profile.display_name)
 console.log(profile.about?.bio)
 ```
 
-The result is a [`Profile`](/types/profile). Some properties are optional because public and authenticated requests may receive different amounts of information.
+The result is a [`Profile`](/types/profile). Some properties are optional because public and authenticated requests can receive different data.
 
 ## Follow and unfollow
 
@@ -31,11 +31,11 @@ await pb.profiles('rek').follow()   // POST /user/:username/follow
 await pb.profiles('rek').unfollow() // DELETE /user/:username/follow
 ```
 
-Both methods finish without returning data (`Promise<void>`). Following an account you already follow, or unfollowing one you don't, returns a `PackbaseError` with status `400`.
+Both methods finish without response data (`Promise<void>`). If you follow an account that you already follow, the server returns status `400`. The server returns the same status if you unfollow an account that you do not follow.
 
 ## Profile version history
 
-`history()` returns saved versions of the profile itself, including changes to its name, bio, and similar fields. It doesn't return the user's howls.
+`history()` returns saved versions of the profile. The versions include changes to its name, bio, and related fields. The method does not return the user's howls.
 
 ```ts twoslash
 import { PackbaseSDK } from '@packbase/sdk-ts'
@@ -52,7 +52,7 @@ console.log(versions[0]?.operation)
 console.log(versions[0]?.display_name)
 ```
 
-`from` and `to` limit the date range. `axis` chooses whether those dates apply to transaction time or decision time, `order` chooses ascending or descending order, and `limit` must be from 1 to 500. For an audit-style history, `axis: 'transaction'` is usually the clearest choice.
+`from` and `to` limit the date range. `axis` applies these dates to transaction time or decision time. `order` selects ascending or descending order. `limit` must be from 1 through 500. For an audit history, use `axis: 'transaction'`.
 
 ## Report a user
 

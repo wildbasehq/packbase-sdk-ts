@@ -3,7 +3,7 @@ title: pb.packs
 description: Fetch, create, join, and manage packs with the TypeScript SDK.
 ---
 
-A pack is a Packbase community. Call `pb.packs(id)` with a pack UUID to get a lazy `PackHandle`; no request is made until you await it or call one of its methods. List-wide methods such as `pb.packs.list()` and `.create()` live directly on `pb.packs`.
+A pack is a Packbase community. Call `pb.packs(id)` with a pack UUID to get a lazy `PackHandle`. The SDK does not send a request until you await the handle or call one of its methods. Use list methods such as `pb.packs.list()` and `.create()` directly on `pb.packs`.
 
 ## Fetch and list packs
 
@@ -74,7 +74,7 @@ console.log(membership.tenant_id, membership.user_id)
 await pb.packs('pack-id').leave()
 ```
 
-Both methods require authentication. Pack owners, and users whose default pack is the target, can't leave through this endpoint.
+Both methods require authentication. Pack owners cannot leave through this endpoint. Users also cannot leave if the target is their default pack.
 
 ## Edit pack details
 
@@ -89,7 +89,7 @@ const updated = await pb.packs('pack-id').update({
 })
 ```
 
-This requires the `ManagePack` permission. The response is a database-shaped `PackUpdateResult`, not the regular `Pack` object. Fetch the pack again if your UI needs its fully formatted current state.
+This operation requires the `ManagePack` permission. The response is a database `PackUpdateResult`, not a standard `Pack` object. Fetch the pack again if the user interface requires the formatted current state.
 
 ## Settings
 
@@ -104,7 +104,7 @@ for (const setting of settings) {
 }
 ```
 
-`settings()` sends `GET /pack/:id/settings` and returns a discriminated `PackSetting[]`. Definitions expose `type`, a matching typed `default`, `user_modifiable`, display metadata, and type-specific fields such as `values` or `range`.
+`settings()` sends `GET /pack/:id/settings` and returns a discriminated `PackSetting[]`. Definitions contain `type`, a typed `default`, `user_modifiable`, and display metadata. They also contain type-specific fields such as `values` or `range`.
 
 This route is read-only. For a definition with `user_modifiable: true`, update the current user's value through `pb.me.settings()`:
 

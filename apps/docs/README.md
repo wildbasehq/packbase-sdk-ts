@@ -1,8 +1,8 @@
 # Packbase SDK documentation site
 
-This workspace contains the website for the `@packbase/sdk-ts` documentation. It's built with Next.js and Fumadocs, and it uses the SDK from `packages/sdk-ts` in this same repository.
+This workspace contains the website for the `@packbase/sdk-ts` documentation. The site uses Next.js, Fumadocs, and the SDK in `packages/sdk-ts`.
 
-If you're new to monorepos: run the commands below from the repository root, not from `apps/docs`. The root is the folder that contains the top-level `package.json`.
+Run the commands below from the repository root. Do not run them from `apps/docs`. The repository root contains the top-level `package.json`.
 
 ## Run the site locally
 
@@ -18,7 +18,7 @@ Then start the development server:
 bun run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) in your browser. Changes should appear as you save them. Refresh the browser if they don't.
+Open [http://localhost:3000](http://localhost:3000) in your browser. The site updates when you save a file. If the site does not update, refresh the browser.
 
 To run only this workspace from the repository root, use:
 
@@ -28,7 +28,7 @@ bun run --cwd apps/docs dev
 
 The `predev` script builds the local SDK first, so examples and TypeScript hints use the current workspace code rather than an older published package.
 
-## Where things live
+## Documentation files
 
 Most documentation work happens in `content/docs/(sdk)`. Those MDX files are the handwritten guides, reference pages, and type explanations shown on the site.
 
@@ -37,13 +37,15 @@ The main supporting files are:
 | Path | Purpose |
 | --- | --- |
 | `content/docs/(sdk)` | Handwritten SDK documentation. |
-| `content/docs/api` | API pages generated from the OpenAPI document. Don't edit these by hand. |
+| `content/docs/api` | API pages generated from the OpenAPI document. Do not edit these files. |
 | `openapi.json` | OpenAPI document used to build the generated API pages. |
 | `components/mdx.tsx` | Components available inside MDX pages. |
 | `lib/source.ts` | Connects the MDX content to Fumadocs. |
 | `app/(docs)` | Next.js routes and layout for the documentation pages. |
 
-An `.mdx` file is mostly Markdown, with a little JSX when the page needs components such as `<Callout>` or `<Cards>`. If you're only changing prose or code examples, it should feel much like editing a normal Markdown file.
+An `.mdx` file contains Markdown and can contain JSX components such as `<Callout>` or `<Cards>`. Edit its prose and code examples as you edit a Markdown file.
+
+Write all documentation in accordance with ASD-STE100. Use short sentences and active voice. Use one instruction in each sentence. Do not change API names, identifiers, or code syntax to conform to controlled language.
 
 ## Check your changes
 

@@ -3,7 +3,7 @@ title: pb.inbox
 description: Read, count, mark, and delete notifications for the signed-in user.
 ---
 
-`pb.inbox` provides access to the signed-in user's notification inbox. Every method here requires authentication. If paginated responses are new to you, the [Pagination guide](/guides/pagination) is probably worth reading first.
+`pb.inbox` gives access to the signed-in user's notification inbox. Each method requires authentication. Read the [Pagination guide](/guides/pagination) if you are not familiar with paginated responses.
 
 ## Methods overview
 
@@ -16,7 +16,7 @@ description: Read, count, mark, and delete notifications for the signed-in user.
 
 ## `pb.inbox.fetch(options?)`: Fetch notifications
 
-Fires `GET /inbox/fetch`. The result contains one page of notifications in `data`. For the next page, pass back the `cursor` from the previous response; don't try to construct a cursor yourself.
+Sends `GET /inbox/fetch`. The result contains one page of notifications in `data`. For the next page, send the `cursor` from the previous response. Do not make a cursor.
 
 ```ts twoslash
 import { PackbaseSDK } from '@packbase/sdk-ts'
@@ -136,6 +136,6 @@ const result = await pb.inbox.delete(['id1', 'id2'])
 await pb.inbox.delete('all')
 ```
 
-Pass an array to delete selected notifications or `'all'` to clear the inbox. Deletion is permanent, so a UI should usually confirm before sending `'all'`.
+Pass an array to delete selected notifications. Pass `'all'` to clear the inbox. Deletion is permanent. Make sure that the user confirms before the application sends `'all'`.
 
 **Returns:** `Promise<{ success: boolean; count: number }>`

@@ -1,19 +1,19 @@
 ---
 title: Pagination
-description: Load long lists a little at a time with cursors, offsets, and page numbers.
+description: Load long lists in pages with cursors, offsets, and page numbers.
 ---
 
-An API usually avoids returning thousands of items in one response. Instead, it returns a smaller chunk called a **page**, along with a way to ask for the next one. That's pagination.
+An API usually does not return thousands of items in one response. It returns a smaller set of items called a **page**. The response also contains a method to request the next page. This process is pagination.
 
-Packbase uses a few pagination styles, depending on the resource. The inbox uses a cursor, search uses an offset, and some endpoints return the complete list. We'll take them one at a time.
+Packbase uses different pagination methods for different resources. The inbox uses a cursor. Search uses an offset. Some endpoints return the full list.
 
 ## Cursor-based pagination
 
-The inbox uses cursor-based pagination. A cursor is an opaque bookmark returned by the server. “Opaque” just means you shouldn't try to read or edit it. Save the value and pass it back exactly as you received it.
+The inbox uses cursor-based pagination. A cursor is a bookmark that the server returns. Do not read or change the cursor. Save the value and send it unchanged in the next request.
 
-The first request doesn't need a cursor. Its response contains a `cursor` for the next request and a `has_more` boolean telling you whether another page exists.
+The first request does not require a cursor. Its response contains a `cursor` for the next request. The `has_more` Boolean shows whether another page is available.
 
-This works well for an inbox because new notifications can arrive while you're paging through older ones.
+This method lets new notifications arrive while you request older notifications.
 
 ### `Paginated<T>` shape
 
@@ -52,11 +52,11 @@ async function fetchAllNotifications() {
 }
 ```
 
-The loop always makes one request. After each response, it saves the returned cursor and checks `has_more`. Be a little careful with this pattern on very large inboxes: fetching every page can make many requests, so a “Load more” button is often kinder to both the user and the API.
+The loop always makes one request. After each response, it saves the cursor and checks `has_more`. A large inbox can cause this loop to make many requests. For a large inbox, use a “Load more” button.
 
 ### Pack members are not paginated
 
-Not every list needs a paging loop. Pack members currently come back as one complete array:
+Not every list requires a pagination loop. The pack members endpoint returns one full array:
 
 ```ts twoslash
 import { PackbaseSDK } from '@packbase/sdk-ts'
@@ -69,7 +69,7 @@ async function fetchAllMembers(packId: string) {
 
 ### "Load more" UI pattern
 
-For a button-driven interface, keep the loaded items, latest cursor, and `hasMore` value in your application's state. The framework-specific state code is left out here so the request flow is easier to see:
+For a button interface, keep the loaded items, latest cursor, and `hasMore` value in the application state. This example omits framework-specific state code:
 
 ```ts twoslash
 import { PackbaseSDK, type Notification } from '@packbase/sdk-ts'
@@ -92,9 +92,9 @@ Call `loadMore()` once for the first page and again whenever the user asks for m
 
 ## Offset pagination with the search builder
 
-Search uses offset-based pagination. An offset is simply the number of matching items to skip. `.take(25).skip(0)` asks for the first 25 items, while `.take(25).skip(25)` asks for the next 25.
+Search uses offset-based pagination. An offset is the number of matching items to omit. `.take(25).skip(0)` requests the first 25 items. `.take(25).skip(25)` requests the next 25 items.
 
-You can calculate those numbers yourself with `.skip()` and `.take()`, or use `.page()` as a convenience:
+Calculate these numbers with `.skip()` and `.take()`. Alternatively, use `.page()`:
 
 ```ts twoslash
 import { from } from '@packbase/sdk-ts'
@@ -110,7 +110,7 @@ const page3 = from('packs').orderBy('created_at').page(3, 25).build()
 // Equivalent: take(25).skip(50)
 ```
 
-You can request multiple pages at the same time with `Promise.all()`, although most interfaces only fetch a page when it is needed:
+You can request multiple pages at the same time with `Promise.all()`. Most interfaces request a page only when it is necessary:
 
 ```ts twoslash
 import { PackbaseSDK, from } from '@packbase/sdk-ts'
@@ -123,9 +123,9 @@ const [{ p1 }, { p2 }] = await Promise.all([
 ```
 
 
-## Choosing the right approach
+## Select the pagination method
 
-You don't choose the strategy yourself; the endpoint decides it. Check the return value and use the matching continuation value:
+The endpoint specifies the pagination method. Examine the return value and use the applicable continuation value:
 
 | Resource | Strategy | Key |
 | --- | --- | --- |

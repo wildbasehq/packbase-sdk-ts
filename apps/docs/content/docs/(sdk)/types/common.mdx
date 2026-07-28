@@ -5,7 +5,7 @@ description: Shared SDK types for paginated responses and client configuration.
 
 ## `Paginated<T>`
 
-Some endpoints return a long list in smaller pages. `Paginated<T>` describes one of those pages. The `T` is a placeholder for the kind of item in the list. For example, `Paginated<Notification>` means a page whose `data` array contains notifications.
+Some endpoints return a long list in smaller pages. `Paginated<T>` describes one page. The `T` identifies the item type in the list. For example, the `data` array in `Paginated<Notification>` contains notifications.
 
 ```ts
 interface Paginated<T> {
@@ -22,7 +22,7 @@ interface Paginated<T> {
 | --- | --- | --- |
 | `data` | `T[]` | The current page of results. |
 | `has_more` | `boolean` | `true` if there are more pages available. |
-| `cursor` | `string?` | A server-generated bookmark to pass in the next request. Don't modify it. |
+| `cursor` | `string?` | A server-generated bookmark to pass in the next request. Do not change it. |
 | `total_count` | `number?` | Total matching items across all pages (not always returned). |
 
 ### Usage
@@ -44,7 +44,7 @@ while (page.has_more) {
 
 ## `PackbaseSDKConfig`
 
-This is the shape of the optional object passed to `new PackbaseSDK(...)`. Every property has a `?`, so you may leave out options you don't need. You can also omit the whole object.
+This is the structure of the optional object that you pass to `new PackbaseSDK(...)`. Each property has a `?`. Thus, you can omit properties that you do not require. You can also omit the object.
 
 ```ts
 interface PackbaseSDKConfig {
@@ -84,9 +84,9 @@ const pb = new PackbaseSDK({
 })
 ```
 
-Caching is off unless `cache` is `true`. `cacheTtlMs` controls how long a cached GET response remains valid, in milliseconds, and `cacheNamespace` keeps cached data for different users or sessions separate.
+The cache is off unless `cache` is `true`. `cacheTtlMs` sets the cache time for a GET response in milliseconds. `cacheNamespace` keeps cached data separate for each user or session.
 
-`autoLogin` defaults to `true`. Set it to `false` for a public-only client. The exported SDK surface is authoritative; documentation files do not imply resources that `PackbaseSDK` does not export.
+The default value of `autoLogin` is `true`. Set it to `false` for a public-only client. The exported SDK interface is authoritative. The documentation does not specify resources that `PackbaseSDK` does not export.
 
 ## `RequestOptions`
 

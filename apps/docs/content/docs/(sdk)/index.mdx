@@ -1,14 +1,14 @@
 ---
 title: Packbase TypeScript SDK
-description: A friendly starting point for using the official Packbase API client.
+description: Start to use the official Packbase API client.
 ---
 
-The `@packbase/sdk-ts` package is the official TypeScript library for talking to the Packbase API. In less formal terms, it gives you ready-made methods like `pb.profiles()` and `pb.howls.create()` so you don't have to build every HTTP request yourself.
+The `@packbase/sdk-ts` package is the official TypeScript library for the Packbase API. It supplies methods such as `pb.profiles()` and `pb.howls.create()`. You do not have to make each HTTP request manually.
 
-It works in Node.js 18 or newer and in modern browsers. It also includes its own TypeScript types, so your editor can suggest available methods and point out mistakes before you run the code.
+The SDK works in Node.js 18 or later and in modern browsers. It includes TypeScript types. Your editor can show available methods and find type errors before you run the code.
 
 <Callout type="warn">
-  The Packbase API is still being developed, so some methods or response fields may change. Check these docs when you update the package.
+  The Packbase API is in development. Some methods or response fields can change. Read this documentation when you update the package.
 </Callout>
 
 ## A small example
@@ -16,7 +16,7 @@ It works in Node.js 18 or newer and in modern browsers. It also includes its own
 ```ts
 import { PackbaseSDK } from '@packbase/sdk-ts'
 
-// `pb` is the client we'll use for every Packbase request.
+// Use `pb` for each Packbase request.
 const pb = new PackbaseSDK({ apiKey: 'your-api-key' })
 
 // `await` pauses here until Packbase returns the profile.
@@ -33,11 +33,11 @@ const howl = await pb.howls.create({
 console.log(howl.id)
 ```
 
-The values such as `'your-api-key'` and `'your-pack-id'` are placeholders. Replace them with real values from your Packbase account or application.
+The values `'your-api-key'` and `'your-pack-id'` are placeholders. Replace them with values from your Packbase account or application.
 
 ## Lifecycle events
 
-`on()` remains chainable, and `off()` removes the exact listener when a component or process no longer needs it:
+`on()` is chainable. Use `off()` to remove a listener when a component or process does not need it:
 
 ```ts twoslash
 import { PackbaseSDK, type Profile } from '@packbase/sdk-ts'
@@ -50,7 +50,7 @@ pb.off('ready', onReady)
 
 ## Where to go next
 
-If this is your first time using a JavaScript or TypeScript library, start with Installation and then follow the Quickstart in order. The reference pages are better once you already know what you want to call.
+If you have not used a JavaScript or TypeScript library, start with Installation. Then, complete the Quickstart. Use the reference pages when you know which method you must call.
 
 <Cards>
   <Card title="Installation" href="/getting-started/installation" description="Install the package and check that your project can import it." />

@@ -5,7 +5,7 @@ description: TypeScript shapes for profiles, updates, friends, storage, and hist
 
 ## `Profile`
 
-`Profile` describes a Packbase account. Only `id`, `username`, and `display_name` are always present in this type. Fields ending in `?` may be missing, so optional chaining such as `profile.about?.bio` is often useful.
+`Profile` describes a Packbase account. Only `id`, `username`, and `display_name` are always present. Fields that end in `?` can be absent. Use optional chaining such as `profile.about?.bio` for these fields.
 
 ```ts
 interface Profile {
@@ -28,11 +28,11 @@ interface Profile {
 }
 ```
 
-`following` answers “does the current signed-in user follow this profile?” It may be absent on an anonymous request. Staff flags and fields such as `xp` can also be omitted when an endpoint returns a smaller profile summary.
+`following` identifies whether the current signed-in user follows this profile. It can be absent in an anonymous request. Staff flags and fields such as `xp` can also be absent if an endpoint returns a smaller profile summary.
 
 ## `UpdateProfileInput`
 
-This is the object accepted by `pb.me.update()`. Every field is optional because the method performs a partial update: include only the values you want to change.
+`pb.me.update()` accepts this object. Each field is optional because the method makes a partial update. Include only the values that you want to change.
 
 ```ts
 interface UpdateProfileInput {
@@ -45,7 +45,7 @@ interface UpdateProfileInput {
 }
 ```
 
-`pb.me.update()` returns `UpdateProfileResult`, which adds `id` and sometimes `username` to the submitted fields. It isn't a freshly fetched full `Profile`. Call `pb.me()` afterward if you need the complete current profile.
+`pb.me.update()` returns `UpdateProfileResult`. This type adds `id` and sometimes `username` to the submitted fields. It is not a new full `Profile`. Call `pb.me()` after the update if you require the full current profile.
 
 ## Friends and storage
 
@@ -72,7 +72,7 @@ interface StorageUsage {
 
 ## Profile history
 
-`ProfileHistoryEntry` is a saved version of a profile plus metadata describing when and why that version changed. The metadata fields are `history_id`, `entity_id`, `transaction_time`, `decision_time`, `operation`, and `changed_by`. See [`pb.profiles`](/reference/profiles) for the available date and ordering options.
+`ProfileHistoryEntry` is a saved version of a profile with its change metadata. The metadata fields are `history_id`, `entity_id`, `transaction_time`, `decision_time`, `operation`, and `changed_by`. Read [`pb.profiles`](/reference/profiles) for the date and order options.
 
 ## Import
 
