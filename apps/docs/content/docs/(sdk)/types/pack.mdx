@@ -5,15 +5,15 @@ description: TypeScript shapes for packs, members, roles, lists, and updates.
 
 ## `Pack`
 
-`Pack` describes a Packbase community that the API returns. Optional fields end in `?`. These fields can be absent because of the endpoint or authentication state.
+`Pack` describes a Packbase community that the API returns. Optional fields end in `?`. These fields can be absent because of the endpoint or authentication state. Some fields can also be `null`. `null` means that Packbase does not have a stored value.
 
 ```ts
 interface Pack {
   id: string
   display_name: string
-  about?: { bio?: string; flair?: string }
-  images?: { avatar?: string; header?: string }
-  owner_id?: string
+  about?: { bio?: string | null; flair?: string }
+  images?: { avatar?: string | null; header?: string | null }
+  owner_id?: string | null
   membership?: {
     id: number
     user_id: string

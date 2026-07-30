@@ -1,14 +1,14 @@
 export interface Profile {
     id: string
     username: string
-    display_name: string
+    display_name: string | null
     slug?: string
     badge?: string
     xp?: number
-    about?: { bio?: string; flair?: string }
+    about?: { bio?: string | null; flair?: string }
     space_type?: 'default' | 'custom_free' | 'custom_unrestricted'
     post_privacy?: 'everyone' | 'followers' | 'friends' | 'private'
-    images?: { avatar?: string; header?: string }
+    images?: { avatar?: string; header?: string | null }
     following?: boolean
     is_staff?: boolean
     is_content_moderator?: boolean

@@ -1,5 +1,5 @@
 import type { HttpClient } from '../http'
-import type { RequestOptions } from '../cache'
+import type { RequestOptions } from '../request'
 import type { Howl } from '../types/howl'
 import type {
     Pack,

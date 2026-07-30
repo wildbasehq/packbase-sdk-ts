@@ -77,27 +77,14 @@ const details = await pack // GET /pack/00000000-0000-0000-0000-000000000000
 const pb = new PackbaseSDK({
     baseUrl: 'https://vgs.packbase.app',
     apiKey: 'your-api-key-or-clerk-jwt',
-    cache: true,
-    cacheNamespace: 'current-user-id',
-    cacheTtlMs: 5 * 60 * 1000,
     autoLogin: false,
 })
 ```
 
 `baseUrl` defaults to `https://vgs.packbase.app`.
 
-Caching is disabled by default. When enabled, GET responses use IndexedDB in
-browsers and a shared in-memory cache in other runtimes. Successful writes
-invalidate the current namespace. Set a stable `cacheNamespace` for each user
-or session so persisted browser responses never cross account boundaries.
-
-Read calls can override the configured policy:
-
-```ts
-await pb.packs('00000000-0000-0000-0000-000000000000', {cache: false})
-await pb.packs.list({cache: true, cacheTtlMs: 30_000})
-await pb.feeds('universe:home').fetch({page: 2, cache: false})
-```
+The SDK does not maintain its own response cache. Add response caching in your
+application's data layer when needed.
 
 Every request accepts an `AbortSignal`, either directly through
 `RequestOptions` or alongside its operation-specific options:

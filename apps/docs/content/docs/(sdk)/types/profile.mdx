@@ -5,20 +5,20 @@ description: TypeScript shapes for profiles, updates, friends, storage, and hist
 
 ## `Profile`
 
-`Profile` describes a Packbase account. Only `id`, `username`, and `display_name` are always present. Fields that end in `?` can be absent. Use optional chaining such as `profile.about?.bio` for these fields.
+`Profile` describes a Packbase account. The API always includes `id`, `username`, and `display_name`. The value of `display_name` can be `null`. Fields that end in `?` can be absent. Use optional chaining such as `profile.about?.bio` for these fields.
 
 ```ts
 interface Profile {
   id: string
   username: string
-  display_name: string
+  display_name: string | null
   slug?: string
   badge?: string
   xp?: number
-  about?: { bio?: string; flair?: string }
+  about?: { bio?: string | null; flair?: string }
   space_type?: 'default' | 'custom_free' | 'custom_unrestricted'
   post_privacy?: 'everyone' | 'followers' | 'friends' | 'private'
-  images?: { avatar?: string; header?: string }
+  images?: { avatar?: string; header?: string | null }
   following?: boolean
   is_staff?: boolean
   is_content_moderator?: boolean
@@ -27,6 +27,8 @@ interface Profile {
   created_at?: string
 }
 ```
+
+The values of `about.bio` and `images.header` can be `null`. `null` means that Packbase does not have a stored value.
 
 `following` identifies whether the current signed-in user follows this profile. It can be absent in an anonymous request. Staff flags and fields such as `xp` can also be absent if an endpoint returns a smaller profile summary.
 

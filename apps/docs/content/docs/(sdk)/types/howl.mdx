@@ -25,7 +25,7 @@ interface Howl {
   reactions?: HowlReaction[]
   comments?: HowlComment[]
   pack?: Pack
-  warning?: { reason: string }
+  warning?: { reason: string } | null
   meta?: {
     rehowled: boolean
     pinned?: boolean
@@ -36,6 +36,8 @@ interface Howl {
 ```
 
 `parent_post` can contain the original post for quote howls. Its structure is not stable, and its type is `unknown`. Check the value before you use it. `rehowled_by` identifies the account that rehowled the post when this data is available.
+
+The `warning` field can be absent or `null`. In both cases, the howl does not have a warning. If `warning` is an object, `reason` explains the warning.
 
 ## Content and ratings
 

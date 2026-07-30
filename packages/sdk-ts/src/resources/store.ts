@@ -1,4 +1,4 @@
-import type { RequestOptions } from '../cache'
+import type { RequestOptions } from '../request'
 import type { HttpClient } from '../http'
 import type { JsonValue } from '../types/json'
 

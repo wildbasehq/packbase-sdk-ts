@@ -1,4 +1,4 @@
-import type { RequestOptions } from '../cache'
+import type { RequestOptions } from '../request'
 import type { HttpClient } from '../http'
 
 export interface Folder {

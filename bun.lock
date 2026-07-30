@@ -36,7 +36,7 @@
     },
     "packages/sdk-ts": {
       "name": "@packbase/sdk-ts",
-      "version": "0.1.0",
+      "version": "0.3.0",
       "devDependencies": {
         "@types/bun": "latest",
         "typescript": "^5.9.3",

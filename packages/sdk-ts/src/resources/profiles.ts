@@ -1,5 +1,5 @@
 import type { HttpClient } from '../http'
-import type { RequestOptions } from '../cache'
+import type { RequestOptions } from '../request'
 import type { Profile, ProfileHistoryEntry, ProfileHistoryOptions } from '../types/profile'
 import type { ReportReasonValue, ReportResult } from '../types/report'
 import { ThenableResource } from './base'

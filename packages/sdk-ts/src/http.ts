@@ -1,16 +1,5 @@
 import { PackbaseError } from './errors'
-import { getCacheStore, type RequestOptions } from './cache'
-
-const DEFAULT_CACHE_TTL_MS = 5 * 60 * 1000
-
-function hashNamespace(value: string): string {
-    let hash = 2166136261
-    for (let index = 0; index < value.length; index += 1) {
-        hash ^= value.charCodeAt(index)
-        hash = Math.imul(hash, 16777619)
-    }
-    return (hash >>> 0).toString(36)
-}
+import type { RequestOptions } from './request'
 
 /**
  * Configuration passed to `PackbaseSDK` and forwarded to `HttpClient`.
@@ -30,19 +19,6 @@ export interface SDKConfig {
      * (`credentials: 'include'`).
      */
     apiKey?: string
-
-    /** Enables response caching for GET requests. Disabled by default. */
-    cache?: boolean
-
-    /** Default time-to-live for cached GET responses. @default 300000 */
-    cacheTtlMs?: number
-
-    /**
-     * Stable cache partition for the authenticated user or session.
-     * Supplying this is recommended when browser storage is shared by users.
-     */
-    cacheNamespace?: string
-
 }
 
 /**
@@ -57,11 +33,8 @@ export interface SDKConfig {
 export class HttpClient {
     private readonly baseUrl: string
     private readonly apiKey: string | undefined
-    private readonly cacheEnabled: boolean
-    private readonly cacheNamespace: string
-    private readonly cacheTtlMs: number
+    /** Unresolved GETs only; settled responses are never retained. */
     private readonly pendingReads = new Map<string, Promise<unknown>>()
-    private cacheGeneration = 0
 
     /**
      * Creates a new HTTP client instance.
@@ -71,11 +44,6 @@ export class HttpClient {
     constructor(config: SDKConfig) {
         this.baseUrl = config.baseUrl.replace(/\/$/, '')
         this.apiKey = config.apiKey
-        this.cacheEnabled = config.cache ?? false
-        this.cacheTtlMs = config.cacheTtlMs ?? DEFAULT_CACHE_TTL_MS
-        const partition = config.cacheNamespace
-            ?? hashNamespace(config.apiKey ?? 'cookie-session')
-        this.cacheNamespace = `${this.baseUrl}:${partition}`
     }
 
     /**
@@ -156,47 +124,31 @@ export class HttpClient {
     ): Promise<T> {
         this.throwIfAborted(options.signal)
         const url = this.buildUrl(path, query)
-        const shouldCache = options.cache ?? this.cacheEnabled
 
-        if (!shouldCache) return this.fetchGet<T>(url, options)
+        // Requests with their own signal cannot safely share cancellation.
+        if (options.signal) return this.fetchGet<T>(url, options)
 
-        const key = `${this.cacheNamespace}:${url}`
-        const store = getCacheStore()
-        const cached = await store.get(key)
-        if (cached && cached.expiresAt > Date.now()) return cached.value as T
-        if (cached) {
-            await store.delete(key)
-        }
-
-        const pending = options.signal ? undefined : this.pendingReads.get(key)
+        const pending = this.pendingReads.get(url)
         if (pending) return pending as Promise<T>
 
-        const generation = this.cacheGeneration
-        const request = this.fetchGet<T>(url, options).then(async value => {
-            this.throwIfAborted(options.signal)
-            const ttl = options.cacheTtlMs ?? this.cacheTtlMs
-            if (ttl > 0 && generation === this.cacheGeneration) {
-                await store.set(key, {value, expiresAt: Date.now() + ttl})
-            }
-            return value
-        }).finally(() => {
-            if (this.pendingReads.get(key) === request) {
-                this.pendingReads.delete(key)
+        const request = this.fetchGet<T>(url, options).finally(() => {
+            if (this.pendingReads.get(url) === request) {
+                this.pendingReads.delete(url)
             }
         })
 
-        if (!options.signal) this.pendingReads.set(key, request)
+        this.pendingReads.set(url, request)
         return request
     }
 
-    /** @internal Performs a side-effecting legacy GET and invalidates cached reads. */
+    /** @internal Performs a side-effecting legacy GET and resets pending reads. */
     async getMutation<T>(
         path: string,
         query?: Record<string, unknown>,
         options: RequestOptions = {},
     ): Promise<T> {
         const value = await this.fetchGet<T>(this.buildUrl(path, query), options)
-        await this.invalidateCache()
+        this.clearPendingReads()
         return value
     }
 
@@ -231,7 +183,7 @@ export class HttpClient {
             signal: options.signal,
         })
         const value = await this.handleResponse<T>(res)
-        await this.invalidateCache()
+        this.clearPendingReads()
         return value
     }
 
@@ -255,7 +207,7 @@ export class HttpClient {
             signal: options.signal,
         })
         const value = await this.handleResponse<T>(res)
-        await this.invalidateCache()
+        this.clearPendingReads()
         return value
     }
 
@@ -279,7 +231,7 @@ export class HttpClient {
             signal: options.signal,
         })
         const value = await this.handleResponse<T>(res)
-        await this.invalidateCache()
+        this.clearPendingReads()
         return value
     }
 
@@ -308,7 +260,7 @@ export class HttpClient {
             signal: options.signal,
         })
         const value = await this.handleResponse<T>(res)
-        await this.invalidateCache()
+        this.clearPendingReads()
         return value
     }
 
@@ -323,7 +275,7 @@ export class HttpClient {
             signal: options.signal,
         })
         const value = await this.handleResponse<T>(res)
-        await this.invalidateCache()
+        this.clearPendingReads()
         return value
     }
 
@@ -347,9 +299,7 @@ export class HttpClient {
         throw signal.reason ?? new DOMException('The operation was aborted', 'AbortError')
     }
 
-    private async invalidateCache(): Promise<void> {
-        this.cacheGeneration += 1
+    private clearPendingReads(): void {
         this.pendingReads.clear()
-        await getCacheStore().clear(this.cacheNamespace)
     }
 }

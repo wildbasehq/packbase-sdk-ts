@@ -1,4 +1,4 @@
-import type { RequestOptions } from '../cache'
+import type { RequestOptions } from '../request'
 import type { HttpClient } from '../http'
 import type { Pack } from '../types/pack'
 import type { Profile } from '../types/profile'

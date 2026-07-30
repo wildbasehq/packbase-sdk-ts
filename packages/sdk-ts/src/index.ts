@@ -2,7 +2,7 @@ export { PackbaseSDK } from './client'
 export type { PackbaseSDKConfig, PackbaseSDKEvents } from './client'
 
 export { PackbaseError } from './errors'
-export type { RequestOptions } from './cache'
+export type { RequestOptions } from './request'
 export { decodeSettings } from './settings'
 export type { SettingDecoder, SettingDecoderMap } from './settings'
 export type { JsonPrimitive, JsonObject, JsonValue } from './types/json'

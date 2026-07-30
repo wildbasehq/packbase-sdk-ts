@@ -43,7 +43,7 @@ export interface Howl {
     reactions?: HowlReaction[]
     comments?: HowlComment[]
     pack?: Pack
-    warning?: { reason: string }
+    warning?: { reason: string } | null
     meta?: {
         rehowled: boolean
         pinned?: boolean

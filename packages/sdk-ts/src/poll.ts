@@ -96,13 +96,13 @@ export class Poller {
             const status = await this.http.get<HowlJobStatus>(
                 `/howl/create/status/${jobId}`,
                 undefined,
-                {cache: false, signal},
+                {signal},
             )
 
             onProgress?.(status)
 
             if (status.status === 'completed') {
-                return this.http.get<Howl>(`/howl/${jobId}`, undefined, {cache: false, signal})
+                return this.http.get<Howl>(`/howl/${jobId}`, undefined, {signal})
             }
 
             if (status.status === 'failed') {

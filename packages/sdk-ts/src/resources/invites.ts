@@ -1,5 +1,5 @@
 import type { HttpClient } from '../http'
-import type { RequestOptions } from '../cache'
+import type { RequestOptions } from '../request'
 import type { JsonValue } from '../types/json'
 
 /** An email invitation created through Clerk. */

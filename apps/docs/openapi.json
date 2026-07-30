@@ -1532,8 +1532,15 @@
                                 "type": "string"
                               },
                               "display_name": {
-                                "maxLength": 128,
-                                "type": "string"
+                                "anyOf": [
+                                  {
+                                    "maxLength": 128,
+                                    "type": "string"
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
                               },
                               "badge": {
                                 "type": "string"
@@ -1545,8 +1552,15 @@
                                 "type": "object",
                                 "properties": {
                                   "bio": {
-                                    "maxLength": 256,
-                                    "type": "string"
+                                    "anyOf": [
+                                      {
+                                        "maxLength": 256,
+                                        "type": "string"
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ]
                                   },
                                   "flair": {
                                     "maxLength": 12,
@@ -1675,7 +1689,14 @@
                                 "type": "object",
                                 "properties": {
                                   "bio": {
-                                    "type": "string"
+                                    "anyOf": [
+                                      {
+                                        "type": "string"
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ]
                                   },
                                   "flair": {
                                     "type": "string"
@@ -1686,10 +1707,24 @@
                                 "type": "object",
                                 "properties": {
                                   "avatar": {
-                                    "type": "string"
+                                    "anyOf": [
+                                      {
+                                        "type": "string"
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ]
                                   },
                                   "header": {
-                                    "type": "string"
+                                    "anyOf": [
+                                      {
+                                        "type": "string"
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ]
                                   }
                                 }
                               },
@@ -1731,7 +1766,14 @@
                                 "type": "string"
                               },
                               "owner_id": {
-                                "type": "string"
+                                "anyOf": [
+                                  {
+                                    "type": "string"
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
                               }
                             }
                           }
@@ -3395,8 +3437,15 @@
                                 "type": "string"
                               },
                               "display_name": {
-                                "maxLength": 128,
-                                "type": "string"
+                                "anyOf": [
+                                  {
+                                    "maxLength": 128,
+                                    "type": "string"
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
                               },
                               "badge": {
                                 "type": "string"
@@ -3408,8 +3457,15 @@
                                 "type": "object",
                                 "properties": {
                                   "bio": {
-                                    "maxLength": 256,
-                                    "type": "string"
+                                    "anyOf": [
+                                      {
+                                        "maxLength": 256,
+                                        "type": "string"
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ]
                                   },
                                   "flair": {
                                     "maxLength": 12,
@@ -3541,8 +3597,15 @@
                                 "type": "string"
                               },
                               "display_name": {
-                                "maxLength": 128,
-                                "type": "string"
+                                "anyOf": [
+                                  {
+                                    "maxLength": 128,
+                                    "type": "string"
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
                               },
                               "badge": {
                                 "type": "string"
@@ -3554,8 +3617,15 @@
                                 "type": "object",
                                 "properties": {
                                   "bio": {
-                                    "maxLength": 256,
-                                    "type": "string"
+                                    "anyOf": [
+                                      {
+                                        "maxLength": 256,
+                                        "type": "string"
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ]
                                   },
                                   "flair": {
                                     "maxLength": 12,
@@ -3670,8 +3740,15 @@
                                       "type": "string"
                                     },
                                     "display_name": {
-                                      "maxLength": 128,
-                                      "type": "string"
+                                      "anyOf": [
+                                        {
+                                          "maxLength": 128,
+                                          "type": "string"
+                                        },
+                                        {
+                                          "type": "null"
+                                        }
+                                      ]
                                     },
                                     "badge": {
                                       "type": "string"
@@ -3683,8 +3760,15 @@
                                       "type": "object",
                                       "properties": {
                                         "bio": {
-                                          "maxLength": 256,
-                                          "type": "string"
+                                          "anyOf": [
+                                            {
+                                              "maxLength": 256,
+                                              "type": "string"
+                                            },
+                                            {
+                                              "type": "null"
+                                            }
+                                          ]
                                         },
                                         "flair": {
                                           "maxLength": 12,
@@ -3782,7 +3866,14 @@
                                 "type": "object",
                                 "properties": {
                                   "bio": {
-                                    "type": "string"
+                                    "anyOf": [
+                                      {
+                                        "type": "string"
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ]
                                   },
                                   "flair": {
                                     "type": "string"
@@ -3793,10 +3884,24 @@
                                 "type": "object",
                                 "properties": {
                                   "avatar": {
-                                    "type": "string"
+                                    "anyOf": [
+                                      {
+                                        "type": "string"
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ]
                                   },
                                   "header": {
-                                    "type": "string"
+                                    "anyOf": [
+                                      {
+                                        "type": "string"
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ]
                                   }
                                 }
                               },
@@ -3838,20 +3943,34 @@
                                 "type": "string"
                               },
                               "owner_id": {
-                                "type": "string"
+                                "anyOf": [
+                                  {
+                                    "type": "string"
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
                               }
                             }
                           },
                           "warning": {
-                            "type": "object",
-                            "required": [
-                              "reason"
-                            ],
-                            "properties": {
-                              "reason": {
-                                "type": "string"
+                            "anyOf": [
+                              {
+                                "type": "object",
+                                "required": [
+                                  "reason"
+                                ],
+                                "properties": {
+                                  "reason": {
+                                    "type": "string"
+                                  }
+                                }
+                              },
+                              {
+                                "type": "null"
                               }
-                            }
+                            ]
                           },
                           "meta": {
                             "type": "object",
@@ -3941,8 +4060,15 @@
                                 "type": "string"
                               },
                               "display_name": {
-                                "maxLength": 128,
-                                "type": "string"
+                                "anyOf": [
+                                  {
+                                    "maxLength": 128,
+                                    "type": "string"
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
                               },
                               "badge": {
                                 "type": "string"
@@ -3954,8 +4080,15 @@
                                 "type": "object",
                                 "properties": {
                                   "bio": {
-                                    "maxLength": 256,
-                                    "type": "string"
+                                    "anyOf": [
+                                      {
+                                        "maxLength": 256,
+                                        "type": "string"
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ]
                                   },
                                   "flair": {
                                     "maxLength": 12,
@@ -4087,8 +4220,15 @@
                                 "type": "string"
                               },
                               "display_name": {
-                                "maxLength": 128,
-                                "type": "string"
+                                "anyOf": [
+                                  {
+                                    "maxLength": 128,
+                                    "type": "string"
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
                               },
                               "badge": {
                                 "type": "string"
@@ -4100,8 +4240,15 @@
                                 "type": "object",
                                 "properties": {
                                   "bio": {
-                                    "maxLength": 256,
-                                    "type": "string"
+                                    "anyOf": [
+                                      {
+                                        "maxLength": 256,
+                                        "type": "string"
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ]
                                   },
                                   "flair": {
                                     "maxLength": 12,
@@ -4216,8 +4363,15 @@
                                       "type": "string"
                                     },
                                     "display_name": {
-                                      "maxLength": 128,
-                                      "type": "string"
+                                      "anyOf": [
+                                        {
+                                          "maxLength": 128,
+                                          "type": "string"
+                                        },
+                                        {
+                                          "type": "null"
+                                        }
+                                      ]
                                     },
                                     "badge": {
                                       "type": "string"
@@ -4229,8 +4383,15 @@
                                       "type": "object",
                                       "properties": {
                                         "bio": {
-                                          "maxLength": 256,
-                                          "type": "string"
+                                          "anyOf": [
+                                            {
+                                              "maxLength": 256,
+                                              "type": "string"
+                                            },
+                                            {
+                                              "type": "null"
+                                            }
+                                          ]
                                         },
                                         "flair": {
                                           "maxLength": 12,
@@ -4328,7 +4489,14 @@
                                 "type": "object",
                                 "properties": {
                                   "bio": {
-                                    "type": "string"
+                                    "anyOf": [
+                                      {
+                                        "type": "string"
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ]
                                   },
                                   "flair": {
                                     "type": "string"
@@ -4339,10 +4507,24 @@
                                 "type": "object",
                                 "properties": {
                                   "avatar": {
-                                    "type": "string"
+                                    "anyOf": [
+                                      {
+                                        "type": "string"
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ]
                                   },
                                   "header": {
-                                    "type": "string"
+                                    "anyOf": [
+                                      {
+                                        "type": "string"
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ]
                                   }
                                 }
                               },
@@ -4384,20 +4566,34 @@
                                 "type": "string"
                               },
                               "owner_id": {
-                                "type": "string"
+                                "anyOf": [
+                                  {
+                                    "type": "string"
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
                               }
                             }
                           },
                           "warning": {
-                            "type": "object",
-                            "required": [
-                              "reason"
-                            ],
-                            "properties": {
-                              "reason": {
-                                "type": "string"
+                            "anyOf": [
+                              {
+                                "type": "object",
+                                "required": [
+                                  "reason"
+                                ],
+                                "properties": {
+                                  "reason": {
+                                    "type": "string"
+                                  }
+                                }
+                              },
+                              {
+                                "type": "null"
                               }
-                            }
+                            ]
                           },
                           "meta": {
                             "type": "object",
@@ -4644,8 +4840,15 @@
                       "type": "string"
                     },
                     "display_name": {
-                      "maxLength": 128,
-                      "type": "string"
+                      "anyOf": [
+                        {
+                          "maxLength": 128,
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
                     },
                     "badge": {
                       "type": "string"
@@ -4657,8 +4860,15 @@
                       "type": "object",
                       "properties": {
                         "bio": {
-                          "maxLength": 256,
-                          "type": "string"
+                          "anyOf": [
+                            {
+                              "maxLength": 256,
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
                         },
                         "flair": {
                           "maxLength": 12,
@@ -5222,7 +5432,14 @@
                       "type": "object",
                       "properties": {
                         "bio": {
-                          "type": "string"
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
                         },
                         "flair": {
                           "type": "string"
@@ -5233,10 +5450,24 @@
                       "type": "object",
                       "properties": {
                         "avatar": {
-                          "type": "string"
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
                         },
                         "header": {
-                          "type": "string"
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
                         }
                       }
                     },
@@ -5278,7 +5509,14 @@
                       "type": "string"
                     },
                     "owner_id": {
-                      "type": "string"
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
                     }
                   },
                   "required": [
@@ -5900,8 +6138,15 @@
                                 "type": "string"
                               },
                               "display_name": {
-                                "maxLength": 128,
-                                "type": "string"
+                                "anyOf": [
+                                  {
+                                    "maxLength": 128,
+                                    "type": "string"
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
                               },
                               "badge": {
                                 "type": "string"
@@ -5913,8 +6158,15 @@
                                 "type": "object",
                                 "properties": {
                                   "bio": {
-                                    "maxLength": 256,
-                                    "type": "string"
+                                    "anyOf": [
+                                      {
+                                        "maxLength": 256,
+                                        "type": "string"
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ]
                                   },
                                   "flair": {
                                     "maxLength": 12,
@@ -6046,8 +6298,15 @@
                                 "type": "string"
                               },
                               "display_name": {
-                                "maxLength": 128,
-                                "type": "string"
+                                "anyOf": [
+                                  {
+                                    "maxLength": 128,
+                                    "type": "string"
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
                               },
                               "badge": {
                                 "type": "string"
@@ -6059,8 +6318,15 @@
                                 "type": "object",
                                 "properties": {
                                   "bio": {
-                                    "maxLength": 256,
-                                    "type": "string"
+                                    "anyOf": [
+                                      {
+                                        "maxLength": 256,
+                                        "type": "string"
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ]
                                   },
                                   "flair": {
                                     "maxLength": 12,
@@ -6175,8 +6441,15 @@
                                       "type": "string"
                                     },
                                     "display_name": {
-                                      "maxLength": 128,
-                                      "type": "string"
+                                      "anyOf": [
+                                        {
+                                          "maxLength": 128,
+                                          "type": "string"
+                                        },
+                                        {
+                                          "type": "null"
+                                        }
+                                      ]
                                     },
                                     "badge": {
                                       "type": "string"
@@ -6188,8 +6461,15 @@
                                       "type": "object",
                                       "properties": {
                                         "bio": {
-                                          "maxLength": 256,
-                                          "type": "string"
+                                          "anyOf": [
+                                            {
+                                              "maxLength": 256,
+                                              "type": "string"
+                                            },
+                                            {
+                                              "type": "null"
+                                            }
+                                          ]
                                         },
                                         "flair": {
                                           "maxLength": 12,
@@ -6287,7 +6567,14 @@
                                 "type": "object",
                                 "properties": {
                                   "bio": {
-                                    "type": "string"
+                                    "anyOf": [
+                                      {
+                                        "type": "string"
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ]
                                   },
                                   "flair": {
                                     "type": "string"
@@ -6298,10 +6585,24 @@
                                 "type": "object",
                                 "properties": {
                                   "avatar": {
-                                    "type": "string"
+                                    "anyOf": [
+                                      {
+                                        "type": "string"
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ]
                                   },
                                   "header": {
-                                    "type": "string"
+                                    "anyOf": [
+                                      {
+                                        "type": "string"
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ]
                                   }
                                 }
                               },
@@ -6343,20 +6644,34 @@
                                 "type": "string"
                               },
                               "owner_id": {
-                                "type": "string"
+                                "anyOf": [
+                                  {
+                                    "type": "string"
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
                               }
                             }
                           },
                           "warning": {
-                            "type": "object",
-                            "required": [
-                              "reason"
-                            ],
-                            "properties": {
-                              "reason": {
-                                "type": "string"
+                            "anyOf": [
+                              {
+                                "type": "object",
+                                "required": [
+                                  "reason"
+                                ],
+                                "properties": {
+                                  "reason": {
+                                    "type": "string"
+                                  }
+                                }
+                              },
+                              {
+                                "type": "null"
                               }
-                            }
+                            ]
                           },
                           "meta": {
                             "type": "object",

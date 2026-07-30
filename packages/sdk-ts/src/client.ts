@@ -25,7 +25,7 @@ class EventEmitter<TMap extends { [K in keyof TMap]: unknown[] }> {
 }
 import { PackbaseError } from './errors'
 import { HttpClient, type SDKConfig } from './http'
-import type { RequestOptions } from './cache'
+import type { RequestOptions } from './request'
 import { Poller } from './poll'
 import { type FeedsFn, makeFeeds } from './resources/feeds'
 import { type HowlsFn, makeHowls } from './resources/howls'
@@ -270,9 +270,6 @@ export class PackbaseSDK {
         this.http = new HttpClient({
             baseUrl: config.baseUrl ?? 'https://vgs.packbase.app',
             apiKey: config.apiKey,
-            cache: config.cache,
-            cacheNamespace: config.cacheNamespace,
-            cacheTtlMs: config.cacheTtlMs,
         })
 
         this._events = new EventEmitter<PackbaseSDKEvents>()

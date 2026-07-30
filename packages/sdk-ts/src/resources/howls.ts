@@ -1,5 +1,5 @@
 import type { HttpClient } from '../http'
-import type { RequestOptions } from '../cache'
+import type { RequestOptions } from '../request'
 import type { Poller, PollOptions } from '../poll'
 import type { Howl, HowlCreateInput, HowlCreationJob } from '../types/howl'
 import type { JsonObject } from '../types/json'

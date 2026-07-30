@@ -1,5 +1,5 @@
 import type { HttpClient } from '../http'
-import type { RequestOptions } from '../cache'
+import type { RequestOptions } from '../request'
 import type { FeedPage } from '../types/feed'
 
 export class FeedHandle {

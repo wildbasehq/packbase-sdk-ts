@@ -4,9 +4,9 @@ import type { JsonValue } from './json'
 export interface Pack {
     id: string
     display_name: string
-    about?: { bio?: string; flair?: string }
-    images?: { avatar?: string; header?: string }
-    owner_id?: string
+    about?: { bio?: string | null; flair?: string }
+    images?: { avatar?: string | null; header?: string | null }
+    owner_id?: string | null
     membership?: {
         id: number
         user_id: string
