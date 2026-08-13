@@ -23,7 +23,8 @@ export interface UpdateProfileInput {
     about?: { bio?: string }
     space_type?: 'default' | 'custom_free' | 'custom_unrestricted'
     post_privacy?: 'everyone' | 'followers' | 'friends' | 'private'
-    images?: { header?: string }
+    /** Image fields accept base64 data URLs. */
+    images?: { avatar?: string; header?: string }
 }
 
 /** The partial profile returned by `POST /user/me`. */

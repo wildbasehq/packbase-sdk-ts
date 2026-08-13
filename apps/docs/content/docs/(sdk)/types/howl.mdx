@@ -9,8 +9,11 @@ description: TypeScript shapes for howls, creation input, interactions, assets, 
 
 ```ts
 interface Howl {
+  /** ID of this concrete howl record, including a rehowl or quote rehowl. */
   id: string
+  /** @deprecated Legacy alias for a rehowl record ID. Use `id`. */
   rehowl_id?: string
+  /** ID of the canonical/original howl used as the interaction target. */
   canonical_id?: string
   parent_post?: unknown
   tenant_id?: string
@@ -34,6 +37,10 @@ interface Howl {
   }
 }
 ```
+
+`id` always identifies the concrete record represented by the response. For a rehowl or quote rehowl, it is that rehowl record's ID—not the parent's ID. Use it for record-specific operations such as `pb.howls(howl.id).delete()`.
+
+`canonical_id`, when present, identifies the canonical/original howl. Use it when an interaction intentionally targets the original howl. `rehowl_id` is an optional legacy field retained for compatibility with older payloads; new code should use `id`.
 
 `parent_post` can contain the original post for quote howls. Its structure is not stable, and its type is `unknown`. Check the value before you use it. `rehowled_by` identifies the account that rehowled the post when this data is available.
 

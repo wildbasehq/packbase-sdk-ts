@@ -28,12 +28,13 @@ const pb = new PackbaseSDK()
 const updated = await pb.me.update({
   display_name: 'New Display Name',
   about: { bio: 'Updated bio text' },
+  images: { avatar: 'data:image/png;base64,iVBORw0KGgo...' },
   post_privacy: 'followers',
   space_type: 'custom_free',
 })
 ```
 
-This is a partial update. Include only the fields that you want to change. Supported fields are `display_name`, `slug`, `about.bio`, `space_type`, `post_privacy`, and `images.header`. The response contains the fields that the server wrote. It does not contain a new full profile. Call `pb.me()` after the update if you require the full result.
+This is a partial update. Include only the fields that you want to change. Supported fields are `display_name`, `slug`, `about.bio`, `space_type`, `post_privacy`, `images.avatar`, and `images.header`. Image fields accept complete base64 data URLs. The response contains the fields that the server wrote. It does not contain a new full profile. Call `pb.me()` after the update if you require the full result.
 
 ## Settings
 

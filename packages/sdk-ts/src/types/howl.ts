@@ -27,8 +27,15 @@ export interface HowlComment {
 }
 
 export interface Howl {
+    /** ID of this concrete howl record, including a rehowl or quote rehowl. */
     id: string
+    /**
+     * Legacy rehowl-record ID returned by older API payloads.
+     *
+     * @deprecated Use `id`, which always identifies the concrete howl record.
+     */
     rehowl_id?: string
+    /** ID of the canonical/original howl used as the interaction target. */
     canonical_id?: string
     parent_post?: unknown
     tenant_id?: string

@@ -7,7 +7,8 @@ import type { ReportReasonValue, ReportResult } from '../types/report'
 import { ThenableResource } from './base'
 
 /**
- * A handle for a single howl (post). Await it to fetch the howl's data, or
+ * A handle for one concrete howl record. Pass `howl.id`, including for a
+ * rehowl or quote rehowl. Await it to fetch the howl's data, or
  * call one of its methods to react, comment, delete, etc.
  *
  * @example
@@ -28,7 +29,7 @@ export class HowlHandle extends ThenableResource<Howl> {
     }
 
     /**
-     * Deletes this howl (`DELETE /howl/:id`).
+     * Deletes this concrete howl record (`DELETE /howl/:id`).
      *
      * @returns Resolves when the howl has been deleted.
      */

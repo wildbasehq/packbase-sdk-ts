@@ -43,9 +43,11 @@ interface UpdateProfileInput {
   about?: { bio?: string }
   space_type?: 'default' | 'custom_free' | 'custom_unrestricted'
   post_privacy?: 'everyone' | 'followers' | 'friends' | 'private'
-  images?: { header?: string }
+  images?: { avatar?: string; header?: string }
 }
 ```
+
+Image updates accept base64 data URLs. Pass the complete data URL, including its MIME type, to `images.avatar` or `images.header`.
 
 `pb.me.update()` returns `UpdateProfileResult`. This type adds `id` and sometimes `username` to the submitted fields. It is not a new full `Profile`. Call `pb.me()` after the update if you require the full current profile.
 
