@@ -1,3 +1,5 @@
+import type {Pack} from './pack.ts'
+
 export interface Profile {
     id: string
     username: string
@@ -15,6 +17,7 @@ export interface Profile {
     is_dx?: boolean
     type?: 'PRIVILEDGED' | 'ALUMNI'
     created_at?: string
+    default_pack?: Pack | null
 }
 
 export interface UpdateProfileInput {
