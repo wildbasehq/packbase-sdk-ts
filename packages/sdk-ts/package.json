@@ -1,6 +1,6 @@
 {
   "name": "@packbase/sdk-ts",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "description": "Typed, dependency-free TypeScript client for the Packbase API.",
   "license": "MIT",
   "sideEffects": false,
