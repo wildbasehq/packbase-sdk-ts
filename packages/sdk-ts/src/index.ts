@@ -111,3 +111,4 @@ export type {
     StoreResource,
     StorePurchaseOptions,
 } from './resources/store'
+export type { Tag, CreateTagInput, UpdateTagInput, TagsFn } from './resources/tags'

@@ -1,9 +1,9 @@
 ---
 title: pb.tags
-description: Fetch the tags that can be attached to Packbase howls.
+description: List registered howl tags and manage their metadata.
 ---
 
-`pb.tags()` fetches the current list of tags for howls. It returns strings. Use these strings to make a tag selector or validate a user's selection.
+`pb.tags()` fetches the registered machine-readable tags that can be attached to howls. The callable list API continues to return strings. Use `pb.tags.get()` when you need a tag's human-readable title and HTML description.
 
 ## `pb.tags()`: Fetch all tags
 
@@ -20,6 +20,100 @@ console.log(tags) // ['rating_safe', 'rating_mature', 'art', 'digital', ...]
 ```
 
 **Returns:** `Promise<string[]>`
+
+## `pb.tags.get()`: Fetch tag metadata
+
+Pass the machine-readable tag from a howl or tag URL:
+
+```ts twoslash
+import { PackbaseSDK } from '@packbase/sdk-ts'
+const pb = new PackbaseSDK()
+// ---cut---
+const tag = await pb.tags.get('digital_art')
+//    ^?
+
+console.log(tag.title) // 'Digital art'
+```
+
+The returned `Tag` has three fields:
+
+```ts
+interface Tag {
+  tag: string
+  title: string
+  description: string // HTML
+}
+```
+
+An unknown tag rejects with a `PackbaseError` whose status is `404`.
+
+## Follow tags
+
+Authenticated users can follow tags to include matching howls in their `universe:home` and `gossip:network` feeds. A followed tag can be any valid tag used by a howl; it does not need to be registered in the tag catalog.
+
+```ts twoslash
+import { PackbaseSDK } from '@packbase/sdk-ts'
+const pb = new PackbaseSDK()
+// ---cut---
+await pb.tags.follow('digital_art')
+
+const followedTags = await pb.tags.following()
+//    ^?
+
+await pb.tags.unfollow('digital_art')
+```
+
+- `pb.tags.follow(tag)` sends `POST /tags/:tag/follow` and returns `Promise<void>`.
+- `pb.tags.following()` sends `GET /user/me/following/tags` and returns `Promise<string[]>`.
+- `pb.tags.unfollow(tag)` sends `DELETE /tags/:tag/follow` and returns `Promise<void>`.
+
+Tag identifiers are URL-encoded by the SDK. Follow and unfollow requests resolve after the server returns `204 No Content`.
+
+## `pb.tags.create()`: Register a tag
+
+Packbase staff and content moderators can register a tag. The machine-readable tag, human-readable title, and HTML description are all required.
+
+```ts twoslash
+import { PackbaseSDK } from '@packbase/sdk-ts'
+const pb = new PackbaseSDK()
+// ---cut---
+const tag = await pb.tags.create({
+  tag: 'digital_art',
+  title: 'Digital art',
+  description: '<p>Artwork made with digital tools.</p>',
+})
+```
+
+**Returns:** `Promise<Tag>`
+
+## `pb.tags.update()`: Update tag metadata
+
+Packbase staff and content moderators can update a tag's title, description, or both. At least one field is required. The machine-readable tag identifier cannot be renamed.
+
+```ts twoslash
+import { PackbaseSDK } from '@packbase/sdk-ts'
+const pb = new PackbaseSDK()
+// ---cut---
+const tag = await pb.tags.update('digital_art', {
+  title: 'Digital illustration',
+  description: '<p>Illustration and artwork made with digital tools.</p>',
+})
+```
+
+**Returns:** `Promise<Tag>`
+
+## `pb.tags.delete()`: Delete a tag
+
+Packbase staff and content moderators can remove a tag from the registry:
+
+```ts twoslash
+import { PackbaseSDK } from '@packbase/sdk-ts'
+const pb = new PackbaseSDK()
+// ---cut---
+await pb.tags.delete('digital_art')
+```
+
+Deletion does not rewrite existing howls that already contain the tag. The request resolves with no value after the server returns `204 No Content`.
 
 ## Usage example
 
@@ -42,6 +136,9 @@ console.log('Available content tags:', contentTags)
 
 ## Notes
 
-- Tags are returned as plain strings.
+- `pb.tags()` returns plain machine-readable strings for backward compatibility.
+- Titles and descriptions belong to registered tag metadata, not individual howls.
+- Machine-readable tag identifiers are immutable.
+- Tag descriptions use HTML.
 - Every new howl needs exactly one rating tag (`rating_safe`, `rating_mature`, `rating_suggestive`, or `rating_explicit`). Its position does not matter.
 - Additional tags beyond the rating are optional and free-form.

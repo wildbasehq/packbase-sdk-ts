@@ -37,6 +37,7 @@ import { makeMe, type MeFn } from './resources/me'
 import { makePacks, type PacksFn } from './resources/packs'
 import { makeProfiles, type ProfilesFn } from './resources/profiles'
 import { type StoreResource, makeStore } from './resources/store'
+import { makeTags, type TagsFn } from './resources/tags'
 import type { NamedQueryMap, TypedNamedResultMap } from './search'
 import type { Profile } from './types/profile'
 
@@ -263,6 +264,28 @@ export class PackbaseSDK {
      * ```
      */
     readonly folders: FoldersResource
+    /**
+     * Tag catalog. Call it to list registered machine-readable tag names, or
+     * use `get`, `create`, `update`, and `delete` to manage tag metadata.
+     * Authenticated users can also follow tags for their home and gossip feeds.
+     *
+     * @example
+     * ```ts
+     * const names = await pb.tags()
+     * const art = await pb.tags.get('art')
+     * await pb.tags.follow('art')
+     * const followed = await pb.tags.following()
+     * await pb.tags.unfollow('art')
+     * await pb.tags.create({
+     *   tag: 'digital_art',
+     *   title: 'Digital art',
+     *   description: '<p>Artwork made with digital tools.</p>',
+     * })
+     * await pb.tags.update('digital_art', { title: 'Digital illustration' })
+     * await pb.tags.delete('digital_art')
+     * ```
+     */
+    readonly tags: TagsFn
     private readonly http: HttpClient
     private readonly _events: EventEmitter<PackbaseSDKEvents>
 
@@ -287,6 +310,7 @@ export class PackbaseSDK {
         this.store = makeStore(this.http)
         this.invites = makeInvites(this.http)
         this.folders = makeFolders(this.http)
+        this.tags = makeTags(this.http)
 
         if (config.autoLogin ?? true) {
             void this.attemptLogin()
@@ -326,20 +350,6 @@ export class PackbaseSDK {
     ): this {
         this._events.off(event, listener)
         return this
-    }
-
-    /**
-     * Fetches all available tags (`GET /tags`).
-     *
-     * @returns An array of tag strings.
-     *
-     * @example
-     * ```ts
-     * const tags = await pb.tags()
-     * ```
-     */
-    tags(options?: RequestOptions): Promise<string[]> {
-        return this.http.get<string[]>('/tags', undefined, options)
     }
 
     /**
