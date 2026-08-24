@@ -1,11 +1,54 @@
 {
   "openapi": "3.0.3",
   "info": {
-    "title": "Elysia Documentation",
-    "description": "Development documentation",
+    "title": "Packbase API",
+    "description": "Public Packbase REST API.",
     "version": "0.0.0"
   },
   "paths": {
+    "/health": {
+      "get": {
+        "operationId": "getHealth",
+        "description": "Get service health and process metrics.",
+        "tags": ["Server"],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/HealthResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/feedback": {
+      "post": {
+        "operationId": "postFeedback",
+        "description": "Submit product feedback for the authenticated user.",
+        "tags": ["Feedback"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/FeedbackInput" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/FeedbackResult" }
+              }
+            }
+          },
+          "400": {},
+          "401": {},
+          "500": {}
+        }
+      }
+    },
     "/funding": {
       "get": {
         "responses": {
@@ -1477,10 +1520,153 @@
           }
         },
         "operationId": "getTags",
-        "description": "Gets all known tags.",
-        "tags": [
-          "Server"
-        ]
+        "description": "List all registered tag names.",
+        "tags": ["Tags"]
+      },
+      "post": {
+        "operationId": "postTags",
+        "description": "Register a tag. Requires staff or content-moderator access.",
+        "tags": ["Tags"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/Tag" }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Tag" }
+              }
+            }
+          },
+          "400": {},
+          "401": {},
+          "403": {},
+          "409": {}
+        }
+      }
+    },
+    "/tags/{tag}": {
+      "get": {
+        "operationId": "getTagsByTag",
+        "description": "Get metadata for a registered tag.",
+        "tags": ["Tags"],
+        "parameters": [
+          {
+            "name": "tag",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "minLength": 1, "maxLength": 256 }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Tag" }
+              }
+            }
+          },
+          "404": {}
+        }
+      },
+      "patch": {
+        "operationId": "patchTagsByTag",
+        "description": "Update registered tag metadata. Requires staff or content-moderator access.",
+        "tags": ["Tags"],
+        "parameters": [
+          {
+            "name": "tag",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "minLength": 1, "maxLength": 256 }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/TagPatch" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Tag" }
+              }
+            }
+          },
+          "400": {},
+          "401": {},
+          "403": {},
+          "404": {},
+          "409": {}
+        }
+      },
+      "delete": {
+        "operationId": "deleteTagsByTag",
+        "description": "Delete a registered tag. Requires staff or content-moderator access.",
+        "tags": ["Tags"],
+        "parameters": [
+          {
+            "name": "tag",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "minLength": 1, "maxLength": 256 }
+          }
+        ],
+        "responses": {
+          "204": {},
+          "401": {},
+          "403": {},
+          "404": {}
+        }
+      }
+    },
+    "/tags/{tag}/follow": {
+      "post": {
+        "operationId": "postTagsByTagFollow",
+        "description": "Follow a tag for the authenticated user's home and gossip feeds.",
+        "tags": ["Tags"],
+        "parameters": [
+          {
+            "name": "tag",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "minLength": 1, "maxLength": 256 }
+          }
+        ],
+        "responses": {
+          "204": {},
+          "400": {},
+          "401": {},
+          "403": {}
+        }
+      },
+      "delete": {
+        "operationId": "deleteTagsByTagFollow",
+        "description": "Stop following a tag for the authenticated user.",
+        "tags": ["Tags"],
+        "parameters": [
+          {
+            "name": "tag",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "minLength": 1, "maxLength": 256 }
+          }
+        ],
+        "responses": {
+          "204": {},
+          "400": {},
+          "401": {},
+          "403": {}
+        }
       }
     },
     "/leaderboard/profiles": {
@@ -1945,6 +2131,27 @@
         "tags": [
           "Friends"
         ]
+      }
+    },
+    "/user/me/following/tags": {
+      "get": {
+        "operationId": "getUserMeFollowingTags",
+        "description": "List tags followed by the authenticated user.",
+        "tags": ["Tags"],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": { "type": "string" }
+                }
+              }
+            }
+          },
+          "401": {},
+          "403": {}
+        }
       }
     },
     "/user/me/badge": {
@@ -4671,97 +4878,6 @@
         "description": "Get a list of posts",
         "tags": [
           "Feed"
-        ]
-      }
-    },
-    "/user/{username}/history": {
-      "get": {
-        "parameters": [
-          {
-            "description": "Username of the user to get history for.",
-            "schema": {
-              "type": "string"
-            },
-            "in": "path",
-            "name": "username",
-            "required": true
-          },
-          {
-            "description": "Start of time range (ISO 8601).",
-            "schema": {
-              "type": "string"
-            },
-            "in": "query",
-            "name": "from",
-            "required": false
-          },
-          {
-            "description": "End of time range (ISO 8601).",
-            "schema": {
-              "type": "string"
-            },
-            "in": "query",
-            "name": "to",
-            "required": false
-          },
-          {
-            "description": "Temporal axis to filter on.",
-            "schema": {
-              "default": "transaction",
-              "anyOf": [
-                {
-                  "const": "transaction",
-                  "type": "string"
-                },
-                {
-                  "const": "decision",
-                  "type": "string"
-                }
-              ]
-            },
-            "in": "query",
-            "name": "axis",
-            "required": false
-          },
-          {
-            "description": "Sort order by range start.",
-            "schema": {
-              "default": "desc",
-              "anyOf": [
-                {
-                  "const": "asc",
-                  "type": "string"
-                },
-                {
-                  "const": "desc",
-                  "type": "string"
-                }
-              ]
-            },
-            "in": "query",
-            "name": "order",
-            "required": false
-          },
-          {
-            "description": "Maximum number of versions to return.",
-            "schema": {
-              "type": "number",
-              "default": 100,
-              "minimum": 1,
-              "maximum": 500
-            },
-            "in": "query",
-            "name": "limit",
-            "required": false
-          }
-        ],
-        "responses": {
-          "404": {}
-        },
-        "operationId": "getUserByUsernameHistory",
-        "description": "Get the temporal version history of a user profile.",
-        "tags": [
-          "User"
         ]
       }
     },
@@ -7807,6 +7923,71 @@
     }
   },
   "components": {
-    "schemas": {}
+    "schemas": {
+      "Tag": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["tag", "title", "description"],
+        "properties": {
+          "tag": { "type": "string", "minLength": 1, "maxLength": 256 },
+          "title": { "type": "string", "minLength": 1, "maxLength": 256 },
+          "description": { "type": "string", "minLength": 1 }
+        }
+      },
+      "TagPatch": {
+        "type": "object",
+        "additionalProperties": false,
+        "minProperties": 1,
+        "properties": {
+          "title": { "type": "string", "minLength": 1, "maxLength": 256 },
+          "description": { "type": "string", "minLength": 1 }
+        }
+      },
+      "FeedbackInput": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["canContact", "canSendLogs", "kind", "message"],
+        "properties": {
+          "canContact": { "type": "boolean" },
+          "canSendLogs": { "type": "boolean" },
+          "kind": { "type": "string", "enum": ["idea", "problem", "other"] },
+          "message": { "type": "string", "minLength": 1, "maxLength": 2000 }
+        }
+      },
+      "FeedbackResult": {
+        "type": "object",
+        "required": ["sent"],
+        "properties": {
+          "sent": { "type": "boolean" }
+        }
+      },
+      "HealthResponse": {
+        "type": "object",
+        "required": ["status", "timestamp", "metrics", "instance"],
+        "properties": {
+          "status": { "type": "string" },
+          "timestamp": { "type": "number" },
+          "metrics": {
+            "type": "object",
+            "required": ["memory", "cpu", "connections", "uptime"],
+            "properties": {
+              "memory": {
+                "type": "object",
+                "required": ["rss", "heapTotal", "heapUsed"],
+                "properties": {
+                  "rss": { "type": "number" },
+                  "heapTotal": { "type": "number" },
+                  "heapUsed": { "type": "number" }
+                }
+              },
+              "cpu": { "type": "number" },
+              "connections": { "type": "number" },
+              "uptime": { "type": "number" }
+            }
+          },
+          "instance": { "type": "string" }
+        }
+      }
+    }
   }
 }

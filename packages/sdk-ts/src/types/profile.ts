@@ -36,35 +36,6 @@ export interface UpdateProfileResult extends UpdateProfileInput {
     username?: string
 }
 
-/** Query options accepted by the temporal profile history endpoint. */
-export interface ProfileHistoryOptions {
-    from?: string | Date
-    to?: string | Date
-    axis?: 'transaction' | 'decision'
-    order?: 'asc' | 'desc'
-    limit?: number
-}
-
-/** A stored version returned by `GET /user/:username/history`. */
-export interface ProfileHistoryEntry {
-    history_id: string
-    entity_id: string
-    transaction_time: string
-    decision_time: string
-    operation: string
-    changed_by: string | null
-    created_at?: string
-    username?: string
-    bio?: string
-    slug?: string
-    display_name?: string
-    images_avatar?: string
-    images_header?: string
-    space_type?: Profile['space_type']
-    post_privacy?: Profile['post_privacy']
-    [key: string]: unknown
-}
-
 /** Friend data returned by `GET /user/me/friends`. */
 export interface FriendProfile {
     id: string

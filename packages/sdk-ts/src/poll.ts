@@ -90,11 +90,20 @@ export class Poller {
      */
     async waitFor(jobId: string, options: PollOptions = {}): Promise<Howl> {
         const { intervalMs = 1000, timeoutMs = 30_000, onProgress, signal } = options
+
+        if (!Number.isFinite(intervalMs) || intervalMs < 0) {
+            throw new RangeError('intervalMs must be a finite, non-negative number')
+        }
+        if (!Number.isFinite(timeoutMs) || timeoutMs < 0) {
+            throw new RangeError('timeoutMs must be a finite, non-negative number')
+        }
+
         const deadline = Date.now() + timeoutMs
+        const encodedJobId = encodeURIComponent(jobId)
 
         while (Date.now() < deadline) {
             const status = await this.http.get<HowlJobStatus>(
-                `/howl/create/status/${jobId}`,
+                `/howl/create/status/${encodedJobId}`,
                 undefined,
                 {signal},
             )
@@ -102,14 +111,17 @@ export class Poller {
             onProgress?.(status)
 
             if (status.status === 'completed') {
-                return this.http.get<Howl>(`/howl/${jobId}`, undefined, {signal})
+                return this.http.get<Howl>(`/howl/${encodedJobId}`, undefined, {signal})
             }
 
             if (status.status === 'failed') {
                 throw new PackbaseError(500, status.error ?? 'Howl creation failed')
             }
 
-            await sleep(intervalMs, signal)
+            const remainingMs = deadline - Date.now()
+            if (remainingMs <= 0) break
+
+            await sleep(Math.min(intervalMs, remainingMs), signal)
         }
 
         throw new PackbaseError(408, `Howl creation job ${jobId} timed out after ${timeoutMs}ms`)

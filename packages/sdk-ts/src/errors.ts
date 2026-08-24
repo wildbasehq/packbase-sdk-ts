@@ -97,10 +97,15 @@ export class PackbaseError extends Error {
      * @returns A normalized `PackbaseError` instance.
      */
     static fromResponse(status: number, body: Record<string, unknown>): PackbaseError {
+        const summary = typeof body['summary'] === 'string'
+            ? body['summary']
+            : 'Unknown error'
+        const code = typeof body['code'] === 'string' ? body['code'] : undefined
+
         return new PackbaseError(
             status,
-            String(body['summary'] ?? 'Unknown error'),
-            body['code'] as string | undefined,
+            summary,
+            code,
             body,
         )
     }

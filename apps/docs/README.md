@@ -47,6 +47,14 @@ An `.mdx` file contains Markdown and can contain JSX components such as `<Callou
 
 Write all documentation in accordance with ASD-STE100. Use short sentences and active voice. Use one instruction in each sentence. Do not change API names, identifiers, or code syntax to conform to controlled language.
 
+When `openapi.json` changes, regenerate the REST API pages:
+
+```sh
+bun run --cwd apps/docs generate:api
+```
+
+The generated-page check rejects missing and stale operation pages.
+
 ## Check your changes
 
 Run the docs type check from the repository root:

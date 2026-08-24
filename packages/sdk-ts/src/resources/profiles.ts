@@ -1,6 +1,6 @@
 import type { HttpClient } from '../http'
 import type { RequestOptions } from '../request'
-import type { Profile, ProfileHistoryEntry, ProfileHistoryOptions } from '../types/profile'
+import type { Profile } from '../types/profile'
 import type { ReportReasonValue, ReportResult } from '../types/report'
 import { ThenableResource } from './base'
 
@@ -12,7 +12,6 @@ import { ThenableResource } from './base'
  * ```ts
  * const profile = await pb.profiles('rek')
  * await pb.profiles('rek').follow()
- * const versions = await pb.profiles('rek').history()
  * ```
  */
 export class ProfileHandle extends ThenableResource<Profile> {
@@ -41,23 +40,6 @@ export class ProfileHandle extends ThenableResource<Profile> {
      */
     unfollow(options?: RequestOptions): Promise<void> {
         return this.http.delete<void>(`/user/${encodeURIComponent(this.username)}/follow`, undefined, options)
-    }
-
-    /**
-     * Fetches the stored version history for this profile.
-     */
-    history(options: (ProfileHistoryOptions & RequestOptions) = {}): Promise<ProfileHistoryEntry[]> {
-        return this.http.get<ProfileHistoryEntry[]>(
-            `/user/${encodeURIComponent(this.username)}/history`,
-            {
-                from: options.from instanceof Date ? options.from.toISOString() : options.from,
-                to: options.to instanceof Date ? options.to.toISOString() : options.to,
-                axis: options.axis,
-                order: options.order,
-                limit: options.limit,
-            },
-            options,
-        )
     }
 
     /**

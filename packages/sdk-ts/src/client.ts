@@ -1,29 +1,4 @@
-/** Minimal browser-compatible typed event emitter (replaces node:events). */
-class EventEmitter<TMap extends { [K in keyof TMap]: unknown[] }> {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    private readonly _listeners = new Map<keyof TMap, ((...args: any[]) => void)[]>()
-
-    on<K extends keyof TMap>(event: K, listener: (...args: TMap[K]) => void): this {
-        const bucket = this._listeners.get(event) ?? []
-        bucket.push(listener)
-        this._listeners.set(event, bucket)
-        return this
-    }
-
-    off<K extends keyof TMap>(event: K, listener: (...args: TMap[K]) => void): this {
-        const bucket = this._listeners.get(event)
-        if (!bucket) return this
-        const index = bucket.indexOf(listener)
-        if (index !== -1) bucket.splice(index, 1)
-        if (bucket.length === 0) this._listeners.delete(event)
-        return this
-    }
-
-    emit<K extends keyof TMap>(event: K, ...args: TMap[K]): void {
-        this._listeners.get(event)?.forEach(fn => fn(...args))
-    }
-}
-import { PackbaseError } from './errors'
+import { TypedEventEmitter } from './events'
 import { HttpClient, type SDKConfig } from './http'
 import type { RequestOptions } from './request'
 import { Poller } from './poll'
@@ -32,6 +7,7 @@ import { type HowlsFn, makeHowls } from './resources/howls'
 import { type InboxResource, makeInbox } from './resources/inbox'
 import { type InvitesResource, makeInvites } from './resources/invites'
 import { type FoldersResource, makeFolders } from './resources/folders'
+import { type FeedbackResource, makeFeedback } from './resources/feedback'
 import { type LeaderboardResource, makeLeaderboard } from './resources/leaderboard'
 import { makeMe, type MeFn } from './resources/me'
 import { makePacks, type PacksFn } from './resources/packs'
@@ -151,7 +127,6 @@ export class PackbaseSDK {
      * ```ts
      * await pb.profiles('rek')
      * await pb.profiles('rek').follow()
-     * await pb.profiles('rek').history()
      * ```
      */
     readonly profiles: ProfilesFn
@@ -264,6 +239,8 @@ export class PackbaseSDK {
      * ```
      */
     readonly folders: FoldersResource
+    /** Submits product feedback for the authenticated user. */
+    readonly feedback: FeedbackResource
     /**
      * Tag catalog. Call it to list registered machine-readable tag names, or
      * use `get`, `create`, `update`, and `delete` to manage tag metadata.
@@ -287,7 +264,8 @@ export class PackbaseSDK {
      */
     readonly tags: TagsFn
     private readonly http: HttpClient
-    private readonly _events: EventEmitter<PackbaseSDKEvents>
+    private readonly events = new TypedEventEmitter<PackbaseSDKEvents>()
+    private readonly hydrateMe: (profile: Profile) => void
 
     constructor(config: PackbaseSDKConfig = {}) {
         this.http = new HttpClient({
@@ -295,11 +273,11 @@ export class PackbaseSDK {
             apiKey: config.apiKey,
         })
 
-        this._events = new EventEmitter<PackbaseSDKEvents>()
-
         const poller = new Poller(this.http)
 
-        this.me = makeMe(this.http)
+        const me = makeMe(this.http)
+        this.me = me
+        this.hydrateMe = me.hydrate
         this.profiles = makeProfiles(this.http)
         this.packs = makePacks(this.http)
         this.howls = makeHowls(this.http, poller)
@@ -310,6 +288,7 @@ export class PackbaseSDK {
         this.store = makeStore(this.http)
         this.invites = makeInvites(this.http)
         this.folders = makeFolders(this.http)
+        this.feedback = makeFeedback(this.http)
         this.tags = makeTags(this.http)
 
         if (config.autoLogin ?? true) {
@@ -339,7 +318,7 @@ export class PackbaseSDK {
         event: K,
         listener: (...args: PackbaseSDKEvents[K]) => void,
     ): this {
-        this._events.on(event, listener)
+        this.events.on(event, listener)
         return this
     }
 
@@ -348,7 +327,7 @@ export class PackbaseSDK {
         event: K,
         listener: (...args: PackbaseSDKEvents[K]) => void,
     ): this {
-        this._events.off(event, listener)
+        this.events.off(event, listener)
         return this
     }
 
@@ -392,21 +371,15 @@ export class PackbaseSDK {
         event: K,
         ...args: PackbaseSDKEvents[K]
     ): void {
-        this._events.emit(event, ...args)
+        this.events.emit(event, ...args)
     }
 
-    private async attemptLogin() {
+    private async attemptLogin(): Promise<void> {
         try {
             const profile = await this.me()
-            const me = this.me as MeFn & {hydrate(profile: Profile): void}
-            me.hydrate(profile)
+            this.hydrateMe(profile)
             this.emit('ready', profile)
         } catch (error) {
-            if (error instanceof PackbaseError) {
-                console.error('Failed to login to Packbase:', error.message)
-            } else {
-                console.error('Unexpected error:', error)
-            }
             this.emit('error', error)
         }
     }

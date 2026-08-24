@@ -33,8 +33,6 @@ export type {
     Profile,
     UpdateProfileInput,
     UpdateProfileResult,
-    ProfileHistoryOptions,
-    ProfileHistoryEntry,
     FriendProfile,
     FriendsResponse,
     StorageUsage,
@@ -115,3 +113,9 @@ export type {
     StorePurchaseOptions,
 } from './resources/store'
 export type { Tag, CreateTagInput, UpdateTagInput, TagsFn } from './resources/tags'
+export type {
+    FeedbackKind,
+    FeedbackInput,
+    FeedbackResult,
+    FeedbackResource,
+} from './resources/feedback'

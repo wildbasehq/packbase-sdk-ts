@@ -1,0 +1,28 @@
+---
+title: pb.feedback
+description: Send product feedback to the Packbase team.
+---
+
+`pb.feedback.submit()` sends feedback for the current signed-in user.
+
+```ts twoslash
+import { PackbaseSDK } from '@packbase/sdk-ts'
+const pb = new PackbaseSDK()
+// ---cut---
+const result = await pb.feedback.submit({
+  kind: 'idea',
+  message: 'Add keyboard shortcuts to the composer.',
+  canContact: true,
+  canSendLogs: false,
+})
+
+console.log(result.sent)
+```
+
+`kind` accepts `idea`, `problem`, or `other`. `message` must contain from 1 to
+2,000 characters. The server trims the message and rejects whitespace-only
+content.
+
+Set `canContact` to allow the team to use the email address on your account.
+Set `canSendLogs` to allow the team to inspect related application logs. The
+method requires authentication.

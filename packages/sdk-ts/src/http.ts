@@ -21,6 +21,12 @@ export interface SDKConfig {
     apiKey?: string
 }
 
+type MutationMethod = 'POST' | 'PATCH' | 'PUT' | 'DELETE'
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+    return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
 /**
  * Low-level HTTP client used by all SDK resources.
  *
@@ -42,7 +48,7 @@ export class HttpClient {
      * @param config - Base URL and optional API key used for all requests.
      */
     constructor(config: SDKConfig) {
-        this.baseUrl = config.baseUrl.replace(/\/$/, '')
+        this.baseUrl = config.baseUrl.replace(/\/+$/, '')
         this.apiKey = config.apiKey
     }
 
@@ -96,7 +102,8 @@ export class HttpClient {
 
         let body: Record<string, unknown> = {}
         try {
-            body = await res.json() as Record<string, unknown>
+            const parsedBody: unknown = await res.json()
+            if (isRecord(parsedBody)) body = parsedBody
         } catch {
             // Body may not be JSON for certain error responses.
         }
@@ -171,20 +178,7 @@ export class HttpClient {
         query?: Record<string, unknown>,
         options: RequestOptions = {},
     ): Promise<T> {
-        this.throwIfAborted(options.signal)
-        const res = await fetch(this.buildUrl(path, query), {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                ...this.authHeaders(),
-            },
-            credentials: this.apiKey ? 'omit' : 'include',
-            body: body !== undefined ? JSON.stringify(body) : undefined,
-            signal: options.signal,
-        })
-        const value = await this.handleResponse<T>(res)
-        this.clearPendingReads()
-        return value
+        return this.sendMutation('POST', path, body, query, options)
     }
 
     /**
@@ -195,20 +189,7 @@ export class HttpClient {
      * @returns The parsed response body.
      */
     async patch<T>(path: string, body?: unknown, options: RequestOptions = {}): Promise<T> {
-        this.throwIfAborted(options.signal)
-        const res = await fetch(this.buildUrl(path), {
-            method: 'PATCH',
-            headers: {
-                'Content-Type': 'application/json',
-                ...this.authHeaders(),
-            },
-            credentials: this.apiKey ? 'omit' : 'include',
-            body: body !== undefined ? JSON.stringify(body) : undefined,
-            signal: options.signal,
-        })
-        const value = await this.handleResponse<T>(res)
-        this.clearPendingReads()
-        return value
+        return this.sendMutation('PATCH', path, body, undefined, options)
     }
 
     /**
@@ -219,20 +200,7 @@ export class HttpClient {
      * @returns The parsed response body.
      */
     async put<T>(path: string, body?: unknown, options: RequestOptions = {}): Promise<T> {
-        this.throwIfAborted(options.signal)
-        const res = await fetch(this.buildUrl(path), {
-            method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json',
-                ...this.authHeaders(),
-            },
-            credentials: this.apiKey ? 'omit' : 'include',
-            body: body !== undefined ? JSON.stringify(body) : undefined,
-            signal: options.signal,
-        })
-        const value = await this.handleResponse<T>(res)
-        this.clearPendingReads()
-        return value
+        return this.sendMutation('PUT', path, body, undefined, options)
     }
 
     /**
@@ -248,20 +216,7 @@ export class HttpClient {
      * ```
      */
     async delete<T>(path: string, body?: unknown, options: RequestOptions = {}): Promise<T> {
-        this.throwIfAborted(options.signal)
-        const res = await fetch(this.buildUrl(path), {
-            method: 'DELETE',
-            headers: {
-                'Content-Type': 'application/json',
-                ...this.authHeaders(),
-            },
-            credentials: this.apiKey ? 'omit' : 'include',
-            body: body !== undefined ? JSON.stringify(body) : undefined,
-            signal: options.signal,
-        })
-        const value = await this.handleResponse<T>(res)
-        this.clearPendingReads()
-        return value
+        return this.sendMutation('DELETE', path, body, undefined, options)
     }
 
     /** Sends a multipart POST without setting Content-Type, allowing fetch to add the boundary. */
@@ -275,6 +230,31 @@ export class HttpClient {
             signal: options.signal,
         })
         const value = await this.handleResponse<T>(res)
+        this.clearPendingReads()
+        return value
+    }
+
+    private async sendMutation<T>(
+        method: MutationMethod,
+        path: string,
+        body: unknown,
+        query: Record<string, unknown> | undefined,
+        options: RequestOptions,
+    ): Promise<T> {
+        this.throwIfAborted(options.signal)
+
+        const response = await fetch(this.buildUrl(path, query), {
+            method,
+            headers: {
+                'Content-Type': 'application/json',
+                ...this.authHeaders(),
+            },
+            credentials: this.apiKey ? 'omit' : 'include',
+            body: body === undefined ? undefined : JSON.stringify(body),
+            signal: options.signal,
+        })
+        const value = await this.handleResponse<T>(response)
+
         this.clearPendingReads()
         return value
     }

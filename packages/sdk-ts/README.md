@@ -56,6 +56,7 @@ For public-only use, disable the automatic `me()` request with
 - `pb.inbox` manages notifications.
 - `pb.invites` manages authenticated invite codes and pre-signup waitlist referrals with `getWaitlistReferral()` and `redeemWaitlistReferral()`.
 - `pb.tags()` lists registered tag names; `pb.tags.get()` fetches metadata, while `create()`, `update()`, and `delete()` manage tags for staff and content moderators. Authenticated users can manage feed interests with `pb.tags.follow()`, `pb.tags.unfollow()`, and `pb.tags.following()`.
+- `pb.feedback.submit()` sends product feedback for the authenticated user.
 - `pb.leaderboard`, `pb.store`, `pb.folders`, and `pb.search()` expose their corresponding API endpoints.
 
 Howl creation accepts `body: string | null`; strings may contain plain text or
