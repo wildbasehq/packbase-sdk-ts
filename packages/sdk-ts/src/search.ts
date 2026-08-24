@@ -7,7 +7,7 @@ import type { JsonValue } from './types/json'
 const ALLOWED_FIELDS = {
     posts: [
         'id', 'created_at', 'tenant_id', 'content_type', 'body',
-        'user_id', 'parent', 'tags', 'assets',
+        'user_id', 'parent', 'tags', 'assets', 'asset_types',
     ],
     profiles: [
         'id', 'created_at', 'username', 'bio', 'slug', 'display_name',
@@ -102,10 +102,41 @@ export type FilterOperator =
 export type FilterValue = string | number | boolean | null | string[] | number[]
     | Partial<Record<FilterOperator, unknown>>
 
+/** Media kinds that can be matched by the posts search index. */
+export type PostAssetType = 'image' | 'video'
+
+/** Prisma-style string-list filters supported by the posts `asset_types` index. */
+export type PostAssetTypeFilterValue = PostAssetType[] | {
+    equals?: PostAssetType[]
+    has?: PostAssetType
+    hasSome?: PostAssetType[]
+    hasEvery?: PostAssetType[]
+    isEmpty?: boolean
+    not?: PostAssetTypeFilterValue
+}
+
+type ModelFilterValue<M extends ModelName, F extends ModelField<M>> =
+    M extends 'posts'
+    ? F extends 'asset_types'
+    ? PostAssetTypeFilterValue
+    : FilterValue
+    : FilterValue
+
+type FieldFilterConditions<M extends ModelName> = Partial<{
+    [F in ModelField<M>]: ModelFilterValue<M, F>
+}>
+
+/** Type-checked filter conditions for a search model, including logical clauses. */
+export type FilterConditions<M extends ModelName> = FieldFilterConditions<M> & {
+    AND?: FilterConditions<M>[]
+    OR?: FilterConditions<M>[]
+    NOT?: FilterConditions<M> | FilterConditions<M>[]
+}
+
 /** The serialized form of a query, sent as the request body to `POST /search`. */
 export interface QueryInput<M extends ModelName = ModelName> {
     from: M
-    where?: Record<string, unknown>
+    where?: FilterConditions<M>
     orderBy?: Record<string, SortDirection> | Record<string, SortDirection>[]
     take?: number
     skip?: number
@@ -215,7 +246,7 @@ export class SearchQuery<M extends ModelName> {
      * from('packs').where({ owner_id: 'uuid' }).where({ display_name: { contains: 'art' } })
      * ```
      */
-    where(conditions: Partial<Record<ModelField<M>, FilterValue>>): this {
+    where(conditions: FilterConditions<M>): this {
         this.input.where = { ...this.input.where, ...conditions }
         return this
     }
@@ -236,11 +267,11 @@ export class SearchQuery<M extends ModelName> {
      * ])
      * ```
      */
-    and(conditions: Partial<Record<ModelField<M>, FilterValue>>[]): this {
+    and(conditions: FilterConditions<M>[]): this {
         this.input.where = {
             ...this.input.where,
             AND: conditions,
-        }
+        } as FilterConditions<M>
         return this
     }
 
@@ -259,11 +290,11 @@ export class SearchQuery<M extends ModelName> {
      * ])
      * ```
      */
-    or(conditions: Partial<Record<ModelField<M>, FilterValue>>[]): this {
+    or(conditions: FilterConditions<M>[]): this {
         this.input.where = {
             ...this.input.where,
             OR: conditions,
-        }
+        } as FilterConditions<M>
         return this
     }
 
@@ -277,11 +308,11 @@ export class SearchQuery<M extends ModelName> {
      * from('profiles').not({ type: 'ALUMNI' })
      * ```
      */
-    not(conditions: Partial<Record<ModelField<M>, FilterValue>>): this {
+    not(conditions: FilterConditions<M>): this {
         this.input.where = {
             ...this.input.where,
             NOT: conditions,
-        }
+        } as FilterConditions<M>
         return this
     }
 

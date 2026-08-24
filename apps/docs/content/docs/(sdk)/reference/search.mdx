@@ -64,6 +64,19 @@ const query = from('packs')           // start a query on 'packs'
 | `.page(page, pageSize?)` | Calls `.take(pageSize).skip((page-1)*pageSize)`. |
 | `.build()` | Returns a `QueryInput` to pass to `pb.search()`. |
 
+### Filtering posts by attachment type
+
+Posts expose a query-only `asset_types` index. Use its string-list operators to keep pagination and filtering on the server. A post matches `has: 'video'` when at least one attached asset is a video. Supported asset types are `image` and `video`.
+
+```ts twoslash
+import { from } from '@packbase/sdk-ts'
+// ---cut---
+const videos = from('posts')
+  .where({ asset_types: { has: 'video' } })
+  .orderBy('created_at', 'desc')
+  .build()
+```
+
 ## `isErrorEntry(result)`: Type guard
 
 One named query can fail while other queries in the same request are successful. Use this helper to identify whether a specified result is an error or data:

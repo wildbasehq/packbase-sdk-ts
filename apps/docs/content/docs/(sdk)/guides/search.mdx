@@ -31,13 +31,15 @@ In this example, the application specifies the names `topPacks` and `recentUsers
 
 | Model | Fields available |
 | --- | --- |
-| `'posts'` | `id`, `created_at`, `tenant_id`, `content_type`, `body`, `user_id`, `parent`, `tags`, `assets` |
+| `'posts'` | `id`, `created_at`, `tenant_id`, `content_type`, `body`, `user_id`, `parent`, `tags`, `assets`, `asset_types` |
 | `'profiles'` | `id`, `created_at`, `username`, `bio`, `slug`, `display_name`, `images_avatar`, `images_header`, `type`, `space_type`, `is_r18` |
 | `'packs'` | `id`, `created_at`, `display_name`, `images_avatar`, `description`, `owner_id`, `images_header`, `last_activity_at` |
 
 The model name specifies the fields that TypeScript permits in the chain. If a `'packs'` query uses a profile-only field, your editor shows an error before the request.
 
 Search results use these flat database column names. The result types are `SearchPost`, `SearchProfile`, and `SearchPack`. They are not the normalized `Howl`, `Profile`, and `Pack` resource types. For example, a searched pack has `images_avatar` and `last_activity_at`. It does not have a nested `images` object.
+
+`asset_types` is query-only: it is an indexed field for filtering posts and is not added to `SearchPost` results. Its supported values are `image` and `video`.
 
 ## Building a query: `from(model)`
 
@@ -68,6 +70,9 @@ const q2 = from('profiles').where({ username: { startsWith: 'r' } })
 const q3 = from('packs')
   .where({ owner_id: 'some-uuid' })
   .where({ display_name: { contains: 'art' } })
+
+// Posts with at least one video attachment
+const q4 = from('posts').where({ asset_types: { has: 'video' } })
 ```
 
 ### Available filter operators
