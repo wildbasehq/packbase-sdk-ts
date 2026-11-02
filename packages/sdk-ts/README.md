@@ -49,6 +49,7 @@ For public-only use, disable the automatic `me()` request with
 ## Resources
 
 - `pb.me()` gets the authenticated profile; `pb.me.update()` updates it.
+- `pb.me.maintenance` reviews, confirms, and tracks bulk howl deletion or factory reset.
 - `pb.profiles(id)` returns a lazy, awaitable profile handle.
 - `pb.packs(id)` returns a lazy, awaitable pack handle; `pb.packs.list()` and `.create()` work with packs in bulk.
 - `pb.howls(id)` returns a lazy, awaitable howl handle; `pb.howls.create()` creates a howl and `pb.howls.upload` manages assets.
@@ -108,3 +109,82 @@ bun run verify
 ## License
 
 [MIT](LICENSE)
+
+## Account migrations
+
+SDK 0.7 adds `pb.migrations`: `services`, `create`, `verify`, `start`, `cancel`,
+`retry`, and `status`. Build forms from the server's versioned service schema;
+it owns inputs, limits, destination requirements, ownership proof, and temporary
+account restrictions. Status and schema reads bypass HTTP caches, and all migration
+responses are runtime-validated. The legacy create-via-verify request is removed.
+
+```ts
+const { services } = await pb.migrations.services()
+const { migrations, account_locked } = await pb.migrations.status()
+```
+
+## Account maintenance and independent quotes
+
+SDK 0.7.2 adds `pb.me.maintenance.preview`, `confirm`, `current`, `status`,
+`retry`, and `acknowledge`. Bulk deletion matches every supplied tag. Factory
+reset clears personal content/settings and social connections, leaves joined
+packs, and retains owned packs, login identity, moderation history, balances,
+entitlements, and invite/referral/import history.
+
+Show the server's review counts and samples before confirmation. The server
+requires an exact typed username and enforces the returned `confirm_after`
+time (10 seconds for bulk deletion, 30 seconds for reset). Reusing a confirmed
+token resumes the same durable operation. Changed or expired review scopes
+must be reviewed again. Current/status reads bypass caches; failed operations
+can be retried, and completed operations must be acknowledged. Aborting a
+request does not cancel confirmed deletion.
+
+```ts
+const review = await pb.me.maintenance.preview({ kind: 'bulk_delete', tags: ['old'] })
+const { operation } = await pb.me.maintenance.current()
+```
+
+Quote howls use an independent `quote_source_id`. They keep their own body,
+assets, likes, and replies after the source is deleted. When
+`quote_source_unavailable` is true, render an unavailable-source message;
+do not display a saved copy of deleted source content. Regular rehowls and
+replies still cascade with their parent. `parent_id` in creation input means
+the source to quote; use `.comment()` to create a reply.
+
+
+`me.maintenance.current()` always returns `last_reset_id: string | null`: the latest confirmed factory reset, including after acknowledgement when `operation` is null. A preview never changes it. Compare this server marker before restoring local drafts or cached personal state so another tab's reset cannot restore old data.
+
+## Howl likes
+
+Every howl and comment includes `likes: { emoji, count, likedByMe }`. Each member
+can like a howl once; both methods below are idempotent and send no request body:
+
+```ts
+await pb.howls('howl-id').like()
+await pb.howls('howl-id').unlike()
+await pb.me.settings({ howl_like_emoji: '🔥' })
+```
+
+`howl_like_emoji` defaults to 🔥. The server snapshots the author's choice when a
+howl is created. Updating the setting affects new howls only. SDK 0.8.0 exports
+`HowlLikes` and requires the new likes API.
+
+`comment()` returns `HowlCommentResult` (`{ id, likes }`). Reconcile optimistic
+replies with its authoritative emoji snapshot instead of cached user settings.
+
+
+## Blocking, muting, and live visibility (0.9.0)
+
+```ts
+await pb.me.mutes.add(profileId)
+await pb.me.mutes.remove(profileId)
+await pb.me.blocks.add(profileId)
+const page = await pb.me.blocks.list({ limit: 25 })
+await pb.me.blocks.remove(profileId)
+```
+
+These owner-only operations use immutable IDs. Lists return static identity snapshots for managing outgoing records. Muting hides feed howls and nested previews while preserving profile/direct reads. Blocking is enforced by the server in both directions, including counterpart-owned packs and historical content; normal inaccessible reads return 404. Blocking removes both follows, and unblocking does not restore them.
+
+Post searches return fully hydrated howls, including authors, media, likes, replies, and public moderation summaries; render them without per-post detail requests. `SearchPost` extends `Howl` with selection metadata. Feed searches support `from('posts').context('feed')`; nested previews retain that context. If separately refreshing a howl, pass `{context: 'feed'}` to `pb.howls(id, options)`. Use direct context for explicit profile reads. Context never bypasses blocking.
+
+`pb.visibility.watch({cursor, waitMs: 25000, signal})` performs an uncached, optional-auth long poll returning only `{cursor, changed}`. On changes, call `pb.invalidateVisibility()` and immediately evict/conceal application content caches before refetching. Local relationship changes automatically invalidate and emit `visibilityChanged`. Use `getVisibilityGeneration()` to fence multi-request application work. SDK resource handles and in-flight reads reconcile generations; mutations are never automatically retried. The application owns the watch loop, reconnect/wake handling, and previously returned objects.

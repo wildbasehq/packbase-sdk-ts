@@ -17,7 +17,7 @@ const howl = await pb.howls('howl-uuid')
 console.log(howl.id)
 console.log(howl.body)
 console.log(howl.user.username)
-console.log(howl.reactions)
+console.log(howl.likes)
 ```
 
 Replace `'howl-uuid'` with a howl ID. `pb.howls('howl-uuid')` creates a `HowlHandle`. It does not make a request until you `await` it. The result is a `Howl` object. This object contains the post, its author, and related data from the endpoint.
@@ -158,20 +158,20 @@ const pb = new PackbaseSDK()
 await pb.howls('howl-id').delete()
 ```
 
-## Reacting
+## Liking
 
 ```ts twoslash
 import { PackbaseSDK } from '@packbase/sdk-ts'
 const pb = new PackbaseSDK()
 // ---cut---
-// Add a reaction
-await pb.howls('howl-id').react('🔥')
+// Like the howl with its stored emoji
+await pb.howls('howl-id').like()
 
-// Remove your reactions from the howl
-await pb.howls('howl-id').unreact()
+// Remove your like from the howl
+await pb.howls('howl-id').unlike()
 ```
 
-If you add the same reaction two times, the server returns a `400` error. `react()` adds a reaction. It does not toggle a reaction. Call `unreact()` to remove the current user's reactions.
+`like()` and `unlike()` are idempotent. Each member has at most one like per howl. Read `howl.likes` for its emoji, count, and `likedByMe` state. Authors set `howl_like_emoji` in user settings (default 🔥); changes apply only to new howls.
 
 ## Commenting
 
@@ -179,8 +179,10 @@ If you add the same reaction two times, the server returns a `400` error. `react
 import { PackbaseSDK } from '@packbase/sdk-ts'
 const pb = new PackbaseSDK()
 // ---cut---
-const { id: commentId } = await pb.howls('howl-id').comment('Great post!')
+const { id: commentId, likes } = await pb.howls('howl-id').comment('Great post!')
 ```
+
+`comment()` returns the created reply's ID and authoritative `likes` summary. Replace any optimistic reply emoji with `likes.emoji` from this result.
 
 ## Rehowling (repost)
 

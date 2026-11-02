@@ -12,7 +12,6 @@ interface Profile {
   id: string
   username: string
   display_name: string | null
-  slug?: string
   badge?: string
   xp?: number
   about?: { bio?: string | null; flair?: string }
@@ -43,7 +42,7 @@ It is `null` when the profile has no default pack.
 ```ts
 interface UpdateProfileInput {
   display_name?: string
-  slug?: string
+  username?: string
   about?: { bio?: string }
   space_type?: 'default' | 'custom_free' | 'custom_unrestricted'
   post_privacy?: 'everyone' | 'followers' | 'friends' | 'private'
@@ -89,3 +88,6 @@ import type {
   StorageUsage,
 } from '@packbase/sdk-ts'
 ```
+
+
+`muted_by_me?: boolean` reports only whether the authenticated viewer muted this profile. It never identifies other muters or incoming blocks. Muted profiles remain readable; blocked profiles use the ordinary 404 response. Owner-only management records are described in [visibility](/reference/visibility).

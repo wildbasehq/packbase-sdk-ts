@@ -54,16 +54,17 @@ async function fetchAllNotifications() {
 
 The loop always makes one request. After each response, it saves the cursor and checks `has_more`. A large inbox can cause this loop to make many requests. For a large inbox, use a “Load more” button.
 
-### Pack members are not paginated
+### Pack members use cursors
 
-Not every list requires a pagination loop. The pack members endpoint returns one full array:
+Pack member pages default to 50 and are capped at 100. Request subsequent pages
+on demand; keep the membership IDs and cursors as strings:
 
 ```ts twoslash
 import { PackbaseSDK } from '@packbase/sdk-ts'
 const pb = new PackbaseSDK()
 // ---cut---
-async function fetchAllMembers(packId: string) {
-  return pb.packs(packId).members()
+async function fetchMemberPage(packId: string, cursor?: string) {
+  return pb.packs(packId).members({ limit: 50, cursor })
 }
 ```
 

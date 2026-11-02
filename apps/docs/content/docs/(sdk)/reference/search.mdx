@@ -33,7 +33,7 @@ if (!isErrorEntry(results.topPacks)) {
 | --- | --- | --- |
 | `queries` | `NamedQueryMap` | An object mapping query names to `QueryInput` objects. |
 
-**Returns:** A typed named result map. The object uses the names from `queries`. Each value is a `SearchPost[]`, `SearchProfile[]`, `SearchPack[]`, or `ErrorEntry`. Use `isErrorEntry()` before you process the value as data. Search rows keep database names such as `images_avatar`. They do not use normalized nested resource fields.
+**Returns:** A typed named result map. The object uses the names from `queries`. Each value is a `SearchPost[]`, `SearchProfile[]`, `SearchPack[]`, or `ErrorEntry`. Use `isErrorEntry()` before you process the value as data. Post searches return complete `Howl` data, including the author, media, likes, replies, and public moderation summary. `SearchPost` extends `Howl` with `__index` and optional `feed_explanation` selection metadata; render it directly without fetching each howl again. Profile and pack search results retain database names such as `images_avatar`.
 
 ## `from(model)`: Query builder
 
@@ -111,3 +111,10 @@ type _Model = ModelName
 type _Sort = SortDirection
 //   ^?
 ```
+
+
+## Feed and direct mute context
+
+Post queries accept `.context('feed')` (the default) or `.context('direct')`. Direct context preserves muted members for explicit profile views. Both contexts enforce blocking and server privacy even when the query filters by an exact profile or post ID. Context is serialized with each named query.
+
+Search hydrates howls and their nested previews in the selected context. Use the returned howls directly. If you separately refresh a howl, retain `{ context: 'feed' }` for feed reads because detail reads default to direct context. See [visibility](/reference/visibility).

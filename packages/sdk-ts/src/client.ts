@@ -1,4 +1,5 @@
 import { TypedEventEmitter } from './events'
+import { makeVisibility, type VisibilityResource } from './resources/visibility'
 import { HttpClient, type SDKConfig } from './http'
 import type { RequestOptions } from './request'
 import { Poller } from './poll'
@@ -8,6 +9,7 @@ import { type InboxResource, makeInbox } from './resources/inbox'
 import { type InvitesResource, makeInvites } from './resources/invites'
 import { type FoldersResource, makeFolders } from './resources/folders'
 import { type FeedbackResource, makeFeedback } from './resources/feedback'
+import { type MigrationsResource, makeMigrations } from './resources/migrations'
 import { type LeaderboardResource, makeLeaderboard } from './resources/leaderboard'
 import { makeMe, type MeFn } from './resources/me'
 import { makePacks, type PacksFn } from './resources/packs'
@@ -47,6 +49,8 @@ export interface PackbaseSDKConfig extends Partial<SDKConfig> {
  * ```
  */
 export interface PackbaseSDKEvents {
+    /** Emitted after local relationship changes or explicit visibility invalidation. */
+    visibilityChanged: [generation: number]
     /**
      * Emitted once the SDK has successfully authenticated and the `me` object
      * has been populated with the current user's profile.
@@ -101,7 +105,7 @@ export interface PackbaseSDKEvents {
  *   body: '<p>Hello</p>',
  *   tags: ['rating_safe'],
  * })
- * await pb.howls('howl-id').react('🔥')
+ * await pb.howls('howl-id').like()
  *
  * // Inbox
  * const { data } = await pb.inbox.fetch({ unreadOnly: true })
@@ -119,6 +123,8 @@ export interface PackbaseSDKEvents {
  * ```
  */
 export class PackbaseSDK {
+    /** Optional-auth visibility change polling. The application owns the watch loop. */
+    readonly visibility: VisibilityResource
     /**
      * Profile resource. Call with a username or UUID to get a `ProfileHandle`,
      * or call methods on the handle to follow, report, etc.
@@ -168,7 +174,7 @@ export class PackbaseSDK {
      * @example
      * ```ts
      * await pb.howls('id')
-     * await pb.howls('id').react('🔥')
+     * await pb.howls('id').like()
      * await pb.howls('id').rehowl()
      * await pb.howls.create({ tenant_id: 'pack-id', body: 'hi', tags: ['rating_safe'] })
      * ```
@@ -241,6 +247,8 @@ export class PackbaseSDK {
     readonly folders: FoldersResource
     /** Submits product feedback for the authenticated user. */
     readonly feedback: FeedbackResource
+    /** Schema-controlled account imports and ownership verification. */
+    readonly migrations: MigrationsResource
     /**
      * Tag catalog. Call it to list registered machine-readable tag names, or
      * use `get`, `create`, `update`, and `delete` to manage tag metadata.
@@ -271,7 +279,8 @@ export class PackbaseSDK {
         this.http = new HttpClient({
             baseUrl: config.baseUrl ?? 'https://vgs.packbase.app',
             apiKey: config.apiKey,
-        })
+        }, generation => this.emit('visibilityChanged', generation))
+        this.visibility = makeVisibility(this.http)
 
         const poller = new Poller(this.http)
 
@@ -289,6 +298,7 @@ export class PackbaseSDK {
         this.invites = makeInvites(this.http)
         this.folders = makeFolders(this.http)
         this.feedback = makeFeedback(this.http)
+        this.migrations = makeMigrations(this.http)
         this.tags = makeTags(this.http)
 
         if (config.autoLogin ?? true) {
@@ -331,6 +341,16 @@ export class PackbaseSDK {
         return this
     }
 
+    /** Invalidates SDK read caches and fences in-flight reads; does not erase application state. */
+    invalidateVisibility(): number {
+        return this.http.invalidateVisibility()
+    }
+
+    /** Capture this generation to fence application work that spans multiple reads. */
+    getVisibilityGeneration(): number {
+        return this.http.getVisibilityGeneration()
+    }
+
     /**
      * Executes one or more named search queries in a single request (`POST /search`).
      *
@@ -363,7 +383,7 @@ export class PackbaseSDK {
         queries: Q,
         options?: RequestOptions,
     ): Promise<TypedNamedResultMap<Q>> {
-        return this.http.post<TypedNamedResultMap<Q>>('/search', queries, undefined, options)
+        return this.http.postRead<TypedNamedResultMap<Q>>('/search', queries, options)
     }
 
     /** @internal Emits a typed SDK event. Not exposed on the public API. */

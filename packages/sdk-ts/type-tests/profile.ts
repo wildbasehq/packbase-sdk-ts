@@ -5,3 +5,9 @@ const avatarUpdate = {
 } satisfies UpdateProfileInput
 
 void avatarUpdate
+
+const removedSlug = {
+    // @ts-expect-error Use username to update identity through Clerk.
+    slug: 'unused',
+} satisfies UpdateProfileInput
+void removedSlug

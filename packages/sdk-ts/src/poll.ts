@@ -115,7 +115,7 @@ export class Poller {
             }
 
             if (status.status === 'failed') {
-                throw new PackbaseError(500, status.error ?? 'Howl creation failed')
+                throw new PackbaseError(status.error_code === 'PACK_RULES_ACCEPTANCE_REQUIRED' ? 409 : 500, status.error ?? 'Howl creation failed', status.error_code, { rules_version: status.rules_version })
             }
 
             const remainingMs = deadline - Date.now()

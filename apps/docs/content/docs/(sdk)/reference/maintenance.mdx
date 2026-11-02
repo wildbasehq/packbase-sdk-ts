@@ -1,0 +1,72 @@
+---
+title: pb.me.maintenance
+description: Review and confirm bulk howl deletion or a factory reset, then resume durable progress.
+---
+
+`pb.me.maintenance` performs account maintenance through authenticated SDK requests. A preview never deletes content. Confirmation requires the review token, the current username typed exactly, and the server-enforced review delay.
+
+## Review and confirm
+
+```ts
+const review = await pb.me.maintenance.preview({
+  kind: 'bulk_delete',
+  tags: ['drawing', 'old'],
+})
+// Present the affected counts, samples and consequences to the user.
+// Wait until review.confirm_after, measured against review.server_time.
+// Only call confirm after an explicit confirmation and typed username.
+const operation = await pb.me.maintenance.confirm({
+  token: review.token,
+  username: typedUsername,
+})
+```
+
+Bulk deletion matches your howls containing **every** supplied tag, across all packs. Tags are normalized by the server. Replies and ordinary rehowls beneath deleted howls also cascade. Quotes by other authors survive; their deleted source becomes unavailable. Your own quotes selected for deletion are deleted normally.
+
+`own_count` counts all your affected howls, including dependent replies/rehowls. `cascade_count` counts affected records authored by others; `total_count` is their sum. `samples` contains at most 100 of your affected records with `id`, nullable `content`, and `created_at`. Samples are not the complete deletion list, and content may contain HTML: render it as text or sanitize it.
+
+A bulk review waits 10 seconds; a factory-reset review waits 30 seconds. The response supplies `server_time`, `confirm_after`, and `expires_at`. Use these timestamps for the countdown; the server independently enforces the delay and expiry. Content changes invalidate the reviewed scope. Start a new preview after `maintenance_scope_changed` or `maintenance_preview_expired`; do not silently confirm a changed scope. Reusing an already-confirmed token returns the same operation.
+
+## Factory reset
+
+```ts
+const review = await pb.me.maintenance.preview({ kind: 'factory_reset' })
+```
+
+Factory reset removes personal content and customization, incoming/outgoing social connections, followed tags, likes, folders, notifications, presence, and settings. It leaves packs you joined and keeps packs you own with their owner memberships. Your existing Basecamp remains.
+
+Login identity, credentials, balances, inventory entitlements, storage tier, invite/referral/import history, and moderation records/restrictions remain. Equipped badge selection resets without removing badge ownership. The account returns to onboarding after completion. Active imports or publication jobs must finish before confirmation.
+
+## Progress and recovery
+
+```ts
+const { operation, server_time } = await pb.me.maintenance.current()
+const latest = await pb.me.maintenance.status(operationId)
+if (latest.can_retry) await pb.me.maintenance.retry(latest.id)
+// After displaying successful completion:
+await pb.me.maintenance.acknowledge(latest.id)
+```
+
+`current()` returns the latest unacknowledged operation or `null`, allowing reload and settings reopening to resume progress. `current()` and `status()` bypass HTTP caches and pending-read sharing. Polling belongs to the application; the SDK does not start a background loop.
+
+Operations expose statuses `queued`, `running`, `failed`, and `completed`, plus phases `delete`, `reset`, `provider`, `assets`, and `complete`. `deleted_count` measures processed deletion scope; `cleanup_completed` and `cleanup_total` measure durable attachment cleanup. Completion includes required provider and asset work. Failure retains the operation and its scope; retry resumes remaining work. There is no cancellation or undo after confirmation.
+
+Account writes remain blocked during maintenance, including a failed operation requiring retry. A completed factory reset remains gated until acknowledgement. `acknowledge()` is for completed operations only.
+
+Every method accepts `RequestOptions` with `signal`. Aborting an HTTP request does not cancel a confirmed server operation. Responses are runtime-validated; malformed counts, states, nested samples, dates, or nullables reject with `TypeError`. HTTP failures use `PackbaseError`.
+
+## Methods
+
+| Method | Request |
+| --- | --- |
+| `preview(input, options?)` | `POST /user/me/maintenance/preview` |
+| `confirm({ token, username }, options?)` | `POST /user/me/maintenance/confirm` |
+| `current(options?)` | `GET /user/me/maintenance/current` |
+| `status(id, options?)` | `GET /user/me/maintenance/:id` |
+| `retry(id, options?)` | `POST /user/me/maintenance/:id/retry` |
+| `acknowledge(id, options?)` | `POST /user/me/maintenance/:id/acknowledge` |
+
+Public types: `MaintenanceKind`, `MaintenanceInput`, `MaintenancePreview`, `MaintenanceOperation`, `MaintenanceCurrent`, and `MaintenanceResource`.
+
+
+`me.maintenance.current()` always returns `last_reset_id: string | null`: the latest confirmed factory reset, including after acknowledgement when `operation` is null. A preview never changes it. Compare this server marker before restoring local drafts or cached personal state so another tab's reset cannot restore old data.

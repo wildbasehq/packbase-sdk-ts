@@ -39,8 +39,12 @@ Built-in feed IDs include `universe:home` and `gossip:network`. A pack UUID also
 | Option | Type | Description |
 | --- | --- | --- |
 | `page` | `number` | Page number, starting at 1. |
+| `mediaOnly` | `boolean` | Send `media_only` to include only image/video howls and pins, filtered before pagination. Defaults to false. |
 | `includePinsFrom` | `string` | Optional pack ID whose pins should be included in the feed. |
 
 The response puts pinned howls in `page.pins` and standard items in `page.data`. A pinned howl can include `meta.pin_expires_at` if a moderator set an automatic expiration.
 
 **Returns:** [`FeedPage`](/types/feed)
+
+
+Feed reads apply the viewer's private mutes and server-owned blocking before pagination and pin selection, including nested quote/reply previews. There is no feed option to bypass blocking. Profile and direct howl views use the separate direct mute context; see [visibility](/reference/visibility).

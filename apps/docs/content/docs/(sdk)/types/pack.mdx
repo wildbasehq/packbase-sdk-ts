@@ -8,9 +8,12 @@ description: TypeScript shapes for packs, members, roles, lists, and updates.
 `Pack` describes a Packbase community that the API returns. Optional fields end in `?`. These fields can be absent because of the endpoint or authentication state. Some fields can also be `null`. `null` means that Packbase does not have a stored value.
 
 ```ts
+type PackFeedType = 'list' | 'gallery'
+
 interface Pack {
   id: string
   display_name: string
+  feed_type: PackFeedType
   about?: { bio?: string | null; flair?: string }
   images?: { avatar?: string | null; header?: string | null }
   owner_id?: string | null
@@ -41,15 +44,18 @@ interface PackList {
 
 ## `PackMember`
 
-`extends Profile` means that a `PackMember` has the standard profile fields and membership-specific fields:
+`PackMember` aliases `PackMemberSummary`, the bounded public member projection.
+Related pack references are nullable UUID strings, not hydrated pack objects.
+`PackMemberPage` is `Paginated<PackMemberSummary>`.
 
 ```ts
-interface PackMember extends Profile {
-  membership_id: number
+interface PackMemberSummary extends Omit<Profile, 'default_pack'> {
+  membership_id: string
   joined_at: string
   permissions: number
-  online?: boolean
-  last_online?: string
+  online?: boolean | null
+  last_online?: string | null
+  default_pack?: string | null
   roles?: PackRoleSummary[]
 }
 ```
@@ -96,19 +102,23 @@ interface PackCreateInput {
 }
 
 interface PackEditInput {
+  feed_type?: PackFeedType
   display_name?: string
   about?: { bio?: string; flair?: string }
   images?: { header?: string; avatar?: string }
 }
 ```
 
-The edit endpoint returns `PackUpdateResult`. This type matches the database update result, not a formatted `Pack`. To get the standard response structure after an edit, fetch the pack again.
+New and existing packs default to `list`. Omitted `feed_type` updates retain the saved preference.
+
+The edit endpoint returns `PackUpdateResult`, including its saved `feed_type`. This type matches the database update result, not a formatted `Pack`. To get the standard response structure after an edit, fetch the pack again.
 
 ## Import
 
 ```ts
 import type {
   Pack,
+  PackFeedType,
   PackList,
   PackMember,
   PackRole,

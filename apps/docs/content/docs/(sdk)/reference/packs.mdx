@@ -53,14 +53,26 @@ The signed-in user becomes the owner. `display_name` is limited to 128 character
 import { PackbaseSDK } from '@packbase/sdk-ts'
 const pb = new PackbaseSDK()
 // ---cut---
-const members = await pb.packs('pack-id').members()
+const page = await pb.packs('pack-id').members({ limit: 50 })
 
-for (const member of members) {
+for (const member of page.data) {
   console.log(member.username, member.membership_id, member.roles)
 }
 ```
 
-This returns all members in one `PackMember[]`; there is no cursor or page number for this endpoint.
+Returns a `PackMemberPage` (`{ data, has_more, cursor? }`), default 50/max 100,
+ordered by descending membership ID. Fetch the next page on demand with
+`members({ cursor: page.cursor, limit: 50 })` when `has_more` is true. Membership IDs
+and cursors are decimal strings; never coerce them to numbers. Presence is per
+summary, not a promise of global activity ordering. The list omits `r18_tags`.
+
+For an explicit lookup, `await pb.packs('pack-id').findMember('user-id', { signal })`
+searches sequential pages until found/exhausted and supports cancellation. An
+absent member on page one is not proof of nonmembership. Ordinary list rendering
+should load pages on demand, not automatically traverse the whole pack.
+An empty initial visible list retains the server's 403; exhausted cursors return
+empty data. More than 100 role assignments returns 413 `MEMBER_ROLE_LIMIT`; reduce
+assignments rather than interpreting an incomplete permission set.
 
 ## Join and leave
 
@@ -76,6 +88,14 @@ await pb.packs('pack-id').leave()
 
 Both methods require authentication. Pack owners cannot leave through this endpoint. Users also cannot leave if the target is their default pack.
 
+## Delete a pack
+
+`await pb.packs('pack-id').delete()` permanently deletes a pack and its posts, replies, memberships and roles. Only the pack's actual leader (`owner_id`) can delete it; management permissions alone are insufficient. Personal and system packs cannot be deleted.
+
+The SDK sends `DELETE /pack/:id` with `{ confirm_pack_id: id }` and expects `204 No Content`. A missing or mismatched confirmation is rejected. Leaving remains a separate membership operation and never deletes a pack.
+
+Present an explicit irreversible-deletion warning before calling this method. Packbase's UI requires a continuous 10-second mouse, touch or keyboard hold; releasing, moving away or losing focus resets it. This hold is a UI safeguard, not a server-enforced timer. Refresh pack lists, feeds and default-pack references after success.
+
 ## Edit pack details
 
 ```ts twoslash
@@ -84,10 +104,13 @@ const pb = new PackbaseSDK()
 // ---cut---
 const updated = await pb.packs('pack-id').update({
   display_name: 'New Name',
+  feed_type: 'gallery',
   about: { bio: 'Updated description', flair: 'ART' },
   images: { avatar: 'data:image/png;base64,...' },
 })
 ```
+
+Packs expose `feed_type: PackFeedType` (`list` or `gallery`), defaulting to `list`. Updates may set `feed_type`; omitting it retains the current value. The preference controls the main pack feed and its topic feeds for all viewers.
 
 This operation requires the `ManagePack` permission. The response is a database `PackUpdateResult`, not a standard `Pack` object. Fetch the pack again if the user interface requires the formatted current state.
 

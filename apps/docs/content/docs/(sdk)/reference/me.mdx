@@ -34,7 +34,7 @@ const updated = await pb.me.update({
 })
 ```
 
-This is a partial update. Include only the fields that you want to change. Supported fields are `display_name`, `slug`, `about.bio`, `space_type`, `post_privacy`, `images.avatar`, and `images.header`. Image fields accept complete base64 data URLs. The response contains the fields that the server wrote. It does not contain a new full profile. Call `pb.me()` after the update if you require the full result.
+This is a partial update. Include only the fields that you want to change. Supported fields are `display_name`, `username`, `about.bio`, `space_type`, `post_privacy`, `images.avatar`, and `images.header`. Image fields accept complete base64 data URLs. The response contains the fields that the server wrote. It does not contain a new full profile. Call `pb.me()` after the update if you require the full result.
 
 ## Settings
 
@@ -65,6 +65,31 @@ const settings = decodeSettings(raw, {
 ```
 
 To cancel a settings read without confusing request options with update keys, pass `undefined` first: `pb.me.settings(undefined, { signal })`.
+
+### Howl like emoji
+
+Set one emoji for members to use when liking your new howls:
+
+```ts twoslash
+import { PackbaseSDK } from '@packbase/sdk-ts'
+const pb = new PackbaseSDK()
+// ---cut---
+await pb.me.settings({ howl_like_emoji: '🔥' })
+```
+
+The default is 🔥. The server stores your choice on each new howl at creation;
+changing this setting leaves existing howls and their like counts unchanged.
+
+### Allow other members to edit howl tags
+
+```ts twoslash
+import { PackbaseSDK } from '@packbase/sdk-ts'
+const pb = new PackbaseSDK()
+// ---cut---
+await pb.me.settings({ allow_tag_edits_from_others: false })
+```
+
+`allow_tag_edits_from_others` is a boolean that defaults to `true`, including for existing accounts without a stored value. When on, other signed-in members can edit unprotected tags on all your existing and future howls. When off, ordinary tag editing is limited to you. Staff and content moderators retain their moderation permissions. Every edit requires a public explanation and appears in the howl's public tag history. Turning the setting off leaves earlier edits and history intact.
 
 ## Friends
 
@@ -115,3 +140,14 @@ console.log(usage.totalBytes, usage.fileCount, usage.tier)
 ```
 
 `pb.me.storage()` returns `StorageUsage`. On a storage-provider failure, the response includes `error` and `totalBytes: 0`.
+
+## Bulk deletion and factory reset
+
+Use [`pb.me.maintenance`](/reference/maintenance) for server-owned review,
+timed typed confirmation, durable progress, retry, and completion acknowledgement.
+Both actions preserve login identity and moderation restrictions.
+
+
+## Muted and blocked members
+
+Use `pb.me.mutes` and `pb.me.blocks` to list, add, or remove the current member's private outgoing relationships. Both use immutable profile IDs, preserve owner-only identity snapshots for removal, and accept request cancellation. See [Blocking, muting, and visibility](/reference/visibility) for the full contract and live-client cache handling.

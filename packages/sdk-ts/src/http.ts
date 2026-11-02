@@ -41,15 +41,30 @@ export class HttpClient {
     private readonly apiKey: string | undefined
     /** Unresolved GETs only; settled responses are never retained. */
     private readonly pendingReads = new Map<string, Promise<unknown>>()
+    private visibilityGeneration = 0
 
     /**
      * Creates a new HTTP client instance.
      *
      * @param config - Base URL and optional API key used for all requests.
      */
-    constructor(config: SDKConfig) {
+    constructor(
+        config: SDKConfig,
+        private readonly onVisibilityInvalidated?: (generation: number) => void,
+    ) {
         this.baseUrl = config.baseUrl.replace(/\/+$/, '')
         this.apiKey = config.apiKey
+    }
+
+    getVisibilityGeneration(): number {
+        return this.visibilityGeneration
+    }
+
+    invalidateVisibility(): number {
+        const generation = ++this.visibilityGeneration
+        this.clearPendingReads()
+        this.onVisibilityInvalidated?.(generation)
+        return generation
     }
 
     /**
@@ -108,7 +123,11 @@ export class HttpClient {
             // Body may not be JSON for certain error responses.
         }
 
-        throw PackbaseError.fromResponse(res.status, body)
+        const error = PackbaseError.fromResponse(res.status, body)
+        // The server rejected a response whose visibility changed mid-request.
+        // Reads reconcile through their generation fence; writes surface the error once.
+        if (error.status === 409 && error.code === 'visibility_changed') this.invalidateVisibility()
+        throw error
     }
 
     /**
@@ -148,13 +167,33 @@ export class HttpClient {
         return request
     }
 
+    /** @internal Bypasses pending-read sharing and HTTP caches for live policy/state. */
+    async getFresh<T>(path: string, options: RequestOptions = {}, query?: Record<string, unknown>): Promise<T> {
+        return this.fetchGet<T>(this.buildUrl(path, query), options, 'no-store')
+    }
+
+    /** A read-only POST. Safe to repeat when visibility changes during the request. */
+    async postRead<T>(path: string, body: unknown, options: RequestOptions = {}): Promise<T> {
+        return this.readAtCurrentVisibility(async () => {
+            const response = await fetch(this.buildUrl(path), {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json', ...this.authHeaders()},
+                credentials: this.apiKey ? 'omit' : 'include',
+                body: JSON.stringify(body),
+                signal: options.signal,
+                cache: 'no-store',
+            })
+            return this.handleResponse<T>(response)
+        }, options)
+    }
+
     /** @internal Performs a side-effecting legacy GET and resets pending reads. */
     async getMutation<T>(
         path: string,
         query?: Record<string, unknown>,
         options: RequestOptions = {},
     ): Promise<T> {
-        const value = await this.fetchGet<T>(this.buildUrl(path, query), options)
+        const value = await this.fetchGetOnce<T>(this.buildUrl(path, query), options)
         this.clearPendingReads()
         return value
     }
@@ -259,10 +298,15 @@ export class HttpClient {
         return value
     }
 
-    private async fetchGet<T>(url: string, options: RequestOptions = {}): Promise<T> {
+    private async fetchGet<T>(url: string, options: RequestOptions = {}, cache?: RequestCache): Promise<T> {
+        return this.readAtCurrentVisibility(() => this.fetchGetOnce<T>(url, options, cache), options)
+    }
+
+    private async fetchGetOnce<T>(url: string, options: RequestOptions, cache?: RequestCache): Promise<T> {
         this.throwIfAborted(options.signal)
         const res = await fetch(url, {
             method: 'GET',
+            ...(cache || this.visibilityGeneration > 0 ? {cache: cache ?? 'no-store'} : {}),
             headers: {
                 'Content-Type': 'application/json',
                 ...this.authHeaders(),
@@ -271,6 +315,22 @@ export class HttpClient {
             signal: options.signal,
         })
         return this.handleResponse<T>(res)
+    }
+
+    /** Never expose a read that started under an obsolete visibility policy. */
+    private async readAtCurrentVisibility<T>(read: () => Promise<T>, options: RequestOptions): Promise<T> {
+        for (;;) {
+            this.throwIfAborted(options.signal)
+            const generation = this.visibilityGeneration
+            try {
+                const value = await read()
+                this.throwIfAborted(options.signal)
+                if (generation === this.visibilityGeneration) return value
+            } catch (error) {
+                this.throwIfAborted(options.signal)
+                if (generation === this.visibilityGeneration) throw error
+            }
+        }
     }
 
     private throwIfAborted(signal?: AbortSignal): void {

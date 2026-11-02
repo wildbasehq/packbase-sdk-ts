@@ -6,16 +6,419 @@
     "version": "0.0.0"
   },
   "paths": {
+    "/howl/{id}/tags": {
+      "put": {
+        "operationId": "putHowlByIdTags",
+        "tags": [
+          "Howl"
+        ],
+        "description": "Replace howl tags with a required public explanation and current revision. Authors may edit their own howls; other members require the author's allow_tag_edits_from_others setting (default true). Staff/content moderators retain their permissions. Exactly one rating tag is required. Only staff/content moderators may change protected tags or supply moderator_tags. Replies are excluded.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Concrete howl ID. Regular rehowls resolve to the original; quote howls retain their own tags."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HowlTagEditInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HowlTagEditResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid tags, explanation, revision, or no changes."
+          },
+          "403": {
+            "description": "Tag editing or protected-tag changes are not allowed."
+          },
+          "404": {
+            "description": "Howl is unavailable."
+          },
+          "409": {
+            "description": "Tag revision changed. Fetch fresh state and review before saving again."
+          }
+        }
+      }
+    },
+    "/howl/{id}/moderator-tags": {
+      "put": {
+        "operationId": "putHowlByIdModeratorTags",
+        "tags": [
+          "Howl"
+        ],
+        "description": "Staff/content-moderator protected tag replacement, now requiring a public explanation and current revision. Previously protected tags omitted from this set are removed from the howl. Use the ordinary tags endpoint to unlock while retaining a tag.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Concrete howl ID. Regular rehowls resolve to the original; quote howls retain their own tags."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HowlModeratorTagEditInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HowlTagEditResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid tags, explanation, revision, or no changes."
+          },
+          "403": {
+            "description": "Tag editing or protected-tag changes are not allowed."
+          },
+          "404": {
+            "description": "Howl is unavailable."
+          },
+          "409": {
+            "description": "Tag revision changed. Fetch fresh state and review before saving again."
+          }
+        }
+      }
+    },
+    "/howl/{id}/tag-history": {
+      "get": {
+        "operationId": "getHowlByIdTagHistory",
+        "tags": [
+          "Howl"
+        ],
+        "description": "Public tag and lock diffs, explanations, timestamps, and editor identities, newest first. Access follows the howl's visibility. History begins at rollout and is removed with the howl.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Concrete howl ID. Regular rehowls resolve to the original; quote howls retain their own tags."
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HowlTagHistoryPage"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Howl is unavailable."
+          }
+        }
+      }
+    },
+    "/user/me/maintenance/preview": {
+      "post": {
+        "operationId": "postUserMeMaintenancePreview",
+        "description": "Freeze and review all matching tagged howls and dependent replies/rehowls, or full account reset. Review expires after 15 minutes; server enforces a 10-second deletion or 30-second reset wait.",
+        "tags": [
+          "User"
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MaintenancePreviewSchema"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "409": {
+            "description": "Maintenance scope, wait, or active-operation conflict"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "kind"
+                ],
+                "properties": {
+                  "kind": {
+                    "$ref": "#/components/schemas/MaintenanceKindSchema"
+                  },
+                  "tags": {
+                    "type": "array",
+                    "maxItems": 100,
+                    "items": {
+                      "type": "string",
+                      "maxLength": 256
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/user/me/maintenance/confirm": {
+      "post": {
+        "operationId": "postUserMeMaintenanceConfirm",
+        "description": "Confirm the reviewed token with the exact current username. Tokens are account-bound idempotency keys; changed scope requires a new preview.",
+        "tags": [
+          "User"
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MaintenanceOperationSchema"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "409": {
+            "description": "Maintenance scope, wait, or active-operation conflict"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "token",
+                  "username"
+                ],
+                "properties": {
+                  "token": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "username": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 256
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/user/me/maintenance/current": {
+      "get": {
+        "operationId": "getUserMeMaintenanceCurrent",
+        "description": "Read the latest unacknowledged operation and server time. Read fresh without caching.",
+        "tags": [
+          "User"
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MaintenanceCurrentSchema"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "409": {
+            "description": "Maintenance scope, wait, or active-operation conflict"
+          }
+        }
+      }
+    },
+    "/user/me/maintenance/{id}": {
+      "get": {
+        "operationId": "getUserMeMaintenanceStatus",
+        "description": "Read durable deletion, provider-reset, and media-cleanup progress.",
+        "tags": [
+          "User"
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MaintenanceOperationSchema"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "409": {
+            "description": "Maintenance scope, wait, or active-operation conflict"
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ]
+      }
+    },
+    "/user/me/maintenance/{id}/retry": {
+      "post": {
+        "operationId": "postUserMeMaintenanceRetry",
+        "description": "Resume a failed operation from its durable phase; completed work is not repeated.",
+        "tags": [
+          "User"
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MaintenanceOperationSchema"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "409": {
+            "description": "Maintenance scope, wait, or active-operation conflict"
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ]
+      }
+    },
+    "/user/me/maintenance/{id}/acknowledge": {
+      "post": {
+        "operationId": "postUserMeMaintenanceAcknowledge",
+        "description": "Acknowledge completed maintenance and release the reset gate.",
+        "tags": [
+          "User"
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MaintenanceOperationSchema"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "409": {
+            "description": "Maintenance scope, wait, or active-operation conflict"
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ]
+      }
+    },
     "/health": {
       "get": {
         "operationId": "getHealth",
         "description": "Get service health and process metrics.",
-        "tags": ["Server"],
+        "tags": [
+          "Server"
+        ],
         "responses": {
           "200": {
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/HealthResponse" }
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                }
               }
             }
           }
@@ -26,12 +429,16 @@
       "post": {
         "operationId": "postFeedback",
         "description": "Submit product feedback for the authenticated user.",
-        "tags": ["Feedback"],
+        "tags": [
+          "Feedback"
+        ],
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
-              "schema": { "$ref": "#/components/schemas/FeedbackInput" }
+              "schema": {
+                "$ref": "#/components/schemas/FeedbackInput"
+              }
             }
           }
         },
@@ -39,7 +446,9 @@
           "200": {
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/FeedbackResult" }
+                "schema": {
+                  "$ref": "#/components/schemas/FeedbackResult"
+                }
               }
             }
           },
@@ -1027,86 +1436,100 @@
     },
     "/migrate/verify": {
       "post": {
-        "parameters": [],
         "operationId": "postMigrateVerify",
-        "description": "Verify ownership of external account for migration.",
+        "description": "Verify the public ownership proof for a pending migration.",
         "tags": [
           "Migrate"
         ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MigrationRecord"
+                }
+              }
+            }
+          }
+        },
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
               "schema": {
                 "type": "object",
-                "required": [
-                  "service",
-                  "external_handle",
-                  "tenant_id"
-                ],
                 "properties": {
-                  "service": {
+                  "migration_id": {
                     "type": "string"
-                  },
-                  "external_handle": {
-                    "type": "string"
-                  },
-                  "tenant_id": {
-                    "type": "string"
-                  },
-                  "cancel_pending": {
-                    "type": "boolean"
                   }
-                }
+                },
+                "required": [
+                  "migration_id"
+                ]
               }
             }
           }
-        },
-        "responses": {
-          "200": {}
         }
       }
     },
     "/migrate/start": {
       "post": {
-        "parameters": [],
         "operationId": "postMigrateStart",
         "description": "Start a verified migration.",
         "tags": [
           "Migrate"
         ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MigrationRecord"
+                }
+              }
+            }
+          }
+        },
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
               "schema": {
                 "type": "object",
-                "required": [
-                  "migration_id"
-                ],
                 "properties": {
                   "migration_id": {
                     "type": "string"
                   }
-                }
+                },
+                "required": [
+                  "migration_id"
+                ]
               }
             }
           }
-        },
-        "responses": {
-          "200": {}
         }
       }
     },
     "/migrate/status": {
       "get": {
         "operationId": "getMigrateStatus",
-        "description": "Check migration progress.",
+        "description": "Read migration history and authoritative account lock state.",
         "tags": [
           "Migrate"
         ],
         "responses": {
-          "200": {}
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MigrationStatusResponse"
+                }
+              }
+            }
+          }
         }
       }
     },
@@ -1479,7 +1902,7 @@
       "post": {
         "parameters": [],
         "operationId": "postSearch",
-        "description": "Search API",
+        "description": "Named queries over posts, profiles and packs. Each query may contain context: feed (default) or direct to control outgoing mute filtering only. Blocking and server privacy always apply, including exact-ID filters. Relationship tables are never searchable.",
         "tags": [
           "Search"
         ],
@@ -1521,17 +1944,23 @@
         },
         "operationId": "getTags",
         "description": "List all registered tag names.",
-        "tags": ["Tags"]
+        "tags": [
+          "Tags"
+        ]
       },
       "post": {
         "operationId": "postTags",
         "description": "Register a tag. Requires staff or content-moderator access.",
-        "tags": ["Tags"],
+        "tags": [
+          "Tags"
+        ],
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
-              "schema": { "$ref": "#/components/schemas/Tag" }
+              "schema": {
+                "$ref": "#/components/schemas/Tag"
+              }
             }
           }
         },
@@ -1539,7 +1968,9 @@
           "201": {
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/Tag" }
+                "schema": {
+                  "$ref": "#/components/schemas/Tag"
+                }
               }
             }
           },
@@ -1554,20 +1985,28 @@
       "get": {
         "operationId": "getTagsByTag",
         "description": "Get metadata for a registered tag.",
-        "tags": ["Tags"],
+        "tags": [
+          "Tags"
+        ],
         "parameters": [
           {
             "name": "tag",
             "in": "path",
             "required": true,
-            "schema": { "type": "string", "minLength": 1, "maxLength": 256 }
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 256
+            }
           }
         ],
         "responses": {
           "200": {
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/Tag" }
+                "schema": {
+                  "$ref": "#/components/schemas/Tag"
+                }
               }
             }
           },
@@ -1577,20 +2016,28 @@
       "patch": {
         "operationId": "patchTagsByTag",
         "description": "Update registered tag metadata. Requires staff or content-moderator access.",
-        "tags": ["Tags"],
+        "tags": [
+          "Tags"
+        ],
         "parameters": [
           {
             "name": "tag",
             "in": "path",
             "required": true,
-            "schema": { "type": "string", "minLength": 1, "maxLength": 256 }
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 256
+            }
           }
         ],
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
-              "schema": { "$ref": "#/components/schemas/TagPatch" }
+              "schema": {
+                "$ref": "#/components/schemas/TagPatch"
+              }
             }
           }
         },
@@ -1598,7 +2045,9 @@
           "200": {
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/Tag" }
+                "schema": {
+                  "$ref": "#/components/schemas/Tag"
+                }
               }
             }
           },
@@ -1612,13 +2061,19 @@
       "delete": {
         "operationId": "deleteTagsByTag",
         "description": "Delete a registered tag. Requires staff or content-moderator access.",
-        "tags": ["Tags"],
+        "tags": [
+          "Tags"
+        ],
         "parameters": [
           {
             "name": "tag",
             "in": "path",
             "required": true,
-            "schema": { "type": "string", "minLength": 1, "maxLength": 256 }
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 256
+            }
           }
         ],
         "responses": {
@@ -1633,13 +2088,19 @@
       "post": {
         "operationId": "postTagsByTagFollow",
         "description": "Follow a tag for the authenticated user's home and gossip feeds.",
-        "tags": ["Tags"],
+        "tags": [
+          "Tags"
+        ],
         "parameters": [
           {
             "name": "tag",
             "in": "path",
             "required": true,
-            "schema": { "type": "string", "minLength": 1, "maxLength": 256 }
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 256
+            }
           }
         ],
         "responses": {
@@ -1652,13 +2113,19 @@
       "delete": {
         "operationId": "deleteTagsByTagFollow",
         "description": "Stop following a tag for the authenticated user.",
-        "tags": ["Tags"],
+        "tags": [
+          "Tags"
+        ],
         "parameters": [
           {
             "name": "tag",
             "in": "path",
             "required": true,
-            "schema": { "type": "string", "minLength": 1, "maxLength": 256 }
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 256
+            }
           }
         ],
         "responses": {
@@ -1807,6 +2274,10 @@
                               },
                               "profile_visit_action": {
                                 "type": "string"
+                              },
+                              "muted_by_me": {
+                                "type": "boolean",
+                                "description": "Only the authenticated viewer's outgoing mute state."
                               }
                             }
                           }
@@ -1996,38 +2467,56 @@
     },
     "/user/me/nuke": {
       "post": {
-        "parameters": [],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {}
-                }
-              }
-            }
-          }
-        },
         "operationId": "postUserMeNuke",
-        "description": "Delete all posts by the current user that contain ALL specified tags. Use dry_run to preview without deleting.",
+        "description": "Preview bulk deletion with dry_run=true and tags; destructive calls require a reviewed token and exact username.",
         "tags": [
           "User"
         ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/MaintenancePreviewSchema"
+                    },
+                    {
+                      "$ref": "#/components/schemas/MaintenanceOperationSchema"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "409": {
+            "description": "Maintenance scope, wait, or active-operation conflict"
+          }
+        },
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
               "schema": {
                 "type": "object",
-                "required": [
-                  "tags",
-                  "dry_run"
-                ],
+                "additionalProperties": false,
                 "properties": {
+                  "token": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "username": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 256
+                  },
                   "tags": {
-                    "minItems": 1,
                     "type": "array",
+                    "minItems": 1,
                     "items": {
                       "type": "string"
                     }
@@ -2056,7 +2545,8 @@
             }
           }
         },
-        "operationId": "getUserMeSettings"
+        "operationId": "getUserMeSettings",
+        "description": "Read user settings. howl_like_emoji is one emoji (default \ud83d\udd25) used only for newly created howls; existing howl emojis remain unchanged. allow_tag_edits_from_others is a boolean that defaults to true, allowing other signed-in members to edit unlocked tags on existing and future howls. False limits ordinary editing to the author; staff/content moderators retain their permissions. All edits require public explanations and create public tag history."
       },
       "post": {
         "parameters": [],
@@ -2088,11 +2578,24 @@
                 "type": "object",
                 "patternProperties": {
                   "^(.*)$": {}
+                },
+                "properties": {
+                  "allow_tag_edits_from_others": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Allow other signed-in members to edit unlocked tags on existing and future howls."
+                  },
+                  "howl_like_emoji": {
+                    "type": "string",
+                    "default": "\ud83d\udd25",
+                    "description": "One emoji to use for likes on newly created howls."
+                  }
                 }
               }
             }
           }
-        }
+        },
+        "description": "Update user settings. howl_like_emoji is one emoji (default \ud83d\udd25) used only for newly created howls; existing howl emojis remain unchanged. allow_tag_edits_from_others is a boolean that defaults to true, allowing other signed-in members to edit unlocked tags on existing and future howls. False limits ordinary editing to the author; staff/content moderators retain their permissions. All edits require public explanations and create public tag history."
       }
     },
     "/user/me/storage": {
@@ -2137,14 +2640,18 @@
       "get": {
         "operationId": "getUserMeFollowingTags",
         "description": "List tags followed by the authenticated user.",
-        "tags": ["Tags"],
+        "tags": [
+          "Tags"
+        ],
         "responses": {
           "200": {
             "content": {
               "application/json": {
                 "schema": {
                   "type": "array",
-                  "items": { "type": "string" }
+                  "items": {
+                    "type": "string"
+                  }
                 }
               }
             }
@@ -2189,8 +2696,53 @@
     "/user/me/reset": {
       "post": {
         "operationId": "postUserMeReset",
+        "description": "Compatibility alias for maintenance confirmation; requires a reviewed token and exact username.",
+        "tags": [
+          "User"
+        ],
         "responses": {
-          "200": {}
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MaintenanceOperationSchema"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "409": {
+            "description": "Maintenance scope, wait, or active-operation conflict"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "token",
+                  "username"
+                ],
+                "properties": {
+                  "token": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "username": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 256
+                  }
+                }
+              }
+            }
+          }
         }
       }
     },
@@ -2307,6 +2859,10 @@
                   },
                   "profile_visit_action": {
                     "type": "string"
+                  },
+                  "muted_by_me": {
+                    "type": "boolean",
+                    "description": "Only the authenticated viewer's outgoing mute state."
                   }
                 }
               }
@@ -3242,6 +3798,20 @@
             "in": "path",
             "name": "id",
             "required": true
+          },
+          {
+            "name": "context",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "feed",
+                "direct"
+              ],
+              "default": "direct"
+            },
+            "description": "Mute context. Feed hydration must retain feed context for nested previews. Blocking always applies."
           }
         ],
         "operationId": "getHowlById",
@@ -3250,7 +3820,10 @@
           "Howl"
         ],
         "responses": {
-          "200": {}
+          "200": {},
+          "404": {
+            "description": "Not found"
+          }
         }
       },
       "delete": {
@@ -3337,10 +3910,32 @@
                   "properties": {
                     "id": {
                       "type": "string"
+                    },
+                    "likes": {
+                      "type": "object",
+                      "required": [
+                        "emoji",
+                        "count",
+                        "likedByMe"
+                      ],
+                      "properties": {
+                        "emoji": {
+                          "type": "string",
+                          "description": "Author-selected emoji captured at creation; defaults to \ud83d\udd25."
+                        },
+                        "count": {
+                          "type": "number",
+                          "minimum": 0
+                        },
+                        "likedByMe": {
+                          "type": "boolean"
+                        }
+                      }
                     }
                   },
                   "required": [
-                    "id"
+                    "id",
+                    "likes"
                   ]
                 }
               }
@@ -3393,8 +3988,8 @@
         }
       }
     },
-    "/howl/{id}/react": {
-      "post": {
+    "/howl/{id}/like": {
+      "put": {
         "parameters": [
           {
             "schema": {
@@ -3406,7 +4001,6 @@
           }
         ],
         "responses": {
-          "201": {},
           "400": {
             "content": {
               "application/json": {
@@ -3442,33 +4036,16 @@
                 }
               }
             }
+          },
+          "204": {
+            "description": "Like saved."
           }
         },
-        "operationId": "postHowlByIdReact",
-        "description": "React to a post",
+        "operationId": "putHowlByIdLike",
+        "description": "Like a post. Idempotent; uses the emoji stored when the post was created.",
         "tags": [
           "Howl"
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "required": [
-                  "slot"
-                ],
-                "properties": {
-                  "slot": {
-                    "minimum": 1,
-                    "default": "👍",
-                    "type": "string"
-                  }
-                }
-              }
-            }
-          }
-        }
+        ]
       },
       "delete": {
         "parameters": [
@@ -3482,7 +4059,9 @@
           }
         ],
         "responses": {
-          "204": {},
+          "204": {
+            "description": "Like removed."
+          },
           "400": {
             "content": {
               "application/json": {
@@ -3520,28 +4099,11 @@
             }
           }
         },
-        "operationId": "deleteHowlByIdReact",
-        "description": "Remove reaction from a post",
+        "operationId": "deleteHowlByIdLike",
+        "description": "Remove your like from a post. Idempotent.",
         "tags": [
           "Howl"
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "slot": {
-                    "minimum": 1,
-                    "default": "👍",
-                    "type": "string"
-                  }
-                }
-              }
-            }
-          }
-        }
+        ]
       }
     },
     "/feed/{id}": {
@@ -3587,7 +4149,8 @@
                           "id",
                           "content_type",
                           "created_at",
-                          "user"
+                          "user",
+                          "likes"
                         ],
                         "properties": {
                           "id": {
@@ -3733,6 +4296,10 @@
                               },
                               "profile_visit_action": {
                                 "type": "string"
+                              },
+                              "muted_by_me": {
+                                "type": "boolean",
+                                "description": "Only the authenticated viewer's outgoing mute state."
                               }
                             }
                           },
@@ -3893,31 +4460,31 @@
                               },
                               "profile_visit_action": {
                                 "type": "string"
+                              },
+                              "muted_by_me": {
+                                "type": "boolean",
+                                "description": "Only the authenticated viewer's outgoing mute state."
                               }
                             }
                           },
-                          "reactions": {
-                            "type": "array",
-                            "items": {
-                              "type": "object",
-                              "required": [
-                                "key",
-                                "emoji",
-                                "count"
-                              ],
-                              "properties": {
-                                "key": {
-                                  "type": "string"
-                                },
-                                "emoji": {
-                                  "type": "string"
-                                },
-                                "count": {
-                                  "type": "number"
-                                },
-                                "reactedByMe": {
-                                  "type": "boolean"
-                                }
+                          "likes": {
+                            "type": "object",
+                            "required": [
+                              "emoji",
+                              "count",
+                              "likedByMe"
+                            ],
+                            "properties": {
+                              "emoji": {
+                                "type": "string",
+                                "description": "Author-selected emoji captured at creation; defaults to \ud83d\udd25."
+                              },
+                              "count": {
+                                "type": "number",
+                                "minimum": 0
+                              },
+                              "likedByMe": {
+                                "type": "boolean"
                               }
                             }
                           },
@@ -3926,11 +4493,15 @@
                             "items": {
                               "type": "object",
                               "required": [
+                                "id",
                                 "user",
                                 "created_at",
                                 "content_type"
                               ],
                               "properties": {
+                                "id": {
+                                  "type": "string"
+                                },
                                 "user": {
                                   "additionalProperties": true,
                                   "type": "object",
@@ -4036,6 +4607,10 @@
                                     },
                                     "profile_visit_action": {
                                       "type": "string"
+                                    },
+                                    "muted_by_me": {
+                                      "type": "boolean",
+                                      "description": "Only the authenticated viewer's outgoing mute state."
                                     }
                                   }
                                 },
@@ -4210,7 +4785,8 @@
                           "id",
                           "content_type",
                           "created_at",
-                          "user"
+                          "user",
+                          "likes"
                         ],
                         "properties": {
                           "id": {
@@ -4356,6 +4932,10 @@
                               },
                               "profile_visit_action": {
                                 "type": "string"
+                              },
+                              "muted_by_me": {
+                                "type": "boolean",
+                                "description": "Only the authenticated viewer's outgoing mute state."
                               }
                             }
                           },
@@ -4516,31 +5096,31 @@
                               },
                               "profile_visit_action": {
                                 "type": "string"
+                              },
+                              "muted_by_me": {
+                                "type": "boolean",
+                                "description": "Only the authenticated viewer's outgoing mute state."
                               }
                             }
                           },
-                          "reactions": {
-                            "type": "array",
-                            "items": {
-                              "type": "object",
-                              "required": [
-                                "key",
-                                "emoji",
-                                "count"
-                              ],
-                              "properties": {
-                                "key": {
-                                  "type": "string"
-                                },
-                                "emoji": {
-                                  "type": "string"
-                                },
-                                "count": {
-                                  "type": "number"
-                                },
-                                "reactedByMe": {
-                                  "type": "boolean"
-                                }
+                          "likes": {
+                            "type": "object",
+                            "required": [
+                              "emoji",
+                              "count",
+                              "likedByMe"
+                            ],
+                            "properties": {
+                              "emoji": {
+                                "type": "string",
+                                "description": "Author-selected emoji captured at creation; defaults to \ud83d\udd25."
+                              },
+                              "count": {
+                                "type": "number",
+                                "minimum": 0
+                              },
+                              "likedByMe": {
+                                "type": "boolean"
                               }
                             }
                           },
@@ -4549,11 +5129,15 @@
                             "items": {
                               "type": "object",
                               "required": [
+                                "id",
                                 "user",
                                 "created_at",
                                 "content_type"
                               ],
                               "properties": {
+                                "id": {
+                                  "type": "string"
+                                },
                                 "user": {
                                   "additionalProperties": true,
                                   "type": "object",
@@ -4659,6 +5243,10 @@
                                     },
                                     "profile_visit_action": {
                                       "type": "string"
+                                    },
+                                    "muted_by_me": {
+                                      "type": "boolean",
+                                      "description": "Only the authenticated viewer's outgoing mute state."
                                     }
                                   }
                                 },
@@ -5045,6 +5633,10 @@
                     },
                     "profile_visit_action": {
                       "type": "string"
+                    },
+                    "muted_by_me": {
+                      "type": "boolean",
+                      "description": "Only the authenticated viewer's outgoing mute state."
                     }
                   }
                 }
@@ -5974,11 +6566,106 @@
             "in": "path",
             "name": "id",
             "required": true
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 50
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "description": "Opaque cursor from the preceding page. Send unchanged.",
+            "schema": {
+              "type": "string",
+              "pattern": "^[1-9][0-9]{0,18}$"
+            }
           }
         ],
         "responses": {
-          "200": {}
-        }
+          "200": {
+            "description": "A page of visible members. Exhausted cursors return empty data.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "data",
+                    "has_more"
+                  ],
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "maxItems": 100,
+                      "items": {
+                        "type": "object",
+                        "required": [
+                          "id",
+                          "username",
+                          "display_name",
+                          "membership_id",
+                          "joined_at",
+                          "permissions"
+                        ],
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "format": "uuid"
+                          },
+                          "username": {
+                            "type": "string"
+                          },
+                          "display_name": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "membership_id": {
+                            "type": "string",
+                            "pattern": "^[1-9][0-9]{0,18}$"
+                          },
+                          "joined_at": {
+                            "type": "string",
+                            "format": "date-time"
+                          },
+                          "permissions": {
+                            "type": "integer"
+                          }
+                        }
+                      }
+                    },
+                    "has_more": {
+                      "type": "boolean"
+                    },
+                    "cursor": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid or duplicate pagination parameter"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "No visible members on the initial page"
+          },
+          "404": {
+            "description": "Pack unavailable"
+          },
+          "413": {
+            "description": "MEMBER_ROLE_LIMIT: a returned member has over 100 roles; reduce assignments instead of using incomplete permissions"
+          }
+        },
+        "description": "One bounded member page, default 50/max 100, ordered by descending membership ID. Membership IDs and cursors are decimal strings. Summaries omit post-history r18_tags."
       }
     },
     "/pack/{id}/roles": {
@@ -6197,7 +6884,8 @@
                           "id",
                           "content_type",
                           "created_at",
-                          "user"
+                          "user",
+                          "likes"
                         ],
                         "properties": {
                           "id": {
@@ -6343,6 +7031,10 @@
                               },
                               "profile_visit_action": {
                                 "type": "string"
+                              },
+                              "muted_by_me": {
+                                "type": "boolean",
+                                "description": "Only the authenticated viewer's outgoing mute state."
                               }
                             }
                           },
@@ -6503,31 +7195,31 @@
                               },
                               "profile_visit_action": {
                                 "type": "string"
+                              },
+                              "muted_by_me": {
+                                "type": "boolean",
+                                "description": "Only the authenticated viewer's outgoing mute state."
                               }
                             }
                           },
-                          "reactions": {
-                            "type": "array",
-                            "items": {
-                              "type": "object",
-                              "required": [
-                                "key",
-                                "emoji",
-                                "count"
-                              ],
-                              "properties": {
-                                "key": {
-                                  "type": "string"
-                                },
-                                "emoji": {
-                                  "type": "string"
-                                },
-                                "count": {
-                                  "type": "number"
-                                },
-                                "reactedByMe": {
-                                  "type": "boolean"
-                                }
+                          "likes": {
+                            "type": "object",
+                            "required": [
+                              "emoji",
+                              "count",
+                              "likedByMe"
+                            ],
+                            "properties": {
+                              "emoji": {
+                                "type": "string",
+                                "description": "Author-selected emoji captured at creation; defaults to \ud83d\udd25."
+                              },
+                              "count": {
+                                "type": "number",
+                                "minimum": 0
+                              },
+                              "likedByMe": {
+                                "type": "boolean"
                               }
                             }
                           },
@@ -6536,11 +7228,15 @@
                             "items": {
                               "type": "object",
                               "required": [
+                                "id",
                                 "user",
                                 "created_at",
                                 "content_type"
                               ],
                               "properties": {
+                                "id": {
+                                  "type": "string"
+                                },
                                 "user": {
                                   "additionalProperties": true,
                                   "type": "object",
@@ -6646,6 +7342,10 @@
                                     },
                                     "profile_visit_action": {
                                       "type": "string"
+                                    },
+                                    "muted_by_me": {
+                                      "type": "boolean",
+                                      "description": "Only the authenticated viewer's outgoing mute state."
                                     }
                                   }
                                 },
@@ -7920,18 +8620,1096 @@
           "Folders"
         ]
       }
+    },
+    "/migrate/services.json": {
+      "get": {
+        "operationId": "getMigrateServices",
+        "description": "Read the public version-1 migration service schema.",
+        "tags": [
+          "Migrate"
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MigrationServicesResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/migrate/create": {
+      "post": {
+        "operationId": "postMigrateCreate",
+        "description": "Create a migration ownership challenge from schema-defined inputs.",
+        "tags": [
+          "Migrate"
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MigrationRecord"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "service": {
+                    "type": "string"
+                  },
+                  "inputs": {
+                    "$ref": "#/components/schemas/MigrationInputs"
+                  },
+                  "tenant_id": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "service",
+                  "inputs"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/migrate/cancel": {
+      "post": {
+        "operationId": "postMigrateCancel",
+        "description": "Cancel an eligible migration without deleting imported content.",
+        "tags": [
+          "Migrate"
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MigrationRecord"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "migration_id": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "migration_id"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/migrate/retry": {
+      "post": {
+        "operationId": "postMigrateRetry",
+        "description": "Retry an eligible failed migration.",
+        "tags": [
+          "Migrate"
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MigrationRecord"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "migration_id": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "migration_id"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/user/me/mutes": {
+      "get": {
+        "operationId": "getUserMeMutes",
+        "tags": [
+          "User"
+        ],
+        "description": "List the authenticated caller's outgoing mutes. Owner-only immutable identity snapshots; never live profiles or incoming relationships.",
+        "parameters": [
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProfileRelationshipPageSchema"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required"
+          }
+        }
+      }
+    },
+    "/user/me/mutes/{profileId}": {
+      "put": {
+        "operationId": "putUserMeMutesByProfileId",
+        "tags": [
+          "User"
+        ],
+        "description": "Idempotently add the caller's outgoing mute using the immutable profile ID. Removing uses the stored relationship even if the profile is hidden.",
+        "parameters": [
+          {
+            "name": "profileId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Completed without response data"
+          },
+          "400": {
+            "description": "Invalid target"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      },
+      "delete": {
+        "operationId": "deleteUserMeMutesByProfileId",
+        "tags": [
+          "User"
+        ],
+        "description": "Idempotently remove the caller's outgoing mute using the immutable profile ID. Removing uses the stored relationship even if the profile is hidden.",
+        "parameters": [
+          {
+            "name": "profileId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Completed without response data"
+          },
+          "400": {
+            "description": "Invalid target"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      }
+    },
+    "/user/me/blocks": {
+      "get": {
+        "operationId": "getUserMeBlocks",
+        "tags": [
+          "User"
+        ],
+        "description": "List the authenticated caller's outgoing blocks. Owner-only immutable identity snapshots; never live profiles or incoming relationships.",
+        "parameters": [
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProfileRelationshipPageSchema"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required"
+          }
+        }
+      }
+    },
+    "/user/me/blocks/{profileId}": {
+      "put": {
+        "operationId": "putUserMeBlocksByProfileId",
+        "tags": [
+          "User"
+        ],
+        "description": "Idempotently add the caller's outgoing block using the immutable profile ID. Removing uses the stored relationship even if the profile is hidden.",
+        "parameters": [
+          {
+            "name": "profileId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Completed without response data"
+          },
+          "400": {
+            "description": "Invalid target"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      },
+      "delete": {
+        "operationId": "deleteUserMeBlocksByProfileId",
+        "tags": [
+          "User"
+        ],
+        "description": "Idempotently remove the caller's outgoing block using the immutable profile ID. Removing uses the stored relationship even if the profile is hidden.",
+        "parameters": [
+          {
+            "name": "profileId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Completed without response data"
+          },
+          "400": {
+            "description": "Invalid target"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      }
+    },
+    "/visibility/watch": {
+      "get": {
+        "operationId": "getVisibilityWatch",
+        "tags": [
+          "Visibility"
+        ],
+        "description": "Uncached optional-auth long poll for opaque visibility changes. Returns no actor, target or relationship details.",
+        "parameters": [
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "wait_ms",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 25000
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VisibilityWatchSchema"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
     "schemas": {
+      "HowlTagEditInput": {
+        "type": "object",
+        "required": [
+          "tags",
+          "explanation",
+          "expected_revision"
+        ],
+        "properties": {
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "maxLength": 256
+            },
+            "maxItems": 100
+          },
+          "explanation": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1000
+          },
+          "expected_revision": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "moderator_tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 100
+          }
+        }
+      },
+      "HowlModeratorTagEditInput": {
+        "type": "object",
+        "required": [
+          "tags",
+          "explanation",
+          "expected_revision"
+        ],
+        "properties": {
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "maxLength": 256
+            },
+            "maxItems": 100
+          },
+          "explanation": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1000
+          },
+          "expected_revision": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      },
+      "HowlTagHistoryEntry": {
+        "type": "object",
+        "required": [
+          "id",
+          "revision",
+          "created_at",
+          "editor",
+          "explanation",
+          "added_tags",
+          "removed_tags",
+          "locked_tags",
+          "unlocked_tags"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "revision": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "editor": {
+            "anyOf": [
+              {
+                "type": "object",
+                "required": [
+                  "id",
+                  "username",
+                  "display_name"
+                ],
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "username": {
+                    "type": "string"
+                  },
+                  "display_name": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "images": {
+                    "type": "object",
+                    "properties": {
+                      "avatar": {
+                        "type": "string"
+                      },
+                      "header": {
+                        "anyOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      }
+                    }
+                  }
+                }
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "explanation": {
+            "type": "string"
+          },
+          "added_tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "removed_tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "locked_tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "unlocked_tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "HowlTagEditResult": {
+        "type": "object",
+        "required": [
+          "tags",
+          "moderator_tags",
+          "tag_revision",
+          "edit"
+        ],
+        "properties": {
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "moderator_tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "tag_revision": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "edit": {
+            "$ref": "#/components/schemas/HowlTagHistoryEntry"
+          }
+        }
+      },
+      "HowlTagHistoryPage": {
+        "type": "object",
+        "required": [
+          "data",
+          "has_more"
+        ],
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/HowlTagHistoryEntry"
+            }
+          },
+          "has_more": {
+            "type": "boolean"
+          },
+          "cursor": {
+            "type": "string"
+          }
+        }
+      },
+      "MaintenanceCurrentSchema": {
+        "type": "object",
+        "required": [
+          "operation",
+          "server_time",
+          "last_reset_id"
+        ],
+        "properties": {
+          "operation": {
+            "type": "object",
+            "required": [
+              "id",
+              "kind",
+              "status",
+              "phase",
+              "own_count",
+              "cascade_count",
+              "total_count",
+              "deleted_count",
+              "cleanup_total",
+              "cleanup_completed",
+              "error",
+              "can_retry",
+              "created_at",
+              "updated_at",
+              "completed_at",
+              "acknowledged_at"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "kind": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "enum": [
+                      "bulk_delete"
+                    ]
+                  },
+                  {
+                    "type": "string",
+                    "enum": [
+                      "factory_reset"
+                    ]
+                  }
+                ]
+              },
+              "status": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "enum": [
+                      "queued"
+                    ]
+                  },
+                  {
+                    "type": "string",
+                    "enum": [
+                      "running"
+                    ]
+                  },
+                  {
+                    "type": "string",
+                    "enum": [
+                      "failed"
+                    ]
+                  },
+                  {
+                    "type": "string",
+                    "enum": [
+                      "completed"
+                    ]
+                  }
+                ]
+              },
+              "phase": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "enum": [
+                      "delete"
+                    ]
+                  },
+                  {
+                    "type": "string",
+                    "enum": [
+                      "reset"
+                    ]
+                  },
+                  {
+                    "type": "string",
+                    "enum": [
+                      "provider"
+                    ]
+                  },
+                  {
+                    "type": "string",
+                    "enum": [
+                      "assets"
+                    ]
+                  },
+                  {
+                    "type": "string",
+                    "enum": [
+                      "complete"
+                    ]
+                  }
+                ]
+              },
+              "own_count": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "cascade_count": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "total_count": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "deleted_count": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "cleanup_total": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "cleanup_completed": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "error": {
+                "type": "string",
+                "nullable": true
+              },
+              "can_retry": {
+                "type": "boolean"
+              },
+              "created_at": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "updated_at": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "completed_at": {
+                "type": "string",
+                "format": "date-time",
+                "nullable": true
+              },
+              "acknowledged_at": {
+                "type": "string",
+                "format": "date-time",
+                "nullable": true
+              }
+            },
+            "additionalProperties": false,
+            "nullable": true
+          },
+          "server_time": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "last_reset_id": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true,
+            "description": "Latest confirmed factory reset, retained after acknowledgement; previews do not change this marker."
+          }
+        },
+        "additionalProperties": false
+      },
+      "MaintenanceKindSchema": {
+        "anyOf": [
+          {
+            "type": "string",
+            "enum": [
+              "bulk_delete"
+            ]
+          },
+          {
+            "type": "string",
+            "enum": [
+              "factory_reset"
+            ]
+          }
+        ]
+      },
+      "MaintenanceOperationSchema": {
+        "type": "object",
+        "required": [
+          "id",
+          "kind",
+          "status",
+          "phase",
+          "own_count",
+          "cascade_count",
+          "total_count",
+          "deleted_count",
+          "cleanup_total",
+          "cleanup_completed",
+          "error",
+          "can_retry",
+          "created_at",
+          "updated_at",
+          "completed_at",
+          "acknowledged_at"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "kind": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "bulk_delete"
+                ]
+              },
+              {
+                "type": "string",
+                "enum": [
+                  "factory_reset"
+                ]
+              }
+            ]
+          },
+          "status": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "queued"
+                ]
+              },
+              {
+                "type": "string",
+                "enum": [
+                  "running"
+                ]
+              },
+              {
+                "type": "string",
+                "enum": [
+                  "failed"
+                ]
+              },
+              {
+                "type": "string",
+                "enum": [
+                  "completed"
+                ]
+              }
+            ]
+          },
+          "phase": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "delete"
+                ]
+              },
+              {
+                "type": "string",
+                "enum": [
+                  "reset"
+                ]
+              },
+              {
+                "type": "string",
+                "enum": [
+                  "provider"
+                ]
+              },
+              {
+                "type": "string",
+                "enum": [
+                  "assets"
+                ]
+              },
+              {
+                "type": "string",
+                "enum": [
+                  "complete"
+                ]
+              }
+            ]
+          },
+          "own_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "cascade_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "total_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "deleted_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "cleanup_total": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "cleanup_completed": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "error": {
+            "type": "string",
+            "nullable": true
+          },
+          "can_retry": {
+            "type": "boolean"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "completed_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "acknowledged_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "MaintenancePreviewSchema": {
+        "type": "object",
+        "required": [
+          "token",
+          "kind",
+          "tags",
+          "own_count",
+          "cascade_count",
+          "total_count",
+          "samples",
+          "has_more",
+          "server_time",
+          "confirm_after",
+          "expires_at"
+        ],
+        "properties": {
+          "token": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "kind": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "bulk_delete"
+                ]
+              },
+              {
+                "type": "string",
+                "enum": [
+                  "factory_reset"
+                ]
+              }
+            ]
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "own_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "cascade_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "total_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "samples": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "id",
+                "content",
+                "created_at"
+              ],
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "content": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "created_at": {
+                  "type": "string",
+                  "format": "date-time"
+                }
+              }
+            },
+            "maxItems": 100
+          },
+          "has_more": {
+            "type": "boolean"
+          },
+          "server_time": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "confirm_after": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "expires_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "additionalProperties": false
+      },
       "Tag": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["tag", "title", "description"],
+        "required": [
+          "tag",
+          "title",
+          "description"
+        ],
         "properties": {
-          "tag": { "type": "string", "minLength": 1, "maxLength": 256 },
-          "title": { "type": "string", "minLength": 1, "maxLength": 256 },
-          "description": { "type": "string", "minLength": 1 }
+          "tag": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256
+          },
+          "description": {
+            "type": "string",
+            "minLength": 1
+          }
         }
       },
       "TagPatch": {
@@ -7939,53 +9717,537 @@
         "additionalProperties": false,
         "minProperties": 1,
         "properties": {
-          "title": { "type": "string", "minLength": 1, "maxLength": 256 },
-          "description": { "type": "string", "minLength": 1 }
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256
+          },
+          "description": {
+            "type": "string",
+            "minLength": 1
+          }
         }
       },
       "FeedbackInput": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["canContact", "canSendLogs", "kind", "message"],
+        "required": [
+          "canContact",
+          "canSendLogs",
+          "kind",
+          "message"
+        ],
         "properties": {
-          "canContact": { "type": "boolean" },
-          "canSendLogs": { "type": "boolean" },
-          "kind": { "type": "string", "enum": ["idea", "problem", "other"] },
-          "message": { "type": "string", "minLength": 1, "maxLength": 2000 }
+          "canContact": {
+            "type": "boolean"
+          },
+          "canSendLogs": {
+            "type": "boolean"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "idea",
+              "problem",
+              "other"
+            ]
+          },
+          "message": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2000
+          }
         }
       },
       "FeedbackResult": {
         "type": "object",
-        "required": ["sent"],
+        "required": [
+          "sent"
+        ],
         "properties": {
-          "sent": { "type": "boolean" }
+          "sent": {
+            "type": "boolean"
+          }
         }
       },
       "HealthResponse": {
         "type": "object",
-        "required": ["status", "timestamp", "metrics", "instance"],
+        "required": [
+          "status",
+          "timestamp",
+          "metrics",
+          "instance"
+        ],
         "properties": {
-          "status": { "type": "string" },
-          "timestamp": { "type": "number" },
+          "status": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "number"
+          },
           "metrics": {
             "type": "object",
-            "required": ["memory", "cpu", "connections", "uptime"],
+            "required": [
+              "memory",
+              "cpu",
+              "connections",
+              "uptime"
+            ],
             "properties": {
               "memory": {
                 "type": "object",
-                "required": ["rss", "heapTotal", "heapUsed"],
+                "required": [
+                  "rss",
+                  "heapTotal",
+                  "heapUsed"
+                ],
                 "properties": {
-                  "rss": { "type": "number" },
-                  "heapTotal": { "type": "number" },
-                  "heapUsed": { "type": "number" }
+                  "rss": {
+                    "type": "number"
+                  },
+                  "heapTotal": {
+                    "type": "number"
+                  },
+                  "heapUsed": {
+                    "type": "number"
+                  }
                 }
               },
-              "cpu": { "type": "number" },
-              "connections": { "type": "number" },
-              "uptime": { "type": "number" }
+              "cpu": {
+                "type": "number"
+              },
+              "connections": {
+                "type": "number"
+              },
+              "uptime": {
+                "type": "number"
+              }
             }
           },
-          "instance": { "type": "string" }
+          "instance": {
+            "type": "string"
+          }
+        }
+      },
+      "MigrationInputs": {
+        "type": "object",
+        "additionalProperties": {
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "boolean"
+            }
+          ]
+        }
+      },
+      "MigrationField": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "text",
+              "textarea",
+              "password",
+              "number",
+              "boolean",
+              "select"
+            ]
+          },
+          "required": {
+            "type": "boolean"
+          },
+          "placeholder": {
+            "type": "string"
+          },
+          "min_length": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "max_length": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "pattern": {
+            "type": "string"
+          },
+          "min": {
+            "type": "number"
+          },
+          "max": {
+            "type": "number"
+          },
+          "options": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "value": {
+                  "type": "string"
+                },
+                "label": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "value",
+                "label"
+              ]
+            }
+          }
+        },
+        "required": [
+          "key",
+          "label",
+          "description",
+          "type",
+          "required"
+        ]
+      },
+      "MigrationService": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "unavailable_reason": {
+            "type": "string",
+            "nullable": true
+          },
+          "fields": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MigrationField"
+            }
+          },
+          "destination": {
+            "type": "object",
+            "properties": {
+              "required": {
+                "type": "boolean"
+              },
+              "label": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "required",
+              "label"
+            ]
+          },
+          "limits": {
+            "type": "object",
+            "properties": {
+              "max_migrations_per_account": {
+                "type": "integer",
+                "minimum": 0,
+                "nullable": true,
+                "description": "Maximum completed migrations per account; null means no configured limit."
+              },
+              "max_posts": {
+                "type": "integer",
+                "minimum": 0,
+                "nullable": true
+              }
+            },
+            "required": [
+              "max_migrations_per_account",
+              "max_posts"
+            ]
+          },
+          "soft_lock": {
+            "type": "object",
+            "properties": {
+              "enabled": {
+                "type": "boolean"
+              },
+              "description": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "enabled",
+              "description"
+            ]
+          },
+          "verification": {
+            "type": "object",
+            "properties": {
+              "method": {
+                "type": "string",
+                "enum": [
+                  "public_post"
+                ]
+              },
+              "instructions": {
+                "type": "string"
+              },
+              "expires_in_seconds": {
+                "type": "integer",
+                "minimum": 1
+              }
+            },
+            "required": [
+              "method",
+              "instructions",
+              "expires_in_seconds"
+            ]
+          },
+          "imports": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "excludes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "description",
+          "enabled",
+          "unavailable_reason",
+          "fields",
+          "destination",
+          "limits",
+          "soft_lock",
+          "verification",
+          "imports",
+          "excludes"
+        ]
+      },
+      "MigrationServicesResponse": {
+        "type": "object",
+        "properties": {
+          "version": {
+            "type": "integer",
+            "enum": [
+              1
+            ]
+          },
+          "services": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MigrationService"
+            }
+          }
+        },
+        "required": [
+          "version",
+          "services"
+        ]
+      },
+      "MigrationRecord": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "service": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "verified",
+              "in_progress",
+              "completed",
+              "failed",
+              "cancelled"
+            ]
+          },
+          "inputs": {
+            "$ref": "#/components/schemas/MigrationInputs"
+          },
+          "tenant_id": {
+            "type": "string"
+          },
+          "external_handle": {
+            "type": "string"
+          },
+          "secret": {
+            "type": "string",
+            "nullable": true
+          },
+          "secret_expires": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "progress_current": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "progress_total": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "error": {
+            "type": "string",
+            "nullable": true
+          },
+          "can_retry": {
+            "type": "boolean"
+          },
+          "can_cancel": {
+            "type": "boolean"
+          },
+          "soft_locked": {
+            "type": "boolean"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "completed_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "policy": {
+            "$ref": "#/components/schemas/MigrationService"
+          }
+        },
+        "required": [
+          "id",
+          "service",
+          "status",
+          "inputs",
+          "tenant_id",
+          "external_handle",
+          "secret",
+          "secret_expires",
+          "progress_current",
+          "progress_total",
+          "error",
+          "can_retry",
+          "can_cancel",
+          "soft_locked",
+          "created_at",
+          "completed_at",
+          "policy"
+        ]
+      },
+      "MigrationStatusResponse": {
+        "type": "object",
+        "properties": {
+          "migrations": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MigrationRecord"
+            }
+          },
+          "account_locked": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "migrations",
+          "account_locked"
+        ]
+      },
+      "ProfileRelationshipSchema": {
+        "type": "object",
+        "required": [
+          "profile_id",
+          "created_at",
+          "identity"
+        ],
+        "properties": {
+          "profile_id": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "identity": {
+            "type": "object",
+            "required": [
+              "username",
+              "display_name"
+            ],
+            "properties": {
+              "username": {
+                "type": "string"
+              },
+              "display_name": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            }
+          }
+        }
+      },
+      "ProfileRelationshipPageSchema": {
+        "type": "object",
+        "required": [
+          "data",
+          "has_more"
+        ],
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ProfileRelationshipSchema"
+            }
+          },
+          "has_more": {
+            "type": "boolean"
+          },
+          "cursor": {
+            "type": "string"
+          }
+        }
+      },
+      "VisibilityWatchSchema": {
+        "type": "object",
+        "required": [
+          "cursor",
+          "changed"
+        ],
+        "properties": {
+          "cursor": {
+            "type": "string"
+          },
+          "changed": {
+            "type": "boolean"
+          }
         }
       }
     }

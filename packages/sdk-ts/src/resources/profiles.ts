@@ -1,6 +1,7 @@
 import type { HttpClient } from '../http'
 import type { RequestOptions } from '../request'
-import type { Profile } from '../types/profile'
+import type { Paginated } from '../types/common'
+import type { Profile, UsernameHistoryEntry } from '../types/profile'
 import type { ReportReasonValue, ReportResult } from '../types/report'
 import { ThenableResource } from './base'
 
@@ -20,12 +21,23 @@ export class ProfileHandle extends ThenableResource<Profile> {
         private readonly username: string,
         private readonly requestOptions?: RequestOptions,
     ) {
-        super()
+        super(() => http.getVisibilityGeneration())
     }
 
     /** Fetches `GET /user/:username`. */
     protected fetch(): Promise<Profile> {
         return this.http.get<Profile>(`/user/${encodeURIComponent(this.username)}`, undefined, this.requestOptions)
+    }
+
+    /** Previous usernames, newest first. Requires sign-in and profile visibility.
+     * Pass the returned cursor to load the next page. History begins at rollout.
+     */
+    usernameHistory(options: RequestOptions & {cursor?: string} = {}): Promise<Paginated<UsernameHistoryEntry>> {
+        return this.http.getFresh<Paginated<UsernameHistoryEntry>>(
+            `/user/${encodeURIComponent(this.username)}/username-history`,
+            {...this.requestOptions, ...options},
+            {cursor: options.cursor},
+        )
     }
 
     /**

@@ -1,9 +1,9 @@
 ---
 title: pb.howls
-description: Fetch, create, delete, react to, comment on, rehowl, and report howls.
+description: Fetch, create, delete, like, comment on, rehowl, and report howls.
 ---
 
-Call `pb.howls(id)` with a howl UUID to get a lazy `HowlHandle`. Creating the handle does not send a request. Await the handle to fetch the howl. Action methods such as `.react()` send only their applicable request.
+Call `pb.howls(id)` with a howl UUID to get a lazy `HowlHandle`. Creating the handle does not send a request. Await the handle to fetch the howl. Action methods such as `.like()` send only their applicable request.
 
 ```ts twoslash
 import { PackbaseSDK } from '@packbase/sdk-ts'
@@ -33,7 +33,7 @@ Packbase creates howls in a background job. By default, the SDK starts the job a
 | Field | Type | Notes |
 | --- | --- | --- |
 | `tenant_id` | `string` | Pack UUID. The caller must be a member. |
-| `parent_id` | `string?` | Parent howl UUID, when creating a reply through the creation job. |
+| `parent_id` | `string?` | Source howl UUID to quote. The quote survives source deletion; use `.comment()` for replies. |
 | `content_type` | `'text'?` | The SDK supplies `'text'` when omitted. |
 | `body` | `string \| null` | Plain text or HTML. Use `null` only when assets are present. |
 | `asset_ids` | `string[]?` | Finalized upload IDs, up to 100. |
@@ -70,18 +70,20 @@ await pb.howls('howl-id').delete()
 
 The signed-in user must have permission to delete a howl. The server does not currently supply a howl edit route.
 
-## Reactions
+## Likes
 
 ```ts twoslash
 import { PackbaseSDK } from '@packbase/sdk-ts'
 const pb = new PackbaseSDK()
 const howl = pb.howls('howl-id')
 // ---cut---
-await howl.react('🔥')
-await howl.unreact()
+await howl.like()
+await howl.unlike()
 ```
 
-`react()` sends `POST /howl/:id/react`. If you repeat the same reaction, the server returns status `400`. The method does not toggle the reaction. `unreact()` sends `DELETE /howl/:id/react`. It removes the caller's reactions from the howl.
+`like()` sends a bodyless `PUT /howl/:id/like`; `unlike()` sends a bodyless `DELETE /howl/:id/like`. Both are idempotent. A member has at most one like per howl. The author chooses the emoji in user settings; readers use the emoji already stored with the howl.
+
+Every howl includes `likes: { emoji, count, likedByMe }`, even when the count is zero. The default emoji is 🔥. Set `howl_like_emoji` through [`pb.me.settings()`](/reference/me#settings) to choose the emoji for new howls. Changing it leaves existing howls unchanged.
 
 ## Comments and rehowls
 
@@ -90,12 +92,12 @@ import { PackbaseSDK } from '@packbase/sdk-ts'
 const pb = new PackbaseSDK()
 const howl = pb.howls('howl-id')
 // ---cut---
-const { id: commentId } = await howl.comment('Good post.')
+const { id: commentId, likes } = await howl.comment('Good post.')
 const { id: rehowlId } = await howl.rehowl()
 await howl.unrehowl()
 ```
 
-Comments are sanitized by the server and limited to 1,024 characters. `unrehowl()` targets the original howl ID.
+`comment()` returns `HowlCommentResult`: `{ id, likes }`. Use this returned `likes` summary to reconcile optimistic replies with the server's emoji snapshot; local settings may be stale. Comments are sanitized by the server and limited to 1,024 characters. `unrehowl()` targets the original howl ID.
 
 ## Report
 
@@ -110,3 +112,67 @@ const ticket = await pb.howls('howl-id').report(
 ```
 
 The returned `ReportResult` contains the moderation ticket's `id` and `status`.
+
+
+## Visibility context
+
+`pb.howls(id, { context: 'feed', signal })` retains feed mute filtering during detail hydration, including nested quote and reply previews. A direct read defaults to `context: 'direct'`, preserving muted content intentionally opened through a profile or howl link. Blocking applies in both contexts and returns ordinary `404` responses for inaccessible reads and actions. See [Blocking, muting, and visibility](/reference/visibility).
+
+## Edit media copyright
+
+Only the original howl creator can change its media credit. Regular rehowls resolve to the original howl; quotes retain their own credit.
+
+```ts
+await pb.howls(id).setCopyright('© 2024 Artist name')
+await pb.howls(id).setCopyright(null) // Restore the creator/year default
+```
+
+The credit applies to all media in the howl and is returned as `howl.copyright`. Text is trimmed and limited to 500 characters; blank text also restores the default. The endpoint is `PUT /howl/:id/copyright` with `{ copyright: string | null }`.
+
+## Edit tags
+
+Authors can edit their own howls. Other signed-in members can edit when the author's `allow_tag_edits_from_others` setting is on (the default). This setting applies to existing and future howls. Staff and content moderators retain their moderation permissions; being a pack host alone does not grant a bypass. Replies cannot be edited through this feature. Regular rehowls use the original howl's tags; quote howls retain their own tags.
+
+Fetch current state before editing. `fresh: true` bypasses pending-read sharing and HTTP caches. Use the returned capabilities to decide which controls to show, and send the latest numeric revision with the edit:
+
+```ts twoslash
+import { PackbaseSDK } from '@packbase/sdk-ts'
+const pb = new PackbaseSDK()
+const id = 'howl-id'
+// ---cut---
+const howl = await pb.howls(id, { fresh: true })
+if (howl.can_edit_tags && howl.tag_revision !== undefined) {
+  const updated = await pb.howls(id).setTags({
+    tags: ['rating_safe', 'digital_art'],
+    explanation: 'Added the medium used in this artwork.',
+    expected_revision: howl.tag_revision,
+  })
+  console.log(updated.tags, updated.tag_revision, updated.edit)
+}
+```
+
+`setTags()` sends `PUT /howl/:id/tags` and returns `HowlTagEditResult`: `{ tags, moderator_tags, tag_revision, edit }`. Every edit requires a public explanation, including edits to your own howl. Explanations are trimmed and must contain 1–1,000 characters. Send the complete tag list, with at most 100 tags of at most 256 characters each and exactly one rating tag. Members can change the rating when it is not protected. Protected tags must remain unchanged unless the caller can manage tag locks.
+
+Staff and content moderators can pass `moderator_tags` to replace the protected subset alongside the tags. In this endpoint, unlocking a tag leaves it in `tags` when it remains in the supplied tag list. A no-change request does not create an edit. A stale `expected_revision` returns `409` without changing tags or history: fetch fresh state, review the new diff, and submit again with the current revision. Other permission or visibility changes may also reject a save.
+
+The existing `moderatorTags({ tags, explanation, expected_revision })` method sends `PUT /howl/:id/moderator-tags`. It now requires the same explanation and revision and creates public history. Its legacy replacement semantics remove previously protected tags omitted from the new protected set; use `setTags()` to unlock a tag while keeping it on the howl.
+
+## Public tag history
+
+```ts twoslash
+import { PackbaseSDK } from '@packbase/sdk-ts'
+const pb = new PackbaseSDK()
+const id = 'howl-id'
+// ---cut---
+const page = await pb.howls(id).tagHistory()
+for (const edit of page.data) {
+  console.log(edit.editor?.username, edit.explanation)
+  console.log(edit.added_tags, edit.removed_tags)
+  console.log(edit.locked_tags, edit.unlocked_tags)
+}
+if (page.has_more && page.cursor) {
+  const older = await pb.howls(id).tagHistory({ cursor: page.cursor })
+}
+```
+
+`tagHistory()` sends `GET /howl/:id/tag-history`, reads fresh on every call, and accepts `signal` for cancellation. History is public wherever the howl is visible and is ordered newest first. Each entry contains a string ID, numeric revision, timestamp, editor's public identity (or `null` when unavailable), explanation, and tag and lock diffs. History begins when tracking is deployed; creation does not count as an edit. The history follows the howl's normal access and deletion rules.

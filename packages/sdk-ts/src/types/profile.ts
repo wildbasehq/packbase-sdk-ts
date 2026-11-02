@@ -4,7 +4,6 @@ export interface Profile {
     id: string
     username: string
     display_name: string | null
-    slug?: string
     badge?: string
     xp?: number
     about?: { bio?: string | null; flair?: string }
@@ -12,6 +11,8 @@ export interface Profile {
     post_privacy?: 'everyone' | 'followers' | 'friends' | 'private'
     images?: { avatar?: string; header?: string | null }
     following?: boolean
+    /** Only whether the authenticated viewer muted this profile. Never incoming state. */
+    muted_by_me?: boolean
     is_staff?: boolean
     is_content_moderator?: boolean
     is_dx?: boolean
@@ -22,7 +23,8 @@ export interface Profile {
 
 export interface UpdateProfileInput {
     display_name?: string
-    slug?: string
+    /** Updates the account username through Clerk. */
+    username?: string
     about?: { bio?: string }
     space_type?: 'default' | 'custom_free' | 'custom_unrestricted'
     post_privacy?: 'everyone' | 'followers' | 'friends' | 'private'
@@ -59,4 +61,11 @@ export interface StorageUsage {
     fileCount?: number
     tier?: string
     error?: string
+}
+
+/** A former username, recorded when it was replaced. Names may recur. */
+export interface UsernameHistoryEntry {
+    id: string
+    username: string
+    changed_at: string
 }

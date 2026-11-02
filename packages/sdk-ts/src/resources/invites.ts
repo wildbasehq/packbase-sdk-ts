@@ -9,6 +9,64 @@ export interface Invite {
     [key: string]: JsonValue
 }
 
+/** A direct-access code visible to its creator or credited inviter. */
+export interface AccessCode {
+    id: string
+    code: string
+    url: string
+    created_at: string
+    status: 'active' | 'reserved' | 'exhausted' | 'revoked'
+    credited_user_id: string
+    credited_username: string
+    created_by_me: boolean
+    /** Staff-only fields; never present in a regular member's response. */
+    max_uses?: number
+    used_count?: number
+    pending_count?: number
+}
+
+/** Current rolling code allowance; null means unlimited staff creation. */
+export interface AccessCodeAllowance {
+    remaining: number | null
+    next_refresh_at: string | null
+}
+
+/** Cursor page of direct-access codes owned or credited to the caller. */
+export interface AccessCodeList {
+    codes: AccessCode[]
+    allowance: AccessCodeAllowance
+    next_cursor: string | null
+}
+
+export interface AccessCodeListOptions extends RequestOptions {
+    cursor?: string
+}
+
+/** Staff must supply both fields; regular members create one-use codes with no overrides. */
+export interface CreateAccessCodeInput {
+    credited_user_id?: string
+    max_uses?: number
+}
+
+export interface AccessCodeClaimResult {
+    success: true
+}
+
+export interface AccessCodeRevokeResult {
+    success: true
+}
+
+export interface CreditedUser {
+    id: string
+    username: string
+    display_name: string | null
+    images_avatar: string | null
+}
+
+export interface CreditedUserSearch {
+    users: CreditedUser[]
+}
+
 /** A waitlist member's referral details. */
 export interface WaitlistReferral {
     /** The member's eight-character referral code. */
@@ -31,7 +89,7 @@ export interface RedeemWaitlistReferralResult {
     referrer_code: string
 }
 
-/** Invite and pre-signup waitlist referral endpoints. */
+/** Email invites, direct-access codes, and pre-signup waitlist referrals. */
 export interface InvitesResource {
     /**
      * Fetches the authenticated user's invite list.
@@ -47,6 +105,21 @@ export interface InvitesResource {
      * @returns The created invitation record.
      */
     generate(email: string, options?: RequestOptions): Promise<Invite>
+
+    /** Lists direct-access codes and the caller's current creation allowance. */
+    listAccessCodes(options?: AccessCodeListOptions): Promise<AccessCodeList>
+
+    /** Creates a direct-access code; staff must choose the credited user and use limit. */
+    createAccessCode(input?: CreateAccessCodeInput, options?: RequestOptions): Promise<AccessCode>
+
+    /** Sends a verification invitation to an email for a valid code or link. */
+    claimAccessCode(code: string, email: string, options?: RequestOptions): Promise<AccessCodeClaimResult>
+
+    /** Revokes a code and its pending verification invitations. */
+    revokeAccessCode(id: string, options?: RequestOptions): Promise<void>
+
+    /** Searches eligible credited users; available to staff only. */
+    searchCreditedUsers(query: string, options?: RequestOptions): Promise<CreditedUser[]>
 
     /**
      * Gets or creates referral details for a Clerk waitlist entry.
@@ -89,7 +162,7 @@ export interface InvitesResource {
 }
 
 /**
- * Creates the invite and waitlist referral resource.
+ * Creates the email invite, access-code, and waitlist referral resource.
  *
  * @param http - SDK HTTP client.
  * @returns Invite and waitlist referral methods.
@@ -99,6 +172,18 @@ export function makeInvites(http: HttpClient): InvitesResource {
         list: (options?: RequestOptions) => http.get<Invite[]>('/invite/list', undefined, options),
         generate: (email: string, options?: RequestOptions) =>
             http.post<Invite>('/invite/generate', {email}, undefined, options),
+        listAccessCodes: (options: AccessCodeListOptions = {}) =>
+            http.get<AccessCodeList>('/invite/access-codes', {cursor: options.cursor}, options),
+        createAccessCode: (input: CreateAccessCodeInput = {}, options?: RequestOptions) =>
+            http.post<AccessCode>('/invite/access-codes', input, undefined, options),
+        claimAccessCode: (code: string, email: string, options?: RequestOptions) =>
+            http.post<AccessCodeClaimResult>('/invite/access-codes/claim', {code, email}, undefined, options),
+        revokeAccessCode: (id: string, options?: RequestOptions) =>
+            http.post<AccessCodeRevokeResult>(`/invite/access-codes/${encodeURIComponent(id)}/revoke`, {}, undefined, options)
+                .then(() => undefined),
+        searchCreditedUsers: (query: string, options?: RequestOptions) =>
+            http.get<CreditedUserSearch>('/invite/credited-users', {query}, options)
+                .then((result) => result.users),
         getWaitlistReferral: (waitlistId: string, options?: RequestOptions) =>
             http.get<WaitlistReferral>('/invite/my-referral', { id: waitlistId }, options),
         redeemWaitlistReferral: (waitlistId: string, code: string, options?: RequestOptions) =>

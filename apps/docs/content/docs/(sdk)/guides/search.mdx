@@ -32,12 +32,14 @@ In this example, the application specifies the names `topPacks` and `recentUsers
 | Model | Fields available |
 | --- | --- |
 | `'posts'` | `id`, `created_at`, `tenant_id`, `content_type`, `body`, `user_id`, `parent`, `tags`, `assets`, `asset_types` |
-| `'profiles'` | `id`, `created_at`, `username`, `bio`, `slug`, `display_name`, `images_avatar`, `images_header`, `type`, `space_type`, `is_r18` |
+| `'profiles'` | `id`, `created_at`, `username`, `bio`, `display_name`, `images_avatar`, `images_header`, `type`, `space_type`, `is_r18` |
 | `'packs'` | `id`, `created_at`, `display_name`, `images_avatar`, `description`, `owner_id`, `images_header`, `last_activity_at` |
 
 The model name specifies the fields that TypeScript permits in the chain. If a `'packs'` query uses a profile-only field, your editor shows an error before the request.
 
-Search results use these flat database column names. The result types are `SearchPost`, `SearchProfile`, and `SearchPack`. They are not the normalized `Howl`, `Profile`, and `Pack` resource types. For example, a searched pack has `images_avatar` and `last_activity_at`. It does not have a nested `images` object.
+Post searches return fully hydrated `SearchPost` objects that extend `Howl`: authors, media, likes, replies, and public moderation summaries are included in the same response. Render these objects directly; fetching every post again with `pb.howls(id)` adds unnecessary requests. `__index` records the result position, and queries with `feed: true` include per-search `feed_explanation` metadata. Keep that provenance separate from canonical howl caches.
+
+`SearchProfile` and `SearchPack` retain flat database column names. For example, a searched pack has `images_avatar` and `last_activity_at` rather than a nested `images` object.
 
 `asset_types` is query-only: it is an indexed field for filtering posts and is not added to `SearchPost` results. Its supported values are `image` and `video`.
 

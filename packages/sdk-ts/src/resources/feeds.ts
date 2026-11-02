@@ -11,12 +11,15 @@ export class FeedHandle {
     fetch(options?: FeedFetchOptions): Promise<FeedPage> {
         return this.http.get<FeedPage>(`/feed/${this.id}`, {
             page: options?.page,
+            media_only: options?.mediaOnly,
             include_pins_from: options?.includePinsFrom,
         }, options)
     }
 }
 
 export interface FeedFetchOptions extends RequestOptions {
+    /** Only image/video howls, filtered before pagination; includes matching pins only. */
+    mediaOnly?: boolean
     page?: number
     includePinsFrom?: string
 }

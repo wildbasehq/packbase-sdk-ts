@@ -1,4 +1,5 @@
-import type { JsonValue } from './types/json'
+import type { Howl } from './types/howl'
+import type { HowlReadContext } from './resources/visibility'
 
 // ---------------------------------------------------------------------------
 // ALLOWED MODELS & FIELDS
@@ -10,7 +11,7 @@ const ALLOWED_FIELDS = {
         'user_id', 'parent', 'tags', 'assets', 'asset_types',
     ],
     profiles: [
-        'id', 'created_at', 'username', 'bio', 'slug', 'display_name',
+        'id', 'created_at', 'username', 'bio', 'display_name',
         'images_avatar', 'images_header', 'type', 'space_type', 'is_r18',
     ],
     packs: [
@@ -29,17 +30,14 @@ export type ModelField<M extends ModelName> = (typeof ALLOWED_FIELDS)[M][number]
 // TYPES
 // ---------------------------------------------------------------------------
 
-/** Flat database row returned by searches over `posts`. */
-export interface SearchPost {
-    id: string
-    created_at: string
-    tenant_id: string
-    content_type: import('./types/howl').HowlContentType
-    body: string | null
-    user_id: string
+/** Fully hydrated howl returned by post search; no per-post detail fetch is needed. */
+export interface SearchPost extends Howl {
+    /** Selection provenance for feed:true queries; belongs to this search appearance. */
+    feed_explanation?: import('./types/feed-explanation').FeedExplanation
+    /** Position in this named query's visible results. */
+    __index: number
+    user_id?: string
     parent: string | null
-    tags: string[]
-    assets: JsonValue
 }
 
 /** Flat database row returned by searches over `profiles`. */
@@ -48,7 +46,6 @@ export interface SearchProfile {
     created_at: string
     username: string
     bio: string | null
-    slug: string | null
     display_name: string
     images_avatar: string | null
     images_header: string | null
@@ -136,6 +133,10 @@ export type FilterConditions<M extends ModelName> = FieldFilterConditions<M> & {
 /** The serialized form of a query, sent as the request body to `POST /search`. */
 export interface QueryInput<M extends ModelName = ModelName> {
     from: M
+    /** Apply feed rating preferences and include selection provenance for posts. */
+    feed?: boolean
+    /** Post mute context; defaults to feed. Blocking is enforced in every context. */
+    context?: HowlReadContext
     where?: FilterConditions<M>
     orderBy?: Record<string, SortDirection> | Record<string, SortDirection>[]
     take?: number
@@ -231,6 +232,12 @@ export class SearchQuery<M extends ModelName> {
 
     constructor(model: M) {
         this.input = { from: model }
+    }
+
+    /** Choose mute behavior for post results. Blocking applies in both contexts. */
+    context(context: HowlReadContext): this {
+        this.input.context = context
+        return this
     }
 
     /**

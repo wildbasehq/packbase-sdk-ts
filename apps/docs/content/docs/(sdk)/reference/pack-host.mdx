@@ -1,0 +1,119 @@
+---
+title: Pack-host toolkit
+description: Welcome content, versioned rules, activity, recurring prompts, and pack-rule reports.
+---
+
+Host tools live on `pb.packs(packId).host`. Each request is scoped to one pack and the signed-in caller's permissions. Constructing a handle performs no network request.
+
+## Welcome and rules
+
+```ts
+const pack = pb.packs(packId)
+const welcome = await pack.host.welcome()
+await pack.host.updateWelcome({ welcome: 'Welcome! Introduce yourself in the feed.' })
+await pack.host.publishRules({
+  expected_version: welcome.rules_version,
+  rules: [{ title: 'Be respectful', body: 'Discuss ideas without attacking people.' }],
+})
+```
+
+Welcome messages and rule bodies support Markdown without raw HTML. Only explicit rules publication creates a new immutable version. `ManagePack` permits editing. System and personal packs are ineligible.
+
+Present the current rules and obtain explicit member agreement before joining:
+
+```ts
+// Run after the member has reviewed and agreed to this exact version.
+await pack.join({ rulesVersion: welcome.rules_version, signal })
+// Existing members acknowledge a new version before posting:
+await pack.host.acceptRules({ version: welcome.rules_version }, { signal })
+```
+
+`join()` and `join({ signal })` remain valid for packs without rules. A stale version returns a conflict; fetch the latest rules and request agreement again. Reading remains available without acceptance. Publication is checked on the server, including queued posts and imports; never treat a cached acknowledgment as authorization.
+
+## Activity
+
+`host.insights()` requires `ViewPackInsights` and defaults to the last seven days. Pass the same `from` and `to` timestamps to insights and unanswered posts to select another range:
+
+```ts
+import type { PackActivityRange } from '@packbase/sdk-ts'
+
+const range: PackActivityRange = {
+  from: '2026-10-01T00:00:00+10:00',
+  to: '2026-10-26T00:00:00+11:00',
+}
+const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone
+const insights = await pack.host.insights({ ...range, timezone, signal })
+const firstPage = await pack.host.unanswered({ ...range, limit: 20, signal })
+if (firstPage.has_more) {
+  const nextPage = await pack.host.unanswered({
+    ...range, cursor: firstPage.cursor, limit: 20, signal,
+  })
+}
+```
+
+Both bounds must be timezone-bearing ISO 8601 timestamps. `from` is inclusive and `to` is exclusive; the range must be positive, no longer than 366 days, and end no later than the current time. To include a whole calendar day, use that day's local midnight through the next day's local midnight, accounting for daylight-saving offsets. For today, use the current time as the end. Omitting both bounds preserves the existing seven-day behavior; `insights({ signal })` remains valid.
+
+Insights returns `current` and `previous` counts for `members`, `posts`, `replies`, and distinct `contributors`. The `members` metric counts new memberships. `from`/`to` describe the selected window; `previous_from`/`previous_to` describe the immediately preceding window of equal elapsed duration.
+
+The response also includes `trend: PackActivityTrend` with `interval`, `timezone`, and chronological `points: PackActivityPoint[]`. Each point has inclusive `from` and exclusive `to` timestamps plus the same four counts. The server chooses hourly buckets for ranges up to 48 hours, daily buckets for ranges up to 90 days, and weekly buckets for longer ranges. Empty buckets contain zeros, and the first and last buckets are clipped to the selected bounds.
+
+The optional `timezone` on `insights()` must be an IANA timezone and defaults to `UTC`. It controls local calendar boundaries for the chart without changing the selected instants or comparison period; weeks start on Monday. Daylight-saving transitions can change bucket duration; repeated local hours have distinct timestamp bounds. Keep `timezone` out of `unanswered()` options, which uses the exact range timestamps.
+
+Contributors are deduplicated within each bucket. A member active on multiple days appears in each day's count, so adding bucket contributor counts can exceed `current.contributors`. Trend counts use the same permission and visibility rules as the totals.
+
+```ts
+for (const point of insights.trend.points) {
+  // Use each bucket's actual bounds when plotting or formatting its label.
+  console.log(point.from, point.to, point.posts, point.replies)
+}
+```
+
+`host.unanswered()` returns original posts created within the selected range, oldest first, with no currently visible reply from another author. A visible reply outside the selected dates still makes a conversation answered. Pagination fixes the selected window across pages; retain the same bounds with each cursor, and start a new first page when changing dates. All results respect caller visibility. Pending discussion reminders and open report counts are current queues, independent of the activity dates.
+
+## Discussion reminders
+
+```ts
+const prompt = await pack.host.createPrompt({
+  title: 'Weekly creations', body: 'What have you made this week?',
+  tags: ['creative'], rating: 'rating_safe', weekdays: [5],
+  local_time: '18:00', timezone: 'Australia/Melbourne',
+  assignee_id: hostId, paused: false,
+})
+const { data: prompts, occurrences } = await pack.host.prompts()
+await pack.host.updatePrompt(prompt.id, { ...prompt, paused: true })
+await pack.host.skipOccurrence(occurrences[0].id)
+```
+
+Weekdays use Sunday = 0 through Saturday = 6. Schedules follow local wall-clock time, with one reminder at repeated daylight-saving times and the next valid time for skipped times. Missed reminders coalesce. Schedules pause when the assignee loses eligibility.
+
+A pending occurrence can be reviewed and published with `host.publishOccurrence(id, { body, tags, rating })`. This publishes under the reviewing host's identity, requires current posting/rules permissions, and is idempotent for an occurrence. Templates are text-only; there is no automatic publication or email delivery. `ManagePackPrompts` controls these tools.
+
+## Pack-rule reports
+
+Before sending a pack-rule report, disclose that authorized pack hosts can see the reporter's identity and notes. Platform-safety reporting continues to use the existing howl/profile/pack `.report()` methods.
+
+```ts
+await pack.host.submitReport({
+  howl_id: howlId, rules_version: welcome.rules_version,
+  rule_id: welcome.rules[0].id, notes: 'Context for the hosts.',
+})
+const page = await pack.host.reports({ status: 'open', limit: 20 })
+const report = await pack.host.report(reportId)
+await pack.host.reportAction(report.id, {
+  action: 'resolve', explanation: 'The author corrected the issue.',
+})
+```
+
+Queue states are `open`, `resolved`, `dismissed`, and `escalated`. Actions are `resolve`, `dismiss`, `escalate`, `delete_howl`, `kick`, and `ban`; an explanation is required. `ManagePackReports` permits reviewing reports, while removal, kick, and ban require their respective existing permissions. Failed enforcement leaves the report open. Hosts cannot review reports concerning their own content; reports about the owner go directly to platform moderation.
+
+Escalation creates one linked platform case. Host responses never include platform-private notes or investigation details. Reporters receive an in-app outcome notification.
+
+## Permissions and notifications
+
+The new independent permission bits are `ViewPackInsights` (2048), `ManagePackPrompts` (4096), and `ManagePackReports` (8192). Owners and administrators inherit them. Existing custom roles are not granted them automatically.
+
+Inbox event types include `pack_prompt_reminder` and `pack_report_outcome`. Use their typed metadata (`PackPromptReminderMetadata`, `PackReportOutcomeMetadata`) rather than arbitrary URLs. The server rechecks visibility when serving inbox items and tool destinations.
+
+## Deployment
+
+Deploy the additive database schema and server support before clients using these APIs. The durable reminder worker starts automatically with the server. Existing packs have no published rules or schedules until configured. Monitor reminder lag/failures and report action failures; never run production schema changes as part of an SDK install.

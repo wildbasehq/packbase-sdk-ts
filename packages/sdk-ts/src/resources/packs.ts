@@ -1,3 +1,4 @@
+import { PackHostResource } from './pack-host'
 import type { HttpClient } from '../http'
 import type { RequestOptions } from '../request'
 import type { Howl } from '../types/howl'
@@ -7,6 +8,7 @@ import type {
     PackEditInput,
     PackList,
     PackMember,
+    PackMemberPage,
     PackRole,
     PackRoleInput,
     PackRoleSummary,
@@ -29,25 +31,55 @@ import { ThenableResource } from './base'
  * ```
  */
 export class PackHandle extends ThenableResource<Pack> {
+    readonly host: PackHostResource
     constructor(
         private readonly http: HttpClient,
         private readonly id: string,
         private readonly requestOptions?: RequestOptions,
     ) {
-        super()
+        super(() => http.getVisibilityGeneration())
+        this.host = new PackHostResource(http, id, requestOptions)
     }
 
-    /**
-     * Fetches the pack's member list (`GET /pack/:id/members`).
-     *
-     * @returns All pack members, ordered by online status and recent activity.
+    /** One bounded page, newest membership first (default 50, maximum 100).
+     * Continue with the returned cursor when has_more is true. IDs stay strings.
      */
-    members(options?: RequestOptions): Promise<PackMember[]> {
-        return this.http.get<PackMember[]>(
+    async members(options?: PackMemberListOptions): Promise<PackMemberPage> {
+        const page = await this.http.get<PackMemberPage>(
             `/pack/${this.id}/members`,
-            undefined,
-            options,
+            { cursor: options?.cursor, limit: options?.limit },
+            { ...this.requestOptions, ...options },
         )
+        const validId = (value: unknown): value is string =>
+            typeof value === 'string' && /^[1-9][0-9]{0,18}$/.test(value) &&
+            BigInt(value) <= 9223372036854775807n
+        if (!page || !Array.isArray(page.data) || page.data.length > 100 ||
+            typeof page.has_more !== 'boolean' ||
+            page.data.some(member => !member || !validId(member.membership_id)) ||
+            (page.has_more && (!validId(page.cursor) ||
+                page.cursor !== page.data.at(-1)?.membership_id ||
+                (options?.cursor !== undefined && (!validId(options.cursor) ||
+                    BigInt(page.cursor) >= BigInt(options.cursor)))))) {
+            throw new TypeError('Invalid pack member page or cursor progression.')
+        }
+        return page
+    }
+
+    /** Explicit, sequential lookup across pages. Rendering should use members().
+     * Stops at a match/exhaustion and observes cancellation before every page.
+     */
+    async findMember(userId: string, options?: RequestOptions): Promise<PackMember | undefined> {
+        const signal = options?.signal ?? this.requestOptions?.signal
+        let cursor: string | undefined
+        do {
+            signal?.throwIfAborted()
+            const page = await this.members({ limit: 100, cursor, signal })
+            const member = page.data.find(candidate => candidate.id === userId)
+            if (member) return member
+            if (!page.has_more) return undefined
+            cursor = page.cursor
+        } while (cursor)
+        return undefined
     }
 
     /** Lists roles for this pack (`GET /pack/:id/roles`). */
@@ -84,11 +116,16 @@ export class PackHandle extends ThenableResource<Pack> {
      *
      * @returns The pack and user IDs for the new membership.
      */
-    join(options?: RequestOptions): Promise<{ tenant_id: string; user_id: string }> {
-        return this.http.post(`/pack/${this.id}/join`, undefined, undefined, options)
+    join(options?: PackJoinOptions): Promise<{ tenant_id: string; user_id: string }> {
+        return this.http.post(`/pack/${this.id}/join`, options?.rulesVersion === undefined ? undefined : { rules_version: options.rulesVersion }, undefined, { ...this.requestOptions, ...options })
     }
 
     /** Leaves this pack (`DELETE /pack/:id/join`). */
+    /** Permanently delete this pack and its posts. Only the leader may do this. */
+    delete(options?: RequestOptions): Promise<void> {
+        return this.http.delete<void>(`/pack/${this.id}`, { confirm_pack_id: this.id }, options)
+    }
+
     leave(options?: RequestOptions): Promise<void> {
         return this.http.delete<void>(`/pack/${this.id}/join`, undefined, options)
     }
@@ -200,6 +237,13 @@ export interface PinHowlOptions extends RequestOptions {
     expiresAt?: string | Date | null
 }
 
+export interface PackMemberListOptions extends RequestOptions {
+    /** Opaque decimal string returned by the previous page. */
+    cursor?: string
+    /** Integer between 1 and 100; the server defaults to 50. */
+    limit?: number
+}
+
 export interface PackListOptions extends RequestOptions {
     search?: string
 }
@@ -258,3 +302,6 @@ export function makePacks(http: HttpClient): PacksFn {
 
     return packs as PacksFn
 }
+
+/** Existing RequestOptions remain valid; rulesVersion records explicitly reviewed rules. */
+export interface PackJoinOptions extends RequestOptions { rulesVersion?: number }

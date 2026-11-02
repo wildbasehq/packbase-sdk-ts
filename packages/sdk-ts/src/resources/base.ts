@@ -33,18 +33,26 @@
  */
 export abstract class ThenableResource<T> implements PromiseLike<T> {
     private _promise: Promise<T> | null = null
+    private _generation = -1
+
+    protected constructor(private readonly getGeneration: () => number = () => 0) {}
 
     /**
      * Fires the underlying HTTP request.
      *
-     * This is called at most once. Subsequent awaits reuse the same promise.
+     * Repeated awaits reuse the promise until visibility is invalidated.
      *
      * @returns A promise for the resource value.
      */
     protected abstract fetch(): Promise<T>
 
     private get promise(): Promise<T> {
-        return (this._promise ??= this.fetch())
+        const generation = this.getGeneration()
+        if (!this._promise || this._generation !== generation) {
+            this._generation = generation
+            this._promise = this.fetch()
+        }
+        return this._promise
     }
 
     /**

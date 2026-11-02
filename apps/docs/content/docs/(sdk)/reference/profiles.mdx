@@ -48,3 +48,26 @@ console.log(ticket.id, ticket.status)
 ```
 
 This sends `POST /user/:username/report` and returns a `ReportResult`.
+
+
+## Muting and blocking
+
+`profile.muted_by_me` contains only the signed-in viewer's outgoing mute state. Muted profiles remain accessible. A block in either direction makes ordinary profile reads and actions return the same `404` as a missing profile. Manage outgoing records through [`pb.me.mutes` and `pb.me.blocks`](/reference/visibility); remove a block using its stored profile ID without looking up the hidden profile.
+
+Awaited handles reuse their result until `pb.invalidateVisibility()` or a successful relationship mutation advances the SDK's visibility generation. Existing handles then fetch again.
+
+## Previous usernames
+
+Signed-in members can request previous usernames for profiles they can view, including their own. Blocked and inactive profiles are unavailable. Use the current username or permanent profile ID; old usernames are not aliases or reservations.
+
+```ts
+const firstPage = await pb.profiles('rek').usernameHistory()
+for (const entry of firstPage.data) {
+  console.log(entry.username, entry.changed_at)
+}
+if (firstPage.has_more) {
+  const older = await pb.profiles('rek').usernameHistory({cursor: firstPage.cursor})
+}
+```
+
+Each page has up to 20 entries, newest first, with `id`, `username`, and `changed_at` (the time the name was replaced). IDs and cursors are strings. A name can appear more than once if it was reused. `signal` is supported for cancellation. Requests bypass the SDK response cache. History starts when tracking is deployed; earlier names are not reconstructed.

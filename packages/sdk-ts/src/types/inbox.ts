@@ -12,3 +12,6 @@ export interface Notification {
     metadata?: JsonValue
     related_id?: string | null
 }
+
+/** Known host events; other historical inbox types remain supported. */
+export type PackHostNotification = (Omit<Notification, 'type' | 'metadata'> & { type: 'pack_prompt_reminder'; metadata: import('./pack-host').PackPromptReminderMetadata }) | (Omit<Notification, 'type' | 'metadata'> & { type: 'pack_report_outcome'; metadata: import('./pack-host').PackReportOutcomeMetadata })

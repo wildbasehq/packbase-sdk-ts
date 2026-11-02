@@ -1,9 +1,15 @@
+import type { PackHostRules } from './pack-host'
 import type { Profile } from './profile'
 import type { JsonValue } from './json'
+import type { Paginated } from './common'
+
+export type PackFeedType = 'list' | 'gallery'
 
 export interface Pack {
+    host_rules?: PackHostRules
     id: string
     display_name: string
+    feed_type: PackFeedType
     about?: { bio?: string | null; flair?: string }
     images?: { avatar?: string | null; header?: string | null }
     owner_id?: string | null
@@ -16,14 +22,25 @@ export interface Pack {
     created_at: string
 }
 
-export interface PackMember extends Profile {
-    membership_id: number
+/** Bounded pack-list projection; it does not include post-history tags. */
+export interface PackMemberSummary extends Omit<Profile, 'default_pack'> {
+    membership_id: string
     joined_at: string
+    joined_at_stamp?: string
     permissions: number
-    online?: boolean
-    last_online?: string
+    online?: boolean | null
+    last_online?: string | null
+    status?: string
+    is_r18?: boolean
+    invited_by?: string | null
+    default_pack?: string | null
+    packsId?: string | null
     roles?: PackRoleSummary[]
 }
+
+/** Compatibility name for a member summary, not a complete member list. */
+export type PackMember = PackMemberSummary
+export type PackMemberPage = Paginated<PackMemberSummary>
 
 export interface PackRole {
     id: string
@@ -51,6 +68,9 @@ export const PackPermissionBits = {
     CreateHowls: 256,
     ManagePack: 512,
     PinHowls: 1024,
+    ViewPackInsights: 2048,
+    ManagePackPrompts: 4096,
+    ManagePackReports: 8192,
 } as const
 
 export type PackPermissionBit = typeof PackPermissionBits[keyof typeof PackPermissionBits]
@@ -61,6 +81,7 @@ export interface PackCreateInput {
 }
 
 export interface PackEditInput {
+    feed_type?: PackFeedType
     display_name?: string
     about?: { bio?: string; flair?: string }
     images?: { header?: string; avatar?: string }
@@ -75,6 +96,7 @@ export interface PackList {
 
 /** Database-shaped response returned after editing a pack. */
 export interface PackUpdateResult {
+    feed_type: PackFeedType
     id: string
     display_name: string
     description?: string

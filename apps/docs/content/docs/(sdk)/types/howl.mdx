@@ -15,6 +15,8 @@ interface Howl {
   rehowl_id?: string
   /** ID of the canonical/original howl used as the interaction target. */
   canonical_id?: string
+  quote_source_id?: string | null
+  quote_source_unavailable?: boolean
   parent_post?: unknown
   tenant_id?: string
   content_type: 'text' | 'howling_alongside' | 'howling_echo'
@@ -25,7 +27,11 @@ interface Howl {
   user: Profile
   assets?: HowlAsset[]
   tags?: string[]
-  reactions?: HowlReaction[]
+  moderator_tags?: string[]
+  tag_revision?: number
+  can_edit_tags?: boolean
+  can_manage_tag_locks?: boolean
+  likes: HowlLikes
   comments?: HowlComment[]
   pack?: Pack
   warning?: { reason: string } | null
@@ -42,7 +48,9 @@ interface Howl {
 
 `canonical_id`, when present, identifies the canonical/original howl. Use it when an interaction intentionally targets the original howl. `rehowl_id` is an optional legacy field retained for compatibility with older payloads; new code should use `id`.
 
-`parent_post` can contain the original post for quote howls. Its structure is not stable, and its type is `unknown`. Check the value before you use it. `rehowled_by` identifies the account that rehowled the post when this data is available.
+`quote_source_id` is the independent source reference for a quote. Quotes keep their own interaction identity and survive source deletion. `quote_source_unavailable: true` means the source is deleted, hidden, or inaccessible; show an unavailable-source message without retained source text/media. Regular rehowls and replies still cascade when their parent is deleted.
+
+`parent_post` can contain the visible original post for quote howls. Its structure is not stable, and its type is `unknown`. Check the value before you use it. `rehowled_by` identifies the account that rehowled the post when this data is available.
 
 The `warning` field can be absent or `null`. In both cases, the howl does not have a warning. If `warning` is an object, `reason` explains the warning.
 
@@ -59,7 +67,7 @@ type HowlRating =
 
 Howls that you create directly use `text`. The other values describe rehowls from the API. Each creation request requires exactly one rating tag. This tag can occur at any position in the list.
 
-## Assets, reactions, and comments
+## Assets, likes, and comments
 
 ```ts
 interface HowlAsset {
@@ -67,11 +75,15 @@ interface HowlAsset {
   data: { name?: string; url: string }
 }
 
-interface HowlReaction {
-  key: string
+interface HowlLikes {
   emoji: string
   count: number
-  reactedByMe?: boolean
+  likedByMe: boolean
+}
+
+interface HowlCommentResult {
+  id: string
+  likes: HowlLikes
 }
 
 interface HowlComment {
@@ -80,10 +92,12 @@ interface HowlComment {
   user: Profile
   created_at: string
   content_type: string
-  reactions?: HowlReaction[]
+  likes: HowlLikes
   comments?: HowlComment[]
 }
 ```
+
+`likes` is always present on howls and comments, including when `count` is zero. Its emoji is fixed at creation from the author's `howl_like_emoji` setting (default 🔥). `likedByMe` reports whether the signed-in reader liked the howl.
 
 ## `HowlCreateInput`
 
@@ -99,6 +113,8 @@ interface HowlCreateInput {
   tags: [string, ...string[]]
 }
 ```
+
+`parent_id` is the source to quote; use `pb.howls(id).comment()` to reply.
 
 `body` must be a string or `null`. Do not use a structured JSON object. Packbase sanitizes HTML in strings. Use `null` only when `asset_ids` supplies the howl content.
 
@@ -135,6 +151,48 @@ interface HowlJobStatus {
 }
 ```
 
+## Tag edits and history
+
+```ts
+interface HowlTagEditInput {
+  tags: string[]
+  explanation: string
+  expected_revision: number
+  moderator_tags?: string[]
+}
+
+interface HowlModeratorTagEditInput {
+  tags: string[]
+  explanation: string
+  expected_revision: number
+}
+
+type HowlTagEditor = Pick<Profile, 'id' | 'username' | 'display_name'> & {
+  images?: Profile['images']
+}
+
+interface HowlTagHistoryEntry {
+  id: string
+  revision: number
+  created_at: string
+  editor: HowlTagEditor | null
+  explanation: string
+  added_tags: string[]
+  removed_tags: string[]
+  locked_tags: string[]
+  unlocked_tags: string[]
+}
+
+interface HowlTagEditResult {
+  tags: string[]
+  moderator_tags: string[]
+  tag_revision: number
+  edit: HowlTagHistoryEntry
+}
+```
+
+`can_edit_tags` and `can_manage_tag_locks` are server-computed capabilities for the current reader. `tag_revision` is the concurrency token sent back as `expected_revision`. These optional fields can be absent on older servers; do not assume editing is allowed when absent. Fetch a fresh howl before opening an editor. All tag and lock changes require a public explanation. See [Edit tags](/reference/howls#edit-tags).
+
 ## Import
 
 ```ts
@@ -146,7 +204,13 @@ import type {
   HowlContentType,
   HowlRating,
   HowlAsset,
-  HowlReaction,
+  HowlLikes,
   HowlComment,
+  HowlCommentResult,
+  HowlTagEditInput,
+  HowlModeratorTagEditInput,
+  HowlTagEditor,
+  HowlTagHistoryEntry,
+  HowlTagEditResult,
 } from '@packbase/sdk-ts'
 ```

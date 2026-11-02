@@ -1,3 +1,5 @@
+import { makeMaintenance, type MaintenanceResource } from './maintenance'
+import { makeProfileRelationships, type ProfileRelationshipsResource } from './relationships'
 import type { HttpClient } from '../http'
 import type { RequestOptions } from '../request'
 import type { Pack } from '../types/pack'
@@ -26,6 +28,14 @@ import type {
  * ```
  */
 export type MeFn = Profile & {
+    /** Private outgoing mutes. Muting preserves direct/profile access. */
+    mutes: ProfileRelationshipsResource
+    /** Private outgoing blocks. Removal does not restore follows or remove an incoming block. */
+    blocks: ProfileRelationshipsResource
+
+    /** Prepared bulk deletion and resumable factory reset. */
+    maintenance: MaintenanceResource
+
     /**
      * Fetches the authenticated user's full profile (`GET /user/me`).
      *
@@ -58,6 +68,11 @@ export type MeFn = Profile & {
      *
      * Merges the supplied key-value pairs into the existing settings.
      * You do not need to send the full settings object.
+     * `howl_like_emoji` chooses one emoji for new howls (default 🔥).
+     * Changing it leaves existing howl emojis unchanged.
+     * `allow_tag_edits_from_others` defaults to true and allows other signed-in
+     * members to edit ordinary tags on existing and future howls. Authors and
+     * staff/content moderators retain their respective editing permissions.
      *
      * @param data - Key-value pairs to merge into the user's settings.
      * @returns A success flag.
@@ -109,6 +124,10 @@ export function makeMe(http: HttpClient): MeFn & { hydrate(profile: Profile): vo
     function me(options?: RequestOptions): Promise<Profile> {
         return http.get<Profile>('/user/me', undefined, options)
     }
+
+    me.maintenance = makeMaintenance(http)
+    me.mutes = makeProfileRelationships(http, 'mutes')
+    me.blocks = makeProfileRelationships(http, 'blocks')
 
     me.update = (data: UpdateProfileInput, options?: RequestOptions): Promise<UpdateProfileResult> =>
         http.post<UpdateProfileResult>('/user/me', data, undefined, options)
