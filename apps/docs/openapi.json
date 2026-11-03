@@ -9020,6 +9020,130 @@
           }
         }
       }
+    },
+    "/user/{username}/packs": {
+      "get": {
+        "operationId": "getUserByUsernamePacks",
+        "tags": [
+          "User"
+        ],
+        "description": "List visible packs joined by a profile, addressed by current username or permanent UUID. Includes packs the viewer has joined. Guests are supported. Returns 404 for missing, blocked or inactive profiles; omits packs hidden from either the viewer or the listed member. Does not expose the listed member's membership permissions or roles. Responses are private and not cached.",
+        "parameters": [
+          {
+            "name": "username",
+            "in": "path",
+            "required": true,
+            "description": "Current username or permanent profile UUID.",
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Public pack metadata and visible member counts.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string"
+                      },
+                      "display_name": {
+                        "type": "string"
+                      },
+                      "about": {
+                        "type": "object",
+                        "properties": {
+                          "bio": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "flair": {
+                            "type": "string"
+                          }
+                        }
+                      },
+                      "images": {
+                        "type": "object",
+                        "properties": {
+                          "avatar": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "header": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          }
+                        }
+                      },
+                      "statistics": {
+                        "type": "object",
+                        "required": [
+                          "members",
+                          "heartbeat"
+                        ],
+                        "properties": {
+                          "members": {
+                            "type": "number"
+                          },
+                          "heartbeat": {
+                            "type": "number"
+                          }
+                        }
+                      },
+                      "created_at": {
+                        "type": "string"
+                      },
+                      "owner_id": {
+                        "anyOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "display_name",
+                      "created_at"
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Profile not found."
+          }
+        }
+      }
     }
   },
   "components": {

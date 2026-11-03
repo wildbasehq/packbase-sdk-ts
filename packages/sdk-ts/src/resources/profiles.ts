@@ -1,6 +1,7 @@
 import type { HttpClient } from '../http'
 import type { RequestOptions } from '../request'
 import type { Paginated } from '../types/common'
+import type { Pack } from '../types/pack'
 import type { Profile, UsernameHistoryEntry } from '../types/profile'
 import type { ReportReasonValue, ReportResult } from '../types/report'
 import { ThenableResource } from './base'
@@ -27,6 +28,16 @@ export class ProfileHandle extends ThenableResource<Profile> {
     /** Fetches `GET /user/:username`. */
     protected fetch(): Promise<Profile> {
         return this.http.get<Profile>(`/user/${encodeURIComponent(this.username)}`, undefined, this.requestOptions)
+    }
+
+    /** Visible packs joined by this profile (username or UUID), including packs
+     * the viewer has joined. Reads fresh and never exposes member permissions.
+     */
+    packs(options?: RequestOptions): Promise<Pack[]> {
+        return this.http.getFresh<Pack[]>(
+            `/user/${encodeURIComponent(this.username)}/packs`,
+            {...this.requestOptions, ...options},
+        )
     }
 
     /** Previous usernames, newest first. Requires sign-in and profile visibility.

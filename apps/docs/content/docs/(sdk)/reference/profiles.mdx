@@ -71,3 +71,12 @@ if (firstPage.has_more) {
 ```
 
 Each page has up to 20 entries, newest first, with `id`, `username`, and `changed_at` (the time the name was replaced). IDs and cursors are strings. A name can appear more than once if it was reused. `signal` is supported for cancellation. Requests bypass the SDK response cache. History starts when tracking is deployed; earlier names are not reconstructed.
+
+## Joined packs
+
+```ts
+const packs = await pb.profiles('rek').packs({signal})
+// A permanent profile UUID is also accepted.
+```
+
+Returns `Pack[]` from `GET /user/:username/packs`, including packs the viewer has already joined. Guests can read visible profiles' packs. Blocks and inactive profiles return `404`; packs hidden from the viewer or the listed member are omitted. Results include public pack metadata and visible member counts, without the listed member's permissions or roles. Each call reads fresh and supports cancellation.
