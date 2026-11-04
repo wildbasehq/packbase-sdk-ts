@@ -28,3 +28,18 @@ test('profile packs propagate errors rather than treating failures as empty memb
     const client = new PackbaseSDK({baseUrl: 'https://api.example.test', autoLogin: false})
     await expect(client.profiles('missing').packs()).rejects.toMatchObject({status: 404})
 })
+
+test('profile maturity reads only the flag and refetches after a change', async () => {
+    let mature = false
+    const requests: string[] = []
+    globalThis.fetch = (async (input) => {
+        requests.push(String(input))
+        return Response.json({is_r18: mature})
+    }) as typeof fetch
+    const client = new PackbaseSDK({baseUrl: 'https://api.example.test', autoLogin: false})
+    const profile = client.profiles('member/name')
+    expect(await profile.maturity()).toEqual({is_r18: false})
+    mature = true
+    expect(await profile.maturity()).toEqual({is_r18: true})
+    expect(requests).toEqual(Array(2).fill('https://api.example.test/user/member%2Fname/maturity'))
+})

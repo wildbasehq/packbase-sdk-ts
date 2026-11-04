@@ -9,6 +9,9 @@ export interface Profile {
     about?: { bio?: string | null; flair?: string }
     space_type?: 'default' | 'custom_free' | 'custom_unrestricted'
     post_privacy?: 'everyone' | 'followers' | 'friends' | 'private'
+    is_r18?: boolean
+    /** Whether active Suggestive or Explicit howls lock the mature profile switch (self only). */
+    has_r18_howls?: boolean
     images?: { avatar?: string; header?: string | null }
     following?: boolean
     /** Only whether the authenticated viewer muted this profile. Never incoming state. */
@@ -28,6 +31,7 @@ export interface UpdateProfileInput {
     about?: { bio?: string }
     space_type?: 'default' | 'custom_free' | 'custom_unrestricted'
     post_privacy?: 'everyone' | 'followers' | 'friends' | 'private'
+    is_r18?: boolean
     /** Image fields accept base64 data URLs. */
     images?: { avatar?: string; header?: string }
 }
