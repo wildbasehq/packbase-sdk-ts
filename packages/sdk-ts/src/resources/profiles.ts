@@ -30,14 +30,6 @@ export class ProfileHandle extends ThenableResource<Profile> {
         return this.http.get<Profile>(`/user/${encodeURIComponent(this.username)}`, undefined, this.requestOptions)
     }
 
-    /** Reads only the profile's mature flag for image presentation. */
-    maturity(options?: RequestOptions): Promise<{ is_r18: boolean }> {
-        return this.http.getFresh<{ is_r18: boolean }>(
-            `/user/${encodeURIComponent(this.username)}/maturity`,
-            {...this.requestOptions, ...options},
-        )
-    }
-
     /** Visible packs joined by this profile (username or UUID), including packs
      * the viewer has joined. Reads fresh and never exposes member permissions.
      */

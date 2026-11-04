@@ -61,6 +61,7 @@ export interface CreditedUser {
     username: string
     display_name: string | null
     images_avatar: string | null
+    is_r18: boolean
 }
 
 export interface CreditedUserSearch {

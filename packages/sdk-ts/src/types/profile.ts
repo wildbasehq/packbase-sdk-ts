@@ -48,6 +48,7 @@ export interface FriendProfile {
     username: string
     display_name?: string
     images_avatar?: string
+    is_r18: boolean
     online?: boolean
     status?: string
 }
