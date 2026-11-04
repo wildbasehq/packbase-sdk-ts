@@ -9144,6 +9144,520 @@
           }
         }
       }
+    },
+    "/pack/{id}/chat": {
+      "get": {
+        "operationId": "getPackByIdChat",
+        "tags": [
+          "Packchat"
+        ],
+        "summary": "Get Packchat status",
+        "description": "Safe connection status. Does not expose private channel contents or service credentials.",
+        "responses": {
+          "401": {
+            "description": "Authentication required."
+          },
+          "403": {
+            "description": "Current account, pack or Fluxer authorization does not permit this action."
+          },
+          "404": {
+            "description": "Pack, community or channel unavailable."
+          },
+          "409": {
+            "description": "Ownership, authorization or connection changed. Refresh current state."
+          },
+          "503": {
+            "description": "Fluxer integration unavailable. Clear expired chat and retry later."
+          },
+          "200": {
+            "description": "Successful response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PackchatStatus"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      },
+      "delete": {
+        "operationId": "deletePackByIdChat",
+        "tags": [
+          "Packchat"
+        ],
+        "summary": "Unlink Packchat",
+        "description": "Only the actual pack owner can unlink the verified Fluxer community.",
+        "responses": {
+          "401": {
+            "description": "Authentication required."
+          },
+          "403": {
+            "description": "Current account, pack or Fluxer authorization does not permit this action."
+          },
+          "404": {
+            "description": "Pack, community or channel unavailable."
+          },
+          "409": {
+            "description": "Ownership, authorization or connection changed. Refresh current state."
+          },
+          "503": {
+            "description": "Fluxer integration unavailable. Clear expired chat and retry later."
+          },
+          "204": {
+            "description": "Completed without a response body."
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/pack/{id}/chat/settings": {
+      "get": {
+        "operationId": "getPackByIdChatSettings",
+        "tags": [
+          "Packchat"
+        ],
+        "summary": "Get Packchat management settings",
+        "description": "Only the actual pack owner may read management settings and available channels.",
+        "responses": {
+          "401": {
+            "description": "Authentication required."
+          },
+          "403": {
+            "description": "Current account, pack or Fluxer authorization does not permit this action."
+          },
+          "404": {
+            "description": "Pack, community or channel unavailable."
+          },
+          "409": {
+            "description": "Ownership, authorization or connection changed. Refresh current state."
+          },
+          "503": {
+            "description": "Fluxer integration unavailable. Clear expired chat and retry later."
+          },
+          "200": {
+            "description": "Successful response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PackchatSettings"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      },
+      "put": {
+        "operationId": "putPackByIdChatSettings",
+        "tags": [
+          "Packchat"
+        ],
+        "summary": "Configure Packchat",
+        "description": "Select channels and public, pack_members or pack_and_fluxer_members visibility. Broadening publication requires explicit confirm_publish.",
+        "responses": {
+          "401": {
+            "description": "Authentication required."
+          },
+          "403": {
+            "description": "Current account, pack or Fluxer authorization does not permit this action."
+          },
+          "404": {
+            "description": "Pack, community or channel unavailable."
+          },
+          "409": {
+            "description": "Ownership, authorization or connection changed. Refresh current state."
+          },
+          "503": {
+            "description": "Fluxer integration unavailable. Clear expired chat and retry later."
+          },
+          "200": {
+            "description": "Successful response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PackchatStatus"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PackchatConfigureInput"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/pack/{id}/chat/link": {
+      "post": {
+        "operationId": "postPackByIdChatLink",
+        "tags": [
+          "Packchat"
+        ],
+        "summary": "Link an owned Fluxer community",
+        "description": "Requires a current OAuth ownership proof and live bot verification. The actual pack owner must also own the Fluxer community. Guild IDs are strings.",
+        "responses": {
+          "401": {
+            "description": "Authentication required."
+          },
+          "403": {
+            "description": "Current account, pack or Fluxer authorization does not permit this action."
+          },
+          "404": {
+            "description": "Pack, community or channel unavailable."
+          },
+          "409": {
+            "description": "Ownership, authorization or connection changed. Refresh current state."
+          },
+          "503": {
+            "description": "Fluxer integration unavailable. Clear expired chat and retry later."
+          },
+          "200": {
+            "description": "Successful response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PackchatStatus"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PackchatLinkInput"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/pack/{id}/chat/channels": {
+      "get": {
+        "operationId": "getPackByIdChatChannels",
+        "tags": [
+          "Packchat"
+        ],
+        "summary": "List readable Packchat channels",
+        "description": "Checks current audience, pack bans and Fluxer authorization. Clear chat after authorization_expires_at unless a fresh read succeeds.",
+        "responses": {
+          "401": {
+            "description": "Authentication required."
+          },
+          "403": {
+            "description": "Current account, pack or Fluxer authorization does not permit this action."
+          },
+          "404": {
+            "description": "Pack, community or channel unavailable."
+          },
+          "409": {
+            "description": "Ownership, authorization or connection changed. Refresh current state."
+          },
+          "503": {
+            "description": "Fluxer integration unavailable. Clear expired chat and retry later."
+          },
+          "200": {
+            "description": "Successful response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PackchatChannels"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/pack/{id}/chat/channels/{channelId}/messages": {
+      "get": {
+        "operationId": "getPackByIdChatChannelsByChannelIdMessages",
+        "tags": [
+          "Packchat"
+        ],
+        "summary": "Read Packchat channel messages",
+        "description": "Read-only message history. Render content safely; clear stale content on generation changes, expired authorization or denied access. IDs are strings.",
+        "responses": {
+          "401": {
+            "description": "Authentication required."
+          },
+          "403": {
+            "description": "Current account, pack or Fluxer authorization does not permit this action."
+          },
+          "404": {
+            "description": "Pack, community or channel unavailable."
+          },
+          "409": {
+            "description": "Ownership, authorization or connection changed. Refresh current state."
+          },
+          "503": {
+            "description": "Fluxer integration unavailable. Clear expired chat and retry later."
+          },
+          "200": {
+            "description": "Successful response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PackchatMessages"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "channelId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "before",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Read older messages before this message snowflake."
+          }
+        ]
+      }
+    },
+    "/user/me/fluxer": {
+      "get": {
+        "operationId": "getUserMeFluxer",
+        "tags": [
+          "Packchat"
+        ],
+        "summary": "Get verified Fluxer identity",
+        "description": "Authenticated member identity and recently verified owned communities; OAuth tokens are never returned.",
+        "responses": {
+          "401": {
+            "description": "Authentication required."
+          },
+          "403": {
+            "description": "Current account, pack or Fluxer authorization does not permit this action."
+          },
+          "404": {
+            "description": "Pack, community or channel unavailable."
+          },
+          "409": {
+            "description": "Ownership, authorization or connection changed. Refresh current state."
+          },
+          "503": {
+            "description": "Fluxer integration unavailable. Clear expired chat and retry later."
+          },
+          "200": {
+            "description": "Successful response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FluxerConnection"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "deleteUserMeFluxer",
+        "tags": [
+          "Packchat"
+        ],
+        "summary": "Disconnect Fluxer identity",
+        "description": "Disconnect the current member's verified Fluxer identity.",
+        "responses": {
+          "401": {
+            "description": "Authentication required."
+          },
+          "403": {
+            "description": "Current account, pack or Fluxer authorization does not permit this action."
+          },
+          "404": {
+            "description": "Pack, community or channel unavailable."
+          },
+          "409": {
+            "description": "Ownership, authorization or connection changed. Refresh current state."
+          },
+          "503": {
+            "description": "Fluxer integration unavailable. Clear expired chat and retry later."
+          },
+          "204": {
+            "description": "Completed without a response body."
+          }
+        }
+      }
+    },
+    "/user/me/fluxer/authorize": {
+      "post": {
+        "operationId": "postUserMeFluxerAuthorize",
+        "tags": [
+          "Packchat"
+        ],
+        "summary": "Start Fluxer authorization",
+        "description": "Returns an OAuth authorization URL bound to the authenticated member. Optional pack/community context supports ownership linking and bot installation.",
+        "responses": {
+          "401": {
+            "description": "Authentication required."
+          },
+          "403": {
+            "description": "Current account, pack or Fluxer authorization does not permit this action."
+          },
+          "404": {
+            "description": "Pack, community or channel unavailable."
+          },
+          "409": {
+            "description": "Ownership, authorization or connection changed. Refresh current state."
+          },
+          "503": {
+            "description": "Fluxer integration unavailable. Clear expired chat and retry later."
+          },
+          "200": {
+            "description": "Successful response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FluxerAuthorization"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FluxerAuthorizeInput"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/user/me/fluxer/complete": {
+      "post": {
+        "operationId": "postUserMeFluxerComplete",
+        "tags": [
+          "Packchat"
+        ],
+        "summary": "Complete Fluxer authorization",
+        "description": "Exchange a one-time OAuth code and caller-bound state. Return to the server-provided return_path.",
+        "responses": {
+          "401": {
+            "description": "Authentication required."
+          },
+          "403": {
+            "description": "Current account, pack or Fluxer authorization does not permit this action."
+          },
+          "404": {
+            "description": "Pack, community or channel unavailable."
+          },
+          "409": {
+            "description": "Ownership, authorization or connection changed. Refresh current state."
+          },
+          "503": {
+            "description": "Fluxer integration unavailable. Clear expired chat and retry later."
+          },
+          "200": {
+            "description": "Successful response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FluxerCompleteResult"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FluxerCompleteInput"
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -10373,6 +10887,449 @@
             "type": "boolean"
           }
         }
+      },
+      "PackchatAudience": {
+        "type": "string",
+        "enum": [
+          "public",
+          "pack_members",
+          "pack_and_fluxer_members"
+        ]
+      },
+      "FluxerGuild": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "icon": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "name"
+        ]
+      },
+      "PackchatCommunity": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "icon": {
+            "type": "string",
+            "nullable": true
+          },
+          "url": {
+            "type": "string",
+            "format": "uri"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "url"
+        ]
+      },
+      "PackchatStatus": {
+        "type": "object",
+        "properties": {
+          "enabled": {
+            "type": "boolean"
+          },
+          "linked": {
+            "type": "boolean"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "disabled",
+              "unlinked",
+              "linked",
+              "unavailable"
+            ]
+          },
+          "audience": {
+            "$ref": "#/components/schemas/PackchatAudience"
+          },
+          "generation": {
+            "type": "string"
+          },
+          "community": {
+            "$ref": "#/components/schemas/PackchatCommunity"
+          },
+          "channel_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "can_manage": {
+            "type": "boolean"
+          },
+          "fluxer_connected": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "enabled",
+          "linked",
+          "status",
+          "audience",
+          "channel_ids",
+          "can_manage",
+          "fluxer_connected"
+        ]
+      },
+      "PackchatChannel": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "type": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "type"
+        ]
+      },
+      "PackchatSettings": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/PackchatStatus"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "available_channels": {
+                "type": "array",
+                "items": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/PackchatChannel"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "private": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "private"
+                      ]
+                    }
+                  ]
+                }
+              },
+              "owned_guilds": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/FluxerGuild"
+                }
+              }
+            },
+            "required": [
+              "available_channels",
+              "owned_guilds"
+            ]
+          }
+        ]
+      },
+      "PackchatConfigureInput": {
+        "type": "object",
+        "properties": {
+          "audience": {
+            "$ref": "#/components/schemas/PackchatAudience"
+          },
+          "channel_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "confirm_publish": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "audience",
+          "channel_ids"
+        ]
+      },
+      "PackchatChannels": {
+        "type": "object",
+        "properties": {
+          "channels": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PackchatChannel"
+            }
+          },
+          "generation": {
+            "type": "string"
+          },
+          "authorization_expires_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "community": {
+            "$ref": "#/components/schemas/PackchatCommunity"
+          }
+        },
+        "required": [
+          "channels",
+          "generation",
+          "authorization_expires_at",
+          "community"
+        ]
+      },
+      "PackchatMessage": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "content": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "edited_timestamp": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "author": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "username": {
+                "type": "string"
+              },
+              "display_name": {
+                "type": "string",
+                "nullable": true
+              },
+              "avatar_url": {
+                "type": "string",
+                "nullable": true
+              }
+            },
+            "required": [
+              "id",
+              "username"
+            ]
+          },
+          "attachments": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "filename": {
+                  "type": "string"
+                },
+                "url": {
+                  "type": "string",
+                  "format": "uri"
+                },
+                "content_type": {
+                  "type": "string"
+                },
+                "size": {
+                  "type": "number"
+                },
+                "width": {
+                  "type": "number"
+                },
+                "height": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "id",
+                "filename",
+                "url"
+              ]
+            }
+          }
+        },
+        "required": [
+          "id",
+          "content",
+          "timestamp",
+          "edited_timestamp",
+          "author",
+          "attachments"
+        ]
+      },
+      "PackchatMessages": {
+        "type": "object",
+        "properties": {
+          "messages": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PackchatMessage"
+            }
+          },
+          "has_more": {
+            "type": "boolean"
+          },
+          "before": {
+            "type": "string",
+            "nullable": true
+          },
+          "generation": {
+            "type": "string"
+          },
+          "authorization_expires_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "channel_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "messages",
+          "has_more",
+          "generation",
+          "authorization_expires_at",
+          "channel_id"
+        ]
+      },
+      "FluxerConnection": {
+        "type": "object",
+        "properties": {
+          "connected": {
+            "type": "boolean"
+          },
+          "user": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "username": {
+                "type": "string"
+              },
+              "avatar": {
+                "type": "string",
+                "nullable": true
+              }
+            },
+            "required": [
+              "id",
+              "username"
+            ]
+          },
+          "owned_guilds": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FluxerGuild"
+            }
+          }
+        },
+        "required": [
+          "connected",
+          "owned_guilds"
+        ]
+      },
+      "FluxerAuthorizeInput": {
+        "type": "object",
+        "properties": {
+          "pack_id": {
+            "type": "string"
+          },
+          "guild_id": {
+            "type": "string"
+          },
+          "install": {
+            "type": "boolean"
+          }
+        },
+        "required": []
+      },
+      "FluxerAuthorization": {
+        "type": "object",
+        "properties": {
+          "authorization_url": {
+            "type": "string",
+            "format": "uri"
+          }
+        },
+        "required": [
+          "authorization_url"
+        ]
+      },
+      "FluxerCompleteInput": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "state": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "state"
+        ]
+      },
+      "FluxerCompleteResult": {
+        "type": "object",
+        "properties": {
+          "connected": {
+            "type": "boolean",
+            "enum": [
+              true
+            ]
+          },
+          "pack_id": {
+            "type": "string"
+          },
+          "return_path": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "connected",
+          "return_path"
+        ]
+      },
+      "PackchatLinkInput": {
+        "type": "object",
+        "properties": {
+          "guild_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "guild_id"
+        ]
       }
     }
   }

@@ -5,6 +5,8 @@ description: Fetch and update the authenticated profile, settings, friends, pack
 
 `pb.me` is the resource for the current signed-in account. Each method on this page requires a valid browser session or API key. Use `pb.profiles(username)` if you require only a public profile.
 
+`pb.me.fluxer` connects a verified Fluxer identity through `status()`, `authorize()`, `complete()`, and `disconnect()`. See [Packchat](/reference/packchat) for ownership verification, community linking, and read-only chat.
+
 ## Fetch the current user
 
 ```ts twoslash

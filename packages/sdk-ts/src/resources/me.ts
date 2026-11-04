@@ -1,4 +1,5 @@
 import { makeMaintenance, type MaintenanceResource } from './maintenance'
+import { FluxerResource } from './fluxer'
 import { makeProfileRelationships, type ProfileRelationshipsResource } from './relationships'
 import type { HttpClient } from '../http'
 import type { RequestOptions } from '../request'
@@ -28,6 +29,8 @@ import type {
  * ```
  */
 export type MeFn = Profile & {
+    /** Verified Fluxer identity and community ownership authorization. */
+    fluxer: FluxerResource
     /** Private outgoing mutes. Muting preserves direct/profile access. */
     mutes: ProfileRelationshipsResource
     /** Private outgoing blocks. Removal does not restore follows or remove an incoming block. */
@@ -126,6 +129,7 @@ export function makeMe(http: HttpClient): MeFn & { hydrate(profile: Profile): vo
     }
 
     me.maintenance = makeMaintenance(http)
+    me.fluxer = new FluxerResource(http)
     me.mutes = makeProfileRelationships(http, 'mutes')
     me.blocks = makeProfileRelationships(http, 'blocks')
 

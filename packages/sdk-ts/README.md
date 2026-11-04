@@ -50,6 +50,7 @@ For public-only use, disable the automatic `me()` request with
 
 - `pb.me()` gets the authenticated profile; `pb.me.update()` updates it.
 - `pb.me.maintenance` reviews, confirms, and tracks bulk howl deletion or factory reset.
+- `pb.me.fluxer` verifies the signed-in member's Fluxer identity; `pb.packs(id).packchat` links an owned community and reads selected channels.
 - `pb.profiles(id)` returns a lazy, awaitable profile handle.
 - `pb.packs(id)` returns a lazy, awaitable pack handle; `pb.packs.list()` and `.create()` work with packs in bulk.
 - `pb.howls(id)` returns a lazy, awaitable howl handle; `pb.howls.create()` creates a howl and `pb.howls.upload` manages assets.
