@@ -32,7 +32,7 @@ In this example, the application specifies the names `topPacks` and `recentUsers
 | Model | Fields available |
 | --- | --- |
 | `'posts'` | `id`, `created_at`, `tenant_id`, `content_type`, `body`, `user_id`, `parent`, `tags`, `assets`, `asset_types` |
-| `'profiles'` | `id`, `created_at`, `username`, `bio`, `display_name`, `images_avatar`, `images_header`, `type`, `space_type`, `is_r18` |
+| `'profiles'` | `id`, `created_at`, `username`, `bio`, `display_name`, `images_avatar`, `images_header`, `type`, `space_type`, `profile_avatar_mature`, `profile_banner_mature`, `profile_howls_mature` |
 | `'packs'` | `id`, `created_at`, `display_name`, `images_avatar`, `description`, `owner_id`, `images_header`, `last_activity_at` |
 
 The model name specifies the fields that TypeScript permits in the chain. If a `'packs'` query uses a profile-only field, your editor shows an error before the request.

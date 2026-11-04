@@ -31,7 +31,9 @@ export interface PackMemberSummary extends Omit<Profile, 'default_pack'> {
     online?: boolean | null
     last_online?: string | null
     status?: string
-    is_r18?: boolean
+    profile_avatar_mature?: boolean
+    profile_banner_mature?: boolean
+    profile_howls_mature?: boolean
     invited_by?: string | null
     default_pack?: string | null
     packsId?: string | null

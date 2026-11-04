@@ -12,7 +12,8 @@ const ALLOWED_FIELDS = {
     ],
     profiles: [
         'id', 'created_at', 'username', 'bio', 'display_name',
-        'images_avatar', 'images_header', 'type', 'space_type', 'is_r18',
+        'images_avatar', 'images_header', 'type', 'space_type',
+        'profile_avatar_mature', 'profile_banner_mature', 'profile_howls_mature',
     ],
     packs: [
         'id', 'created_at', 'display_name', 'images_avatar',
@@ -51,7 +52,9 @@ export interface SearchProfile {
     images_header: string | null
     type: NonNullable<import('./types/profile').Profile['type']> | null
     space_type: NonNullable<import('./types/profile').Profile['space_type']>
-    is_r18: boolean
+    profile_avatar_mature: boolean
+    profile_banner_mature: boolean
+    profile_howls_mature: boolean
 }
 
 /** Flat database row returned by searches over `packs`. */
