@@ -50,11 +50,20 @@ export interface PackchatChannels {
 }
 
 export interface PackchatMessage {
+    /** Fluxer message type. Missing on older servers; 7 is a member join notice. */
+    type?: number
     id: string
     content: string
     timestamp: string
     edited_timestamp: string | null
     author: {
+        /** Present only for verified links whose owner allows profile attribution. */
+        packbase_profile?: {
+            id: string
+            username: string
+            display_name: string | null
+            avatar_url: string | null
+        }
         id: string
         username: string
         display_name?: string | null

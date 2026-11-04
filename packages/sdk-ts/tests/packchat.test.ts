@@ -104,3 +104,19 @@ test('Packchat cancellation prevents requests and authorization failures stay ac
 // Keep the public status union usable without consulting bot-private metadata.
 const status: PackchatStatus = { enabled: true, linked: false, status: 'unlinked', audience: 'pack_members', channel_ids: [], can_manage: true, fluxer_connected: false }
 void status
+
+test('community invite is an explicit bodyless action with inherited cancellation', async () => {
+    const requests: Array<{ url: string; init: RequestInit }> = []
+    globalThis.fetch = (async (url: unknown, init: RequestInit) => {
+        requests.push({ url: String(url), init })
+        return Response.json({ url: 'https://fluxer.gg/community' })
+    }) as typeof fetch
+    const signal = new AbortController().signal
+    const chat = sdk().packs('pack/id', { signal }).packchat
+    expect(requests).toHaveLength(0)
+    expect(await chat.invite()).toEqual({ url: 'https://fluxer.gg/community' })
+    expect(requests[0]!.url).toBe('https://api.example.test/pack/pack%2Fid/chat/invite')
+    expect(requests[0]!.init.method).toBe('POST')
+    expect(requests[0]!.init.body).toBeUndefined()
+    expect(requests[0]!.init.signal).toBe(signal)
+})

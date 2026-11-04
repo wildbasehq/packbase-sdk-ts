@@ -9658,6 +9658,48 @@
           }
         }
       }
+    },
+    "/pack/{id}/chat/invite": {
+      "post": {
+        "operationId": "postPackByIdChatInvite",
+        "tags": [
+          "Packchat"
+        ],
+        "summary": "Get a community invitation",
+        "description": "Uses the linked community vanity code when available; otherwise the bot creates or reuses a one-day invite. Checks pack visibility, bans, pack membership for nonpublic audiences, current community ownership and link generation. Existing Fluxer membership is not required. Resolves only on demand.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Community invitation URL",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "url"
+                  ],
+                  "properties": {
+                    "url": {
+                      "type": "string",
+                      "format": "uri"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -11133,6 +11175,36 @@
               "avatar_url": {
                 "type": "string",
                 "nullable": true
+              },
+              "packbase_profile": {
+                "type": "object",
+                "description": "Verified Packbase profile, omitted when the author opts out or is not visible.",
+                "required": [
+                  "id",
+                  "username",
+                  "display_name",
+                  "avatar_url"
+                ],
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "username": {
+                    "type": "string"
+                  },
+                  "display_name": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "avatar_url": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                }
               }
             },
             "required": [
@@ -11174,6 +11246,10 @@
                 "url"
               ]
             }
+          },
+          "type": {
+            "type": "integer",
+            "description": "Fluxer message type: 0 for ordinary messages, 7 for member join notices. Older servers may omit this field."
           }
         },
         "required": [

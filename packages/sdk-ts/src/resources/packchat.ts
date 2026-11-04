@@ -28,6 +28,10 @@ export class PackchatResource {
     unlink(options?: RequestOptions): Promise<void> {
         return this.http.delete(this.path(), undefined, this.options(options))
     }
+    /** Resolve a vanity URL or ask the bot to create/reuse a community invite. */
+    invite(options?: RequestOptions): Promise<{ url: string }> {
+        return this.http.post(this.path('/invite'), undefined, undefined, this.options(options))
+    }
     channels(options?: RequestOptions): Promise<PackchatChannels> {
         return this.http.get(this.path('/channels'), undefined, this.options(options))
     }

@@ -45,7 +45,17 @@ if (page.has_more && page.before) {
 
 Reads preserve request cancellation and apply the current pack audience, bans, account standing and Fluxer authorization on the server. Message pages include `generation` and `authorization_expires_at`; clear displayed chat when its authorization expires unless a fresh read succeeds. Clear old content when generation changes, access is denied, or the connection becomes unavailable. Settled chat responses are not retained by the SDK.
 
+Message `type` preserves Fluxer system events; `7` is a member join notice, which can have empty `content`. Render it as a join notice using the author rather than an empty message. An omitted type on older servers means an ordinary message.
+
 Render message content as text or safely parsed Markdown with raw HTML disabled. The API supplies external attachment URLs; the SDK does not download or rewrite them. Packchat has no send, reaction or moderation methods; the community URL opens Fluxer for those actions.
+
+## Author profiles
+
+`message.author.packbase_profile` contains a minimal Packbase profile when the author has a verified Fluxer connection, is visible to the reader, and allows attribution. Use its `username` for `/u/:username/` links. If absent, show the Fluxer author instead. The privacy setting `packchat_profile_link` defaults to `true`; members can change it in Privacy & Sharing. Author preferences are checked on each message read.
+
+## Join the community
+
+`await chat.invite()` returns `{ url }`: the community vanity invite, or a bot-created one-day invite when no vanity is configured. Resolve it on the join button click. The bot needs `CREATE_INSTANT_INVITE` on the invitation channel. Requests reuse matching invites and respect pack membership, visibility, bans and current link ownership, without requiring existing Fluxer membership. Message reads remain read-only.
 
 ## Disconnect
 
