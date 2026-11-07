@@ -9,7 +9,7 @@ const emote: PackEmote = {
     id: '12345678-1234-4234-8234-123456789abc', pack_id: 'pack-id',
     pack_name: 'Artists', shortcode: 'wave', label: 'Wave',
     src: 'https://cdn.example.test/emotes/wave.webp',
-    still_src: 'https://cdn.example.test/emotes/wave.png', animated: true,
+    still_src: 'https://cdn.example.test/emotes/wave.png', animated: true, nsfw: true,
 }
 
 test('emote methods send typed inputs directly, without fetching the Pack', async () => {
@@ -23,8 +23,8 @@ test('emote methods send typed inputs directly, without fetching the Pack', asyn
     const signal = new AbortController().signal
     const handle = pb.packs('pack/id').emotes
     expect(await handle.list({signal})).toEqual([emote])
-    expect(await handle.upload({shortcode: 'wave', image: 'data:image/png;base64,AA=='})).toEqual(emote)
-    expect(await handle.update('emote/id', {label: 'Hello'})).toEqual(emote)
+    expect(await handle.upload({shortcode: 'wave', image: 'data:image/png;base64,AA==', nsfw: true})).toEqual(emote)
+    expect(await handle.update('emote/id', {label: 'Hello', nsfw: false})).toEqual(emote)
     await handle.remove('emote/id', {signal})
     expect(await pb.me.emotes({signal})).toEqual([emote])
     expect(calls.map(call => [call.url, call.init?.method])).toEqual([
@@ -34,8 +34,8 @@ test('emote methods send typed inputs directly, without fetching the Pack', asyn
         ['https://api.example.test/pack/pack%2Fid/emotes/emote%2Fid', 'DELETE'],
         ['https://api.example.test/user/me/emotes', 'GET'],
     ])
-    expect(JSON.parse(String(calls[1]?.init?.body))).toEqual({shortcode: 'wave', image: 'data:image/png;base64,AA=='})
-    expect(JSON.parse(String(calls[2]?.init?.body))).toEqual({label: 'Hello'})
+    expect(JSON.parse(String(calls[1]?.init?.body))).toEqual({shortcode: 'wave', image: 'data:image/png;base64,AA==', nsfw: true})
+    expect(JSON.parse(String(calls[2]?.init?.body))).toEqual({label: 'Hello', nsfw: false})
     expect(calls[3]?.init?.body).toBeUndefined()
     expect(calls[0]?.init?.signal).toBe(signal)
     expect(calls[4]?.init?.signal).toBe(signal)
@@ -57,7 +57,7 @@ test('emote authorization errors remain server-owned and aborted requests send n
         return Response.json({summary: 'Manage Emotes is required'}, {status: 403})
     }) as typeof fetch
     const pb = new PackbaseSDK({baseUrl: 'https://api.example.test', autoLogin: false})
-    await expect(pb.packs('pack').emotes.upload({shortcode: 'wave', image: 'data:image/png;base64,AA=='}))
+    await expect(pb.packs('pack').emotes.upload({shortcode: 'wave', image: 'data:image/png;base64,AA==', nsfw: true}))
         .rejects.toMatchObject({status: 403})
     const controller = new AbortController(); controller.abort()
     await expect(pb.me.emotes({signal: controller.signal})).rejects.toMatchObject({name: 'AbortError'})

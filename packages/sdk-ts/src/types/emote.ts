@@ -11,11 +11,14 @@ export interface PackEmote {
     /** Still alternative, including for prefers-reduced-motion. */
     still_src: string
     animated: boolean
+    /** Sensitive emotes follow the reader’s blur preference. */
+    nsfw?: boolean
 }
 
 export interface PackEmoteUploadInput {
     shortcode: string
     label?: string
+    nsfw?: boolean
     /** PNG, JPEG, WebP, or GIF as a base64 image data URL; maximum 2 MiB decoded. */
     image: string
 }
@@ -23,6 +26,7 @@ export interface PackEmoteUploadInput {
 export interface PackEmoteUpdateInput {
     shortcode?: string
     label?: string
+    nsfw?: boolean
 }
 
 /** Format an inline reference. The server checks membership again on publication. */
