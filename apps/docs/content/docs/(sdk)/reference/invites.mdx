@@ -1,9 +1,60 @@
 ---
 title: pb.invites
-description: Send email invites and work with referrals before an account is created.
+description: Manage direct-access codes, send email invites, and work with waitlist referrals.
 ---
 
-This resource has two related flows. Email invitation methods are for signed-in Packbase users. Waitlist referral methods operate before a Packbase account exists. These methods identify the person with a Clerk waitlist entry ID.
+This resource supports direct-access codes, email invitations, and waitlist
+referrals. Code management and email invitation methods require a signed-in
+account. Code claims and waitlist referrals can operate before an account exists.
+
+## Direct-access codes
+
+```ts twoslash
+import { PackbaseSDK } from '@packbase/sdk-ts'
+const pb = new PackbaseSDK()
+// ---cut---
+const page = await pb.invites.listAccessCodes()
+console.log(page.allowance.remaining, page.allowance.next_refresh_at)
+for (const code of page.codes) console.log(code.url, code.status)
+if (page.next_cursor) {
+  const older = await pb.invites.listAccessCodes({ cursor: page.next_cursor })
+}
+const created = await pb.invites.createAccessCode()
+await pb.invites.revokeAccessCode(created.id)
+```
+
+Regular members create one-use codes without overrides, subject to the server's
+rolling allowance. Staff must choose a credited member and a use limit from
+1 through 99. Use `searchCreditedUsers(query)` for that staff-only picker:
+
+```ts twoslash
+import { PackbaseSDK } from '@packbase/sdk-ts'
+const pb = new PackbaseSDK()
+// ---cut---
+const eligible = await pb.invites.searchCreditedUsers('rek')
+const credited = eligible[0]
+if (credited) {
+  const code = await pb.invites.createAccessCode({ credited_user_id: credited.id, max_uses: 3 })
+}
+```
+
+Codes do not expire, but can become reserved, exhausted, or revoked. Claims
+reserve a use while the recipient verifies their email. The verification
+invitation expires after 24 hours. The signup URL and raw code are accepted:
+
+```ts twoslash
+import { PackbaseSDK } from '@packbase/sdk-ts'
+const guest = new PackbaseSDK({ autoLogin: false })
+declare const codeOrUrl: string
+// ---cut---
+const result = await guest.invites.claimAccessCode(codeOrUrl, 'person@example.com')
+```
+
+Success means that verification was requested, not that an account has been
+created. The server enforces eligibility, remaining uses, and email/IP limits.
+Revocation invalidates pending invitations as well as future claims. Codes are
+visible only to their creator or credited inviter. See [Invitation types](/types/invites)
+for the code page and allowance shapes.
 
 ## Email invitations
 

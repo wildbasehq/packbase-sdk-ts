@@ -57,8 +57,8 @@ Create or open a TypeScript file and add:
 ```ts
 import { PackbaseSDK } from '@packbase/sdk-ts'
 
-const pb = new PackbaseSDK()
-console.log('Packbase SDK is ready', pb)
+const pb = new PackbaseSDK({ autoLogin: false })
+console.log('Packbase SDK client created', pb)
 ```
 
 Make sure that your editor recognizes `PackbaseSDK`. Then, run the project. If there is no import error, the installation is correct. This example creates a client object but does not call the API.

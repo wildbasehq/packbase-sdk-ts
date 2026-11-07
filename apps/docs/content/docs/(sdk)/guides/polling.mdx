@@ -23,7 +23,9 @@ pb.howls.create(data)
 2. The SDK checks the job's status once per interval until it is `'completed'` or `'failed'`.
 3. When the job is complete, the SDK fetches the finished howl and returns it to your code.
 
-The route names in the diagram are internal HTTP requests. Do not call them directly.
+These are public REST operations. Normal SDK use handles them through
+`pb.howls.create()`. With `poll: false`, your application must monitor the status
+route itself; the package does not export its internal `Poller` class.
 
 ## Default behavior
 
@@ -70,6 +72,7 @@ const howl = await pb.howls.create(
 | `intervalMs` | `number` | `1000` | Milliseconds between each status check. |
 | `timeoutMs` | `number` | `30000` | Maximum total wait time before throwing a timeout error. |
 | `onProgress` | `(status: HowlJobStatus) => void` | Not set | Callback called after each status poll. |
+| `signal` | `AbortSignal` | Not set | Cancels requests and delays; it does not cancel the server job. |
 
 ## Tracking progress
 
@@ -149,7 +152,10 @@ A timeout means that the client stopped the wait. The background job can continu
 
 ## Handling failed jobs
 
-If the server says the job itself failed, the SDK throws a `PackbaseError` with status `500`:
+Failed jobs normally produce a `PackbaseError` with status `500`.
+`PACK_RULES_ACCEPTANCE_REQUIRED` produces `409` and includes the latest rule
+version in `error.raw?.rules_version`. Show the current rules and obtain agreement
+before a new publication attempt; never automatically accept them.
 
 ```ts twoslash
 import { PackbaseSDK, PackbaseError } from '@packbase/sdk-ts'
@@ -185,3 +191,7 @@ console.log(`https://packbase.app/howl/${job.id}`)
 // Fetch the howl after the job is complete.
 const howl = await pb.howls(job.id)
 ```
+
+Cancelling or timing out a client wait does not stop publication. Save the job
+ID and check its status before submitting the same content again. The SDK does
+not export a method for resuming an existing job's poll loop.

@@ -1,0 +1,90 @@
+---
+title: Client and lifecycle
+description: Configure the SDK, handle startup events, and manage request lifetimes.
+---
+
+Create one `PackbaseSDK` instance for the current authentication context. Its
+resources share authentication and request handling. The default API base URL is
+`https://vgs.packbase.app`.
+
+```ts twoslash
+import { PackbaseSDK, type Profile } from '@packbase/sdk-ts'
+// ---cut---
+const pb = new PackbaseSDK()
+const onReady = (profile: Profile) => console.log(profile.username)
+const onError = (error: unknown) => console.error('Initial profile request failed', error)
+pb.on('ready', onReady).on('error', onError)
+
+// Remove the same listener functions when the consuming component is disposed.
+pb.off('ready', onReady).off('error', onError)
+```
+
+## Configuration and startup
+
+`baseUrl`, `apiKey`, and `autoLogin` are the constructor options. Passing an API
+key or Clerk JWT uses a Bearer header and omits cookies. Without it, browser
+requests include session cookies. See [Authentication](/getting-started/authentication).
+
+`autoLogin` defaults to `true`. Construction starts one `pb.me()` request. A
+successful startup hydrates profile fields such as `pb.me.username` and emits
+`ready(profile)`. A failed startup emits `error(error)`. It does not prevent
+separate public requests. Events are not replayed for listeners registered after
+they occur, so register listeners immediately.
+
+With `autoLogin: false`, no startup request or ready event occurs:
+
+```ts twoslash
+import { PackbaseSDK } from '@packbase/sdk-ts'
+// ---cut---
+const publicClient = new PackbaseSDK({ autoLogin: false })
+const packs = await publicClient.packs.list()
+```
+
+An explicit `pb.me()` call fetches a profile. It does not repeat constructor
+hydration or emit another ready event. Store its returned profile in application
+state when refreshing account data. `pb.me.update()` returns a partial update,
+not a new full profile. The `pb.me.emotes()` method is reserved for the usable
+emote catalogue; use `(await pb.me()).emotes` for profile image metadata.
+
+## Request controls and cancellation
+
+Request methods accept `{ signal }`. Lazy profile and howl handles can receive
+read options when created; action methods also accept their documented options.
+
+```ts twoslash
+import { PackbaseSDK } from '@packbase/sdk-ts'
+const pb = new PackbaseSDK({ autoLogin: false })
+// ---cut---
+const controller = new AbortController()
+const request = pb.profiles('rek', { signal: controller.signal })
+controller.abort()
+```
+
+Aborting a client wait does not undo a completed server mutation or cancel a
+queued publication. See [Job polling](/guides/polling) before retrying a create.
+
+## Read sharing and visibility
+
+The HTTP layer shares eligible unresolved GET requests. It does not retain
+settled response bodies. Awaitable profile, Pack, and howl handles separately
+retain their resolved result for that handle's visibility generation. Create a
+new handle for an ordinary refresh, or use the documented fresh-read options.
+
+`pb.invalidateVisibility()` advances the visibility generation, fences pending
+reads, and emits `visibilityChanged(generation)`. Existing awaitable handles
+fetch again on their next read. It does not erase application state or perform
+a server-side block/unblock. `pb.getVisibilityGeneration()` returns the current
+generation for guarding application work across requests.
+
+Successful relationship mutations invalidate visibility automatically. A
+`visibility_changed` conflict can cause eligible read requests to repeat; writes
+are not automatically repeated. Applications own the long-polling loop and their
+query cache cleanup. See [Visibility](/reference/visibility).
+
+## Public surface
+
+Resources include `me`, `profiles`, `packs`, `howls`, `feeds`, `inbox`, `invites`,
+`folders`, `tags`, `leaderboard`, `store`, `feedback`, `migrations`, and
+`visibility`. `search()` submits named queries. `on()` and `off()` manage the
+`ready`, `error`, and `visibilityChanged` events. There is no exported login,
+logout, general request, or existing-job polling method.

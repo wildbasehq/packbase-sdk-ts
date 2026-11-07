@@ -48,10 +48,7 @@ import { PackbaseSDK } from '@packbase/sdk-ts'
 const pb = new PackbaseSDK()
 // ---cut---
 const settings = await pb.me.settings()
-await pb.me.settings({
-  dark_mode: true,
-  notifications_email: false,
-})
+await pb.me.settings({ home_feed_type: 'gallery', feed_pagination: 'paged' })
 ```
 
 Call `settings()` with no argument to read the settings. Call it with an object to update them. The read result is `Record<string, unknown>`. Decode each key that you use. Do not cast the full record.
@@ -62,14 +59,19 @@ const pb = new PackbaseSDK()
 // ---cut---
 const raw = await pb.me.settings()
 const settings = decodeSettings(raw, {
-  dark_mode: (value): boolean => {
-    if (typeof value !== 'boolean') throw new TypeError('dark_mode must be boolean')
+  home_feed_type: (value): 'list' | 'gallery' => {
+    if (value !== 'list' && value !== 'gallery') throw new TypeError('Invalid feed layout')
     return value
   },
 })
 ```
 
 To cancel a settings read without confusing request options with update keys, pass `undefined` first: `pb.me.settings(undefined, { signal })`.
+
+The read response also contains `definitions`, the server's current setting
+schema. Use it to find supported keys, defaults, allowed values, and which
+settings are user-modifiable. Unsupported keys are rejected. `dark_mode` and
+`notifications_email` are not current setting names. See [Settings](/reference/settings).
 
 ### Howl like emoji
 

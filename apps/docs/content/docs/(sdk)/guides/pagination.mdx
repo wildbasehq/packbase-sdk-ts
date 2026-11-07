@@ -131,5 +131,8 @@ The endpoint specifies the pagination method. Examine the return value and use t
 | Resource | Strategy | Key |
 | --- | --- | --- |
 | Inbox | Cursor | `cursor` + `has_more` |
-| Pack members | Full list | No pagination options |
+| Pack members | Cursor | `cursor` + `has_more`; decimal strings |
+| Access codes | Cursor | `next_cursor`; stop when absent or null |
+| Pack reports, unanswered posts, tag and username history | Cursor | `cursor` + `has_more` |
+| Feeds | Page number | `page`, starting at 1, and `has_more` |
 | Search | Offset | `.skip()` / `.page()` |

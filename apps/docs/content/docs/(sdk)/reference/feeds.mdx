@@ -41,6 +41,15 @@ Built-in feed IDs include `universe:home` and `gossip:network`. A pack UUID also
 | `page` | `number` | Page number, starting at 1. |
 | `mediaOnly` | `boolean` | Send `media_only` to include only image/video howls and pins, filtered before pagination. Defaults to false. |
 | `includePinsFrom` | `string` | Optional pack ID whose pins should be included in the feed. |
+| `signal` | `AbortSignal` | Cancel the request. |
+
+`mediaOnly` is supported for Pack and user feeds. Home (`universe:home`) and
+Gossip (`gossip:network`) reject that filter. The feed's list/gallery presentation
+is a separate preference; gallery mode does not imply media-only content.
+
+Responses can also include `explanations`, keyed by concrete howl ID. Treat it as
+provenance for that response, not as a persisted property of the howl. See
+[Feed and search types](/types/feed).
 
 The response puts pinned howls in `page.pins` and standard items in `page.data`. A pinned howl can include `meta.pin_expires_at` if a moderator set an automatic expiration.
 

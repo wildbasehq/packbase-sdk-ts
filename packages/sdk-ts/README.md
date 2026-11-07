@@ -134,9 +134,10 @@ const { migrations, account_locked } = await pb.migrations.status()
 
 SDK 0.7.2 adds `pb.me.maintenance.preview`, `confirm`, `current`, `status`,
 `retry`, and `acknowledge`. Bulk deletion matches every supplied tag. Factory
-reset clears personal content/settings and social connections, leaves joined
-packs, and retains owned packs, login identity, moderation history, balances,
-entitlements, and invite/referral/import history.
+reset clears personal content/settings, follows in both directions, and outgoing
+mutes and blocks. Incoming mutes and blocks remain. It leaves joined packs and
+retains owned packs, login identity, moderation history, balances, entitlements,
+and invite/referral/import history.
 
 Show the server's review counts and samples before confirmation. The server
 requires an exact typed username and enforces the returned `confirm_after`

@@ -49,15 +49,22 @@ Pass `{ poll: false }` to receive only `{ id }` without a wait. Read [Async Job 
 import { PackbaseSDK } from '@packbase/sdk-ts'
 const pb = new PackbaseSDK()
 declare const file: Blob
-declare const assetId: string
 // ---cut---
-await pb.howls.upload.init({ totalBytes: file.size, assetType: file.type })
+const initialized = await pb.howls.upload.init({ totalBytes: file.size, assetType: file.type })
+if (typeof initialized.asset_id !== 'string') throw new TypeError('Missing upload ID')
+const assetId = initialized.asset_id
 await pb.howls.upload.append({ assetId, segmentIndex: 0, asset: file })
 await pb.howls.upload.finalize(assetId)
 await pb.howls.upload.status(assetId)
 ```
 
 Upload responses are open `JsonObject` values until the server publishes stable response schemas.
+
+Use an image or video MIME type for `assetType`. `append()` uses sequential,
+zero-based segment indexes. Finalization checks the declared byte count; IDs are
+bound to the current member and expire. A status result currently exposes
+`state`, `file_percentage`, `check_after_secs`, and an optional error. An upload
+ID is distinct from the future howl/job ID.
 
 ## Delete
 
@@ -69,6 +76,9 @@ await pb.howls('howl-id').delete()
 ```
 
 The signed-in user must have permission to delete a howl. The server does not currently supply a howl edit route.
+
+There is no general body-edit method. Tags and media copyright have separate
+editing methods described below.
 
 ## Likes
 
@@ -112,6 +122,22 @@ const ticket = await pb.howls('howl-id').report(
 ```
 
 The returned `ReportResult` contains the moderation ticket's `id` and `status`.
+
+## Public moderation summary
+
+```ts twoslash
+import { PackbaseSDK } from '@packbase/sdk-ts'
+const pb = new PackbaseSDK()
+// ---cut---
+const summary = await pb.howls('howl-id', { context: 'feed' }).moderation()
+console.log(summary.status, summary.actions)
+```
+
+`moderation()` sends `GET /howl/:id/moderation`. The status is `none`,
+`under_review`, or `reviewed`. Public actions are `warning`, `restriction`, and
+`content_removed`. The same coarse data can appear as `moderation_summary` on a
+howl or comment. Reporter identities, case IDs, private notes, and investigation
+details are not included. Normal content visibility still applies.
 
 
 ## Visibility context

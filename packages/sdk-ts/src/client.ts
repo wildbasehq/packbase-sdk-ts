@@ -143,9 +143,9 @@ export class PackbaseSDK {
      * @example
      * ```ts
      * await pb.me()
-     * await pb.me.update({ bio: 'hello' })
+     * await pb.me.update({ about: { bio: 'hello' } })
      * await pb.me.settings()
-     * await pb.me.settings({ dark_mode: true })
+     * await pb.me.settings({ home_feed_type: 'gallery' })
      * await pb.me.packs()
      * ```
      */

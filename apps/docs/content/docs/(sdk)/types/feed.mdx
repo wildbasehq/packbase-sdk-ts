@@ -9,6 +9,7 @@ description: Understand the regular and pinned howls returned in a feed page.
 
 ```ts
 interface FeedPage {
+  explanations?: Record<string, FeedExplanation>
   data: Howl[]
   pins: Howl[]
   has_more: boolean
@@ -27,8 +28,15 @@ interface FeedPage {
 
 The `?` after `total_count` means the property is optional. Check that it exists before treating it as a number.
 
+`explanations` is optional response-specific provenance keyed by concrete howl
+ID. `FeedExplanation` contains the server's query context and may include a
+`FeedSearchQuery` with JSON-valued `where` conditions. Keep `null`, arrays, and
+empty objects when presenting or serializing these conditions. Search results
+can carry `feed_explanation` alongside a howl; it is not an instruction to bypass
+the viewer's filters or visibility rules.
+
 ## Import
 
 ```ts
-import type { FeedPage } from '@packbase/sdk-ts'
+import type { FeedPage, FeedExplanation, FeedSearchQuery, FeedQueryValue } from '@packbase/sdk-ts'
 ```

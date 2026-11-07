@@ -55,6 +55,19 @@ bun run --cwd apps/docs generate:api
 
 The generated-page check rejects missing and stale operation pages.
 
+With a sibling `korat-hb` checkout, audit the public API operation inventory
+against the server's checked-in route contract:
+
+```sh
+bun run --cwd apps/docs check:server-api
+```
+
+An alternate route-contract JSON file can be supplied as the script's first
+argument. This check is optional for standalone docs builds. It reports missing
+and retired public operations. Admin and account/appeal portal routes are outside
+this documentation. The normal API check also rejects `/admin` paths and broken
+schema references.
+
 ## Check your changes
 
 Run the docs type check from the repository root:

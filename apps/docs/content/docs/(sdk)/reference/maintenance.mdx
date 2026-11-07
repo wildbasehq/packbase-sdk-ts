@@ -33,7 +33,11 @@ A bulk review waits 10 seconds; a factory-reset review waits 30 seconds. The res
 const review = await pb.me.maintenance.preview({ kind: 'factory_reset' })
 ```
 
-Factory reset removes personal content and customization, incoming/outgoing social connections, followed tags, likes, folders, notifications, presence, and settings. It leaves packs you joined and keeps packs you own with their owner memberships. Your existing Basecamp remains.
+Factory reset removes personal content and customization, incoming/outgoing
+follows, outgoing mutes and blocks, followed tags, likes, folders, notifications,
+presence, and settings. Incoming mutes and blocks remain; reset cannot bypass
+another member's relationship choices. It leaves Packs you joined and keeps
+Packs you own with their owner memberships. Your existing Basecamp remains.
 
 Login identity, credentials, balances, inventory entitlements, storage tier, invite/referral/import history, and moderation records/restrictions remain. Equipped badge selection resets without removing badge ownership. The account returns to onboarding after completion. Active imports or publication jobs must finish before confirmation.
 

@@ -1,0 +1,45 @@
+---
+title: Pack-host types
+description: Rules, activity trends, prompts, and Pack-rule report responses.
+---
+
+These types describe [`pb.packs(id).host`](/reference/pack-host). They belong to
+Pack management, rather than platform administration.
+
+| Family | Exported shapes | Important fields |
+| --- | --- | --- |
+| Welcome and rules | `PackRule`, `PackHostRules`, `PackWelcome`, `PackRulesInput` | Versioned rules, accepted version, eligibility, and `expected_version` |
+| Activity | `PackActivityRange`, `PackActivityCounts`, `PackActivityPoint`, `PackActivityTrend`, `PackInsights` | Selected and previous windows, timezone, bucket bounds, distinct contributors |
+| Reminders | `PackPromptInput`, `PackPrompt`, `PackPromptOccurrence`, `PackPromptList`, `PackPromptPublication` | Local schedule, assignee, pause state, pending occurrences, publication input |
+| Reports | `PackRuleReportInput`, `PackRuleReportResult`, `PackRuleReport`, `PackRuleReportPage`, `PackReportHistory` | Versioned rule snapshot, reporter, notes, visible howl, public host actions |
+| Actions | `PackReportStatus`, `PackReportAction`, `PackReportActionInput` | Queue status, requested enforcement, required explanation |
+| Inbox metadata | `PackPromptReminderMetadata`, `PackReportOutcomeMetadata`, `PackHostNotification` | Pack, occurrence, prompt, and report identifiers |
+
+```ts twoslash
+import { PackbaseSDK, type PackInsights, type PackPromptList, type PackRuleReportPage } from '@packbase/sdk-ts'
+const pb = new PackbaseSDK()
+// ---cut---
+const host = pb.packs('pack-id').host
+const insights: PackInsights = await host.insights({ timezone: 'Australia/Melbourne' })
+const prompts: PackPromptList = await host.prompts()
+const reports: PackRuleReportPage = await host.reports({ status: 'open' })
+for (const point of insights.trend.points) console.log(point.from, point.to, point.contributors)
+for (const occurrence of prompts.occurrences) console.log(occurrence.status, occurrence.prompt.title)
+for (const report of reports.data) console.log(report.rule.title, report.reporter.username)
+```
+
+`PackInsights.current` and `.previous` contain `members`, `posts`, `replies`, and
+`contributors`. Trend intervals are `hour`, `day`, or `week`. Counts and bucket
+bounds are scoped to the requested range; contributor counts are distinct per
+bucket and cannot be summed to obtain distinct contributors for the full range.
+
+Prompt weekdays use Sunday `0` through Saturday `6`. `pause_reason` can be null.
+Occurrence states are `pending`, `published`, and `skipped`. A published
+occurrence can include its `howl_id`.
+
+Report states are `open`, `resolved`, `dismissed`, and `escalated`. Actions are
+`resolve`, `dismiss`, `escalate`, `delete_howl`, `kick`, and `ban`. A report queue
+uses the normal `data`, `has_more`, and optional `cursor` shape. A visible report
+can include a hydrated howl; unavailable content must not be reconstructed from
+retained client state. The SDK does not expose platform-private case data through
+these types.

@@ -92,7 +92,9 @@ Both methods require authentication. Pack owners cannot leave through this endpo
 
 `await pb.packs('pack-id').delete()` permanently deletes a pack and its posts, replies, memberships and roles. Only the pack's actual leader (`owner_id`) can delete it; management permissions alone are insufficient. Personal and system packs cannot be deleted.
 
-The SDK sends `DELETE /pack/:id` with `{ confirm_pack_id: id }` and expects `204 No Content`. A missing or mismatched confirmation is rejected. Leaving remains a separate membership operation and never deletes a pack.
+The SDK sends a bodyless `DELETE /pack/:id?confirm_pack_id=:id` and expects
+`204 No Content`. A missing or mismatched query confirmation is rejected.
+Leaving remains a separate membership operation and never deletes a Pack.
 
 Present an explicit irreversible-deletion warning before calling this method. Packbase's UI requires a continuous 10-second mouse, touch or keyboard hold; releasing, moving away or losing focus resets it. This hold is a UI safeguard, not a server-enforced timer. Refresh pack lists, feeds and default-pack references after success.
 
@@ -139,10 +141,6 @@ await pb.me.settings({ allow_rehowl: false })
 ```
 
 ## Roles
-
-Pack image emotes are managed through `pb.packs(id).emotes`. See [Pack custom
-emotes](/reference/emotes) for uploads, membership restrictions, rendering, and
-the dedicated `ManageEmotes` permission.
 
 Role management requires the `ManageRoles` permission. Permissions are numeric bit flags, and `|` combines several flags into one value.
 
@@ -204,3 +202,15 @@ const ticket = await pb.packs('pack-id').report(
 ```
 
 `report()` returns the created moderation ticket's `id` and `status`.
+
+## Host tools, Packchat, and emotes
+
+`pb.packs(id).host` supplies welcome content, versioned rules, insights, recurring
+prompts, and Pack-rule reports. See [Pack-host toolkit](/reference/pack-host).
+`pb.packs(id).packchat` manages a linked Fluxer community and reads selected
+channels; see [Packchat](/reference/packchat).
+
+Pack image emotes are managed through `pb.packs(id).emotes`. See
+[Pack custom emotes](/reference/emotes) for uploads, membership restrictions,
+rendering, and the dedicated `ManageEmotes` permission. These resources have
+separate authorization rules; being a Pack member does not grant management.

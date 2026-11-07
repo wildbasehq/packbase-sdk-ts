@@ -22,9 +22,10 @@ export interface Profile {
     is_staff?: boolean
     is_content_moderator?: boolean
     is_dx?: boolean
-    type?: 'PRIVILEDGED' | 'ALUMNI'
+    type?: 'REGULAR' | 'REGULAR_DX' | 'BOT' | 'BOT_DX' | 'PRIVILEDGED' | 'HYPER_PRIVILEDGED' | 'ALUMNI'
     created_at?: string
-    default_pack?: Pack | null
+    /** Public profiles expose a UUID; the current-user response can expand it. */
+    default_pack?: string | Pack | null
 }
 
 export interface UpdateProfileInput {
@@ -42,7 +43,9 @@ export interface UpdateProfileInput {
 }
 
 /** The partial profile returned by `POST /user/me`. */
-export interface UpdateProfileResult extends UpdateProfileInput {
+export interface UpdateProfileResult extends Omit<UpdateProfileInput, 'about'> {
+    /** The update response returns the saved bio as a flat field. */
+    bio?: string
     emotes?: PackEmote[]
     id: string
     username?: string

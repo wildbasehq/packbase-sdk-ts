@@ -87,8 +87,8 @@ const pb = new PackbaseSDK({ apiKey: 'your-api-key' })
 try {
   await pb.packs('a-pack-id').join()
 } catch (error) {
-  if (error instanceof PackbaseError && error.code === 'INVITE_REQUIRED') {
-    console.log('This pack is invite-only.')
+  if (error instanceof PackbaseError && error.code === 'PACK_RULES_ACCEPTANCE_REQUIRED') {
+    console.log('Review and accept the current Pack rules before joining.')
   } else if (error instanceof PackbaseError && error.isConflict) {
     console.log('You may already be a member of this pack.')
   } else {
@@ -114,7 +114,7 @@ try {
   )
 } catch (error) {
   if (error instanceof PackbaseError && error.status === 408) {
-    console.log('The howl is still processing. Try again in a moment.')
+    console.log('Check the existing job status before submitting this content again.')
   } else {
     throw error
   }

@@ -27,6 +27,7 @@ interface Howl {
   rehowled_by?: Profile
   user: Profile
   copyright?: string | null
+  moderation_summary?: HowlModerationSummary
   assets?: HowlAsset[]
   tags?: string[]
   moderator_tags?: string[]
@@ -91,6 +92,7 @@ interface HowlCommentResult {
 
 interface HowlComment {
   emotes?: PackEmote[]
+  moderation_summary?: HowlModerationSummary
   id: string
   body: string
   user: Profile
@@ -156,8 +158,26 @@ interface HowlJobStatus {
   createdAt: number
   updatedAt: number
   error?: string
+  error_code?: string
+  rules_version?: number
 }
 ```
+
+`error_code` carries a machine-readable failed-job reason. A rules-acceptance
+conflict can include the latest `rules_version`. Neither a client timeout nor
+an aborted wait guarantees that the server job stopped.
+
+## Public moderation summary
+
+```ts
+interface HowlModerationSummary {
+  status: 'none' | 'under_review' | 'reviewed'
+  actions: Array<'warning' | 'restriction' | 'content_removed'>
+}
+```
+
+This is a public content summary, not a case or investigation record. Fetch it
+with `pb.howls(id).moderation()` when a fresh value is needed.
 
 ## Tag edits and history
 

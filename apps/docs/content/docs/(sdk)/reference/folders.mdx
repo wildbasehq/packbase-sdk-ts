@@ -25,13 +25,17 @@ const pb = new PackbaseSDK()
 const { folder } = await pb.folders.create({
   name: 'Landscapes',
   emoji: '🏞️',
-  query: 'art,landscape',
+  query: 'landscape',
 })
 
 await pb.folders.update(folder.id, {description: 'Landscape references'})
 ```
 
-`name` is the visible folder name. `description` and `emoji` are optional display data. `query` is a comma-separated list of tags such as `'art,landscape'`. Each account can create a maximum of 10 folders.
+`name` is the visible folder name. `description` and `emoji` are optional display
+data. `query` stores tag-query text. Each account can create at most 10 folders.
+Use a single tag such as `landscape` for consistent behavior across current
+folder views: list previews split commas and require every tag, while the query
+endpoint splits spaces and matches any tag. These paths do not share one parser.
 
 ## Fetch and delete
 
@@ -59,3 +63,9 @@ await pb.folders.removeHowl('folder-id', 'howl-id')
 ```
 
 `addHowl()` sends the howl ID in the documented POST body. `removeHowl()` encodes both IDs in the DELETE path.
+
+Folder reads also require authentication, including when reading another
+member's visible folders. Tag queries and manually added howl IDs are separate
+stored data. The SDK currently exposes folder metadata and membership methods;
+it does not expose a method for `GET /folder/:id/query`. Use that REST operation
+from an authenticated HTTP client when you need its visible, hydrated howls.

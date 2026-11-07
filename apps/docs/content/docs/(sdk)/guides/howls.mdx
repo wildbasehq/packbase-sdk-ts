@@ -78,10 +78,11 @@ Use `pb.howls.upload` to initialize an asset, append one or more binary segments
 ```ts twoslash
 import { PackbaseSDK } from '@packbase/sdk-ts'
 const pb = new PackbaseSDK()
-declare const assetId: string
 declare const file: Blob
 // ---cut---
-await pb.howls.upload.init({ totalBytes: file.size, assetType: file.type })
+const initialized = await pb.howls.upload.init({ totalBytes: file.size, assetType: file.type })
+if (typeof initialized.asset_id !== 'string') throw new TypeError('Missing upload ID')
+const assetId = initialized.asset_id
 await pb.howls.upload.append({
   assetId,
   segmentIndex: 0,
@@ -145,7 +146,7 @@ const job = await pb.howls.create(
 )
 
 // job.id === the howl's future UUID
-// Poll GET /howl/create/status/:id manually (or use a Poller directly)
+// Monitor GET /howl/create/status/:id with your application's authenticated HTTP client.
 console.log('Job started:', job.id)
 ```
 
@@ -226,7 +227,11 @@ Available reasons:
 | `content_type` | Description |
 | --- | --- |
 | `text` | Authored or asset-only howl. The body is plain text or sanitized HTML. |
-| `howling_alongside` | A collaborative repost with separate body. |
+| `howling_alongside` | A reply to another howl. |
 | `howling_echo` | A plain echo/repost with no extra body. |
 
 Packbase can return `howling_alongside` and `howling_echo` in response data. You cannot use them to create a howl with this method. Pass `text`, or omit `content_type`. If you omit it, the SDK supplies `text`.
+
+Create quotes with `parent_id` while keeping `content_type: 'text'`. Quotes have
+their own body, tags, and likes. They retain a source reference without cascading
+when that source is deleted. Use `.comment()` for replies.

@@ -27,9 +27,9 @@ interface Profile {
   is_staff?: boolean
   is_content_moderator?: boolean
   is_dx?: boolean
-  type?: 'PRIVILEDGED' | 'ALUMNI'
+  type?: 'REGULAR' | 'REGULAR_DX' | 'BOT' | 'BOT_DX' | 'PRIVILEDGED' | 'HYPER_PRIVILEDGED' | 'ALUMNI'
   created_at?: string
-  default_pack?: Pack | null
+  default_pack?: string | Pack | null
 }
 ```
 
@@ -37,8 +37,9 @@ The values of `about.bio` and `images.header` can be `null`. `null` means that P
 
 `following` identifies whether the current signed-in user follows this profile. It can be absent in an anonymous request. Staff flags and fields such as `xp` can also be absent if an endpoint returns a smaller profile summary.
 
-`default_pack` contains the selected default pack when the endpoint expands it.
-It is `null` when the profile has no default pack.
+Public profiles expose `default_pack` as a UUID. `pb.me()` can expand it to a
+Pack object. It can be absent or `null` when no visible default Pack is returned.
+Narrow the value with `typeof profile.default_pack === 'string'` before using it.
 
 ## `UpdateProfileInput`
 
@@ -65,7 +66,10 @@ and howls in existing profile responses. `emotes` contains resolved image metada
 for custom tokens in display names and bios. It remains usable by readers outside
 the source Pack. See [Pack custom emotes](/reference/emotes).
 
-`pb.me.update()` returns `UpdateProfileResult`. This type adds `id` and sometimes `username` to the submitted fields. It is not a new full `Profile`. Call `pb.me()` after the update if you require the full current profile.
+`pb.me.update()` returns `UpdateProfileResult`. It contains an `id`, optional
+saved fields, and optional emote metadata. A saved `about.bio` is returned as the
+flat `bio` field. Image fields contain the saved image references. It is not a
+new full `Profile`. Call `pb.me()` for the full current profile.
 
 ## Friends and storage
 

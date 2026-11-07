@@ -81,7 +81,10 @@ const pb = new PackbaseSDK({
 })
 ```
 
-The SDK does not maintain its own response cache. Add response caching in your application's data layer when needed.
+The HTTP layer shares eligible unresolved reads but does not retain settled
+response bodies. Awaitable handles separately retain their fetched value until
+the SDK visibility generation changes. See [Client lifecycle](/reference/client)
+for refresh, cancellation, and application cache handling.
 
 The default value of `autoLogin` is `true`. Set it to `false` for a public-only client. The exported SDK interface is authoritative. The documentation does not specify resources that `PackbaseSDK` does not export.
 

@@ -26,7 +26,7 @@ import type {
  * console.log(pb.me.username) // populated after SDK is ready
  * await pb.me.update({ display_name: 'New Name' })
  * const settings = await pb.me.settings()
- * await pb.me.settings({ dark_mode: true })
+ * await pb.me.settings({ home_feed_type: 'gallery' })
  * ```
  */
 export type MeFn = Omit<Profile, 'emotes'> & {
@@ -55,7 +55,7 @@ export type MeFn = Omit<Profile, 'emotes'> & {
      * Only the fields you pass are changed. Omitted fields are left as-is.
      *
      * @param data - Partial profile fields to update.
-     * @returns The updated profile.
+     * @returns Partial saved fields, with a flat `bio` and saved image references.
      */
     update(data: UpdateProfileInput, options?: RequestOptions): Promise<UpdateProfileResult>
 

@@ -6,6 +6,7 @@
     "generate": "fumadocs-mdx",
     "generate:api": "bun scripts/generate-openapi.ts && bun scripts/check-openapi.ts",
     "check:api": "bun scripts/check-openapi.ts",
+    "check:server-api": "bun scripts/check-server-api.ts",
     "prebuild": "bun run --cwd ../../packages/sdk-ts build",
     "build": "next build --webpack",
     "predev": "bun run --cwd ../../packages/sdk-ts build",
