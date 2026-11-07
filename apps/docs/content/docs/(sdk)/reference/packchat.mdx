@@ -5,11 +5,23 @@ description: Link an owned Fluxer community and read its selected channels.
 
 Packchat lives at `pb.packs(packId).packchat`. It is read-only. Community and channel IDs are strings; never convert Fluxer snowflakes to JavaScript numbers.
 
+Account authorization lives under [`pb.me.connections`](/reference/connections).
+That reference covers discovery, session requirements, callbacks, custom
+providers, and disconnect behavior. `pb.me.fluxer` is no longer available.
+
 ## Link a community
 
 Only the actual pack owner may link or configure a community. The same person must be the current Fluxer community owner; administrator permissions and installing the bot do not establish ownership.
 
-```ts
+```ts twoslash
+import { PackbaseSDK } from '@packbase/sdk-ts'
+const pb = new PackbaseSDK()
+declare const packId: string
+declare const selectedGuildId: string
+declare const code: string
+declare const state: string
+declare const signal: AbortSignal
+// ---cut---
 const { authorization_url } = await pb.me.connections.fluxer.authorize({ pack_id: packId })
 // Redirect the member to authorization_url. In the signed-in callback:
 const result = await pb.me.connections.fluxer.complete({ code, state }, { signal })
@@ -23,7 +35,12 @@ await chat.link({ guild_id: selectedGuild.id })
 
 The owner explicitly chooses a community from the returned list. `authorize({ pack_id, guild_id, install: true })` also requests bot installation for the selected community. OAuth credentials and bot tokens stay on the server; the SDK receives only verified identity summaries.
 
-```ts
+```ts twoslash
+import { PackbaseSDK } from '@packbase/sdk-ts'
+const pb = new PackbaseSDK()
+const chat = pb.packs('pack-id').packchat
+declare const selectedChannelIds: string[]
+// ---cut---
 const settings = await chat.settings()
 await chat.configure({
   audience: 'pack_members',
@@ -35,7 +52,13 @@ Audiences are `public`, `pack_members`, and `pack_and_fluxer_members`. Publishin
 
 ## Read channels and messages
 
-```ts
+```ts twoslash
+import { PackbaseSDK } from '@packbase/sdk-ts'
+const pb = new PackbaseSDK()
+const chat = pb.packs('pack-id').packchat
+declare const channelId: string
+declare const signal: AbortSignal
+// ---cut---
 const listing = await chat.channels()
 const page = await chat.messages(channelId, { signal })
 if (page.has_more && page.before) {
@@ -59,7 +82,12 @@ Render message content as text or safely parsed Markdown with raw HTML disabled.
 
 ## Disconnect
 
-```ts
+```ts twoslash
+import { PackbaseSDK } from '@packbase/sdk-ts'
+const pb = new PackbaseSDK()
+const chat = pb.packs('pack-id').packchat
+declare const signal: AbortSignal
+// ---cut---
 await chat.unlink() // Pack owner: removes this pack's community link.
 await pb.me.connections.fluxer.disconnect({ signal }) // Disconnects this member's identity.
 ```

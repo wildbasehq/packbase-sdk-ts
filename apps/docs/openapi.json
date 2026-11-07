@@ -2553,7 +2553,7 @@
           }
         },
         "operationId": "getUserMeSettings",
-        "description": "Read user settings. howl_like_emoji is one emoji (default \ud83d\udd25) used only for newly created howls; existing howl emojis remain unchanged. allow_tag_edits_from_others is a boolean that defaults to true, allowing other signed-in members to edit unlocked tags on existing and future howls. False limits ordinary editing to the author; staff/content moderators retain their permissions. All edits require public explanations and create public tag history."
+        "description": "Read user settings. howl_like_emoji is one Unicode emoji or an available Pack emote token (default 🔥) used only for newly created howls; existing howl emojis remain unchanged. allow_tag_edits_from_others is a boolean that defaults to true, allowing other signed-in members to edit unlocked tags on existing and future howls. False limits ordinary editing to the author; staff/content moderators retain their permissions. All edits require public explanations and create public tag history. Unavailable custom like emotes reset to 🔥 with one inbox notice; published howl emojis remain unchanged."
       },
       "post": {
         "parameters": [],
@@ -2594,7 +2594,7 @@
                   },
                   "howl_like_emoji": {
                     "type": "string",
-                    "default": "\ud83d\udd25",
+                    "default": "🔥",
                     "description": "One emoji to use for likes on newly created howls."
                   }
                 }
@@ -2602,7 +2602,7 @@
             }
           }
         },
-        "description": "Update user settings. howl_like_emoji is one emoji (default \ud83d\udd25) used only for newly created howls; existing howl emojis remain unchanged. allow_tag_edits_from_others is a boolean that defaults to true, allowing other signed-in members to edit unlocked tags on existing and future howls. False limits ordinary editing to the author; staff/content moderators retain their permissions. All edits require public explanations and create public tag history."
+        "description": "Update user settings. howl_like_emoji is one Unicode emoji or an available Pack emote token (default 🔥) used only for newly created howls; existing howl emojis remain unchanged. allow_tag_edits_from_others is a boolean that defaults to true, allowing other signed-in members to edit unlocked tags on existing and future howls. False limits ordinary editing to the author; staff/content moderators retain their permissions. All edits require public explanations and create public tag history. Unavailable custom like emotes reset to 🔥 with one inbox notice; published howl emojis remain unchanged."
       }
     },
     "/user/me/storage": {
@@ -3942,7 +3942,7 @@
                       "properties": {
                         "emoji": {
                           "type": "string",
-                          "description": "Author-selected emoji captured at creation; defaults to \ud83d\udd25."
+                          "description": "Author-selected emoji captured at creation; defaults to 🔥."
                         },
                         "count": {
                           "type": "number",
@@ -4515,7 +4515,7 @@
                             "properties": {
                               "emoji": {
                                 "type": "string",
-                                "description": "Author-selected emoji captured at creation; defaults to \ud83d\udd25."
+                                "description": "Author-selected emoji captured at creation; defaults to 🔥."
                               },
                               "count": {
                                 "type": "number",
@@ -5189,7 +5189,7 @@
                             "properties": {
                               "emoji": {
                                 "type": "string",
-                                "description": "Author-selected emoji captured at creation; defaults to \ud83d\udd25."
+                                "description": "Author-selected emoji captured at creation; defaults to 🔥."
                               },
                               "count": {
                                 "type": "number",
@@ -7340,7 +7340,7 @@
                             "properties": {
                               "emoji": {
                                 "type": "string",
-                                "description": "Author-selected emoji captured at creation; defaults to \ud83d\udd25."
+                                "description": "Author-selected emoji captured at creation; defaults to 🔥."
                               },
                               "count": {
                                 "type": "number",
@@ -9663,7 +9663,7 @@
       "get": {
         "operationId": "getUserMeFluxer",
         "tags": [
-          "Packchat"
+          "Connections"
         ],
         "summary": "Get verified Fluxer identity",
         "description": "Authenticated member identity and recently verified owned communities; OAuth tokens are never returned.",
@@ -9698,10 +9698,10 @@
       "delete": {
         "operationId": "deleteUserMeFluxer",
         "tags": [
-          "Packchat"
+          "Connections"
         ],
         "summary": "Disconnect Fluxer identity",
-        "description": "Disconnect the current member's verified Fluxer identity.",
+        "description": "Disconnect the member's verified Fluxer identity, remove pending authorization intents, and unlink Packchat from every Pack owned by that member. Returns 204 with no body.",
         "responses": {
           "401": {
             "description": "Authentication required."
@@ -9728,10 +9728,10 @@
       "post": {
         "operationId": "postUserMeFluxerAuthorize",
         "tags": [
-          "Packchat"
+          "Connections"
         ],
         "summary": "Start Fluxer authorization",
-        "description": "Returns an OAuth authorization URL bound to the authenticated member. Optional pack/community context supports ownership linking and bot installation.",
+        "description": "Start OAuth bound to the current member and Clerk sign-in session. A long-lived API key alone is insufficient. The intent expires after ten minutes and uses S256 PKCE. Optional Pack/community context supports ownership linking and bot installation.",
         "responses": {
           "401": {
             "description": "Authentication required."
@@ -9775,10 +9775,10 @@
       "post": {
         "operationId": "postUserMeFluxerComplete",
         "tags": [
-          "Packchat"
+          "Connections"
         ],
         "summary": "Complete Fluxer authorization",
-        "description": "Exchange a one-time OAuth code and caller-bound state. Return to the server-provided return_path.",
+        "description": "Consume the single-use OAuth state in the same member/session that started it, then exchange the code on the server. Returns connected:true and a local return_path; provider tokens stay server-side.",
         "responses": {
           "401": {
             "description": "Authentication required."
@@ -9864,7 +9864,7 @@
       "get": {
         "operationId": "getUserMeConnections",
         "tags": [
-          "user"
+          "Connections"
         ],
         "summary": "List available account connection providers",
         "responses": {
@@ -9875,68 +9875,17 @@
                 "schema": {
                   "type": "array",
                   "items": {
-                    "type": "object",
-                    "required": [
-                      "id",
-                      "name",
-                      "description",
-                      "disconnect_description",
-                      "method",
-                      "fields"
-                    ],
-                    "properties": {
-                      "id": {
-                        "type": "string"
-                      },
-                      "name": {
-                        "type": "string"
-                      },
-                      "description": {
-                        "type": "string"
-                      },
-                      "disconnect_description": {
-                        "type": "string"
-                      },
-                      "method": {
-                        "type": "string",
-                        "enum": [
-                          "oauth2",
-                          "custom"
-                        ]
-                      },
-                      "fields": {
-                        "type": "array",
-                        "items": {
-                          "type": "object",
-                          "required": [
-                            "name",
-                            "label",
-                            "type"
-                          ],
-                          "properties": {
-                            "name": {
-                              "type": "string"
-                            },
-                            "label": {
-                              "type": "string"
-                            },
-                            "type": {
-                              "type": "string",
-                              "enum": [
-                                "text",
-                                "password"
-                              ]
-                            }
-                          }
-                        }
-                      }
-                    }
+                    "$ref": "#/components/schemas/ConnectionDefinition"
                   }
                 }
               }
             }
+          },
+          "401": {
+            "description": "Packbase authentication required."
           }
-        }
+        },
+        "description": "Authenticated discovery of enabled provider definitions, including display metadata, OAuth/custom method, and custom input fields. These are definitions, not the member's connection status. Disabled providers are omitted; an empty array means no configured providers."
       }
     },
     "/pack/{id}/emotes": {
@@ -10198,6 +10147,241 @@
           },
           "413": {
             "description": "Image exceeds upload or processing limits."
+          }
+        }
+      }
+    },
+    "/user/me/connections/{provider}": {
+      "get": {
+        "operationId": "getUserMeConnectionProvider",
+        "tags": [
+          "Connections"
+        ],
+        "summary": "Get an account connection",
+        "description": "Read common status for an enabled provider. Requires Packbase authentication. Provider-specific fields can extend the common schema.",
+        "parameters": [
+          {
+            "name": "provider",
+            "in": "path",
+            "required": true,
+            "description": "Enabled provider ID returned by GET /user/me/connections.",
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9-]*$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConnectionStatus"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid provider input or expired, reused, or session-mismatched authorization proof."
+          },
+          "401": {
+            "description": "Packbase authentication required."
+          },
+          "403": {
+            "description": "The provider requires a sign-in session or further account/feature permission."
+          },
+          "404": {
+            "description": "Provider is unknown or disabled."
+          },
+          "409": {
+            "description": "Connection or dependent authorization changed. Refresh current state."
+          },
+          "422": {
+            "description": "Request does not match the registered provider schema."
+          },
+          "503": {
+            "description": "External authorization is unavailable. Start a new flow when appropriate."
+          }
+        }
+      },
+      "delete": {
+        "operationId": "deleteUserMeConnectionProvider",
+        "tags": [
+          "Connections"
+        ],
+        "summary": "Disconnect an account provider",
+        "description": "Disconnect the current member. Feature cleanup is provider-specific; show disconnect_description before confirmation.",
+        "parameters": [
+          {
+            "name": "provider",
+            "in": "path",
+            "required": true,
+            "description": "Enabled provider ID returned by GET /user/me/connections.",
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9-]*$"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Disconnected; no response body."
+          },
+          "400": {
+            "description": "Invalid provider input or expired, reused, or session-mismatched authorization proof."
+          },
+          "401": {
+            "description": "Packbase authentication required."
+          },
+          "403": {
+            "description": "The provider requires a sign-in session or further account/feature permission."
+          },
+          "404": {
+            "description": "Provider is unknown or disabled."
+          },
+          "409": {
+            "description": "Connection or dependent authorization changed. Refresh current state."
+          },
+          "422": {
+            "description": "Request does not match the registered provider schema."
+          },
+          "503": {
+            "description": "External authorization is unavailable. Start a new flow when appropriate."
+          }
+        }
+      }
+    },
+    "/user/me/connections/{provider}/authorize": {
+      "post": {
+        "operationId": "postUserMeConnectionProviderAuthorize",
+        "tags": [
+          "Connections"
+        ],
+        "summary": "Authorize an account provider",
+        "description": "Start OAuth or submit custom credentials. Returns an authorization URL or immediate connection. Fluxer requires a Clerk sign-in session and binds its proof to that member/session. Provider tokens stay on the server.",
+        "parameters": [
+          {
+            "name": "provider",
+            "in": "path",
+            "required": true,
+            "description": "Enabled provider ID returned by GET /user/me/connections.",
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9-]*$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConnectionAuthorization"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid provider input or expired, reused, or session-mismatched authorization proof."
+          },
+          "401": {
+            "description": "Packbase authentication required."
+          },
+          "403": {
+            "description": "The provider requires a sign-in session or further account/feature permission."
+          },
+          "404": {
+            "description": "Provider is unknown or disabled."
+          },
+          "409": {
+            "description": "Connection or dependent authorization changed. Refresh current state."
+          },
+          "422": {
+            "description": "Request does not match the registered provider schema."
+          },
+          "503": {
+            "description": "External authorization is unavailable. Start a new flow when appropriate."
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "description": "Provider-specific fields validated by its registered schema. OAuth completion normally supplies code and state.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": true
+              }
+            }
+          }
+        }
+      }
+    },
+    "/user/me/connections/{provider}/complete": {
+      "post": {
+        "operationId": "postUserMeConnectionProviderComplete",
+        "tags": [
+          "Connections"
+        ],
+        "summary": "Complete account authorization",
+        "description": "Complete the registered provider flow. OAuth proofs are single-use and must belong to the current member/session. Do not automatically retry a consumed callback.",
+        "parameters": [
+          {
+            "name": "provider",
+            "in": "path",
+            "required": true,
+            "description": "Enabled provider ID returned by GET /user/me/connections.",
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9-]*$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConnectionCompletion"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid provider input or expired, reused, or session-mismatched authorization proof."
+          },
+          "401": {
+            "description": "Packbase authentication required."
+          },
+          "403": {
+            "description": "The provider requires a sign-in session or further account/feature permission."
+          },
+          "404": {
+            "description": "Provider is unknown or disabled."
+          },
+          "409": {
+            "description": "Connection or dependent authorization changed. Refresh current state."
+          },
+          "422": {
+            "description": "Request does not match the registered provider schema."
+          },
+          "503": {
+            "description": "External authorization is unavailable. Start a new flow when appropriate."
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "description": "Provider-specific fields validated by its registered schema. OAuth completion normally supplies code and state.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": true
+              }
+            }
           }
         }
       }
@@ -12001,7 +12185,155 @@
             "type": "string"
           }
         }
+      },
+      "ConnectionDefinition": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "description",
+          "disconnect_description",
+          "method",
+          "fields"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "disconnect_description": {
+            "type": "string"
+          },
+          "method": {
+            "type": "string",
+            "enum": [
+              "oauth2",
+              "custom"
+            ]
+          },
+          "fields": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "name",
+                "label",
+                "type"
+              ],
+              "properties": {
+                "name": {
+                  "type": "string"
+                },
+                "label": {
+                  "type": "string"
+                },
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "text",
+                    "password"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "ConnectionStatus": {
+        "type": "object",
+        "required": [
+          "connected"
+        ],
+        "properties": {
+          "connected": {
+            "type": "boolean"
+          },
+          "user": {
+            "type": "object",
+            "required": [
+              "id",
+              "username"
+            ],
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "username": {
+                "type": "string"
+              },
+              "avatar": {
+                "type": "string",
+                "nullable": true
+              }
+            }
+          }
+        },
+        "additionalProperties": true
+      },
+      "ConnectionAuthorization": {
+        "oneOf": [
+          {
+            "type": "object",
+            "required": [
+              "authorization_url"
+            ],
+            "properties": {
+              "authorization_url": {
+                "type": "string",
+                "format": "uri"
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "connected"
+            ],
+            "properties": {
+              "connected": {
+                "type": "boolean",
+                "enum": [
+                  true
+                ]
+              },
+              "return_path": {
+                "type": "string"
+              }
+            }
+          }
+        ]
+      },
+      "ConnectionCompletion": {
+        "type": "object",
+        "required": [
+          "connected",
+          "return_path"
+        ],
+        "properties": {
+          "connected": {
+            "type": "boolean",
+            "enum": [
+              true
+            ]
+          },
+          "return_path": {
+            "type": "string",
+            "description": "Local application path; reject external redirects."
+          }
+        },
+        "additionalProperties": true
       }
     }
-  }
+  },
+  "tags": [
+    {
+      "name": "Connections",
+      "description": "Discover external account providers and manage OAuth or custom authorization. Current SDK access is pb.me.connections; the me.fluxer shortcut was removed."
+    }
+  ]
 }

@@ -50,7 +50,8 @@ For public-only use, disable the automatic `me()` request with
 
 - `pb.me()` gets the authenticated profile; `pb.me.update()` updates it.
 - `pb.me.maintenance` reviews, confirms, and tracks bulk howl deletion or factory reset.
-- `pb.me.connections.fluxer` verifies the signed-in member's Fluxer identity; `pb.packs(id).packchat` links an owned community and reads selected channels.
+- `pb.me.connections.list()` discovers enabled account providers; `.provider(id)` supplies generic status, authorization, completion, and disconnect methods. `.fluxer` adds typed ownership and installation support.
+- `pb.packs(id).packchat` links an owned Fluxer community and reads selected channels.
 - `pb.profiles(id)` returns a lazy, awaitable profile handle.
 - `pb.packs(id)` returns a lazy, awaitable pack handle; `pb.packs.list()` and `.create()` work with packs in bulk.
 - `pb.howls(id)` returns a lazy, awaitable howl handle; `pb.howls.create()` creates a howl and `pb.howls.upload` manages assets.
@@ -60,6 +61,11 @@ For public-only use, disable the automatic `me()` request with
 - `pb.tags()` lists registered tag names; `pb.tags.get()` fetches metadata, while `create()`, `update()`, and `delete()` manage tags for staff and content moderators. Authenticated users can manage feed interests with `pb.tags.follow()`, `pb.tags.unfollow()`, and `pb.tags.following()`.
 - `pb.feedback.submit()` sends product feedback for the authenticated user.
 - `pb.leaderboard`, `pb.store`, `pb.folders`, and `pb.search()` expose their corresponding API endpoints.
+
+See the bundled [connections reference](https://github.com/wildbasehq/packbase-sdk-ts/blob/main/apps/docs/content/docs/%28sdk%29/reference/connections.mdx)
+for OAuth session requirements, callbacks, custom fields, and disconnect effects.
+Connections manage external account authorization; `pb.migrations` manages import
+jobs. The removed `pb.me.fluxer` shortcut has no compatibility alias.
 
 Howl creation accepts `body: string | null`; strings may contain plain text or
 HTML and are sanitized by the server. Authored howls use

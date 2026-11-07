@@ -9,6 +9,7 @@ description: TypeScript shapes for profiles, updates, friends, and storage.
 
 ```ts
 interface Profile {
+  emotes?: PackEmote[]
   id: string
   username: string
   display_name: string | null
@@ -17,8 +18,12 @@ interface Profile {
   about?: { bio?: string | null; flair?: string }
   space_type?: 'default' | 'custom_free' | 'custom_unrestricted'
   post_privacy?: 'everyone' | 'followers' | 'friends' | 'private'
+  profile_avatar_mature?: boolean
+  profile_banner_mature?: boolean
+  profile_howls_mature?: boolean
   images?: { avatar?: string; header?: string | null }
   following?: boolean
+  muted_by_me?: boolean
   is_staff?: boolean
   is_content_moderator?: boolean
   is_dx?: boolean
@@ -46,11 +51,19 @@ interface UpdateProfileInput {
   about?: { bio?: string }
   space_type?: 'default' | 'custom_free' | 'custom_unrestricted'
   post_privacy?: 'everyone' | 'followers' | 'friends' | 'private'
+  profile_avatar_mature?: boolean
+  profile_banner_mature?: boolean
+  profile_howls_mature?: boolean
   images?: { avatar?: string; header?: string }
 }
 ```
 
 Image updates accept base64 data URLs. Pass the complete data URL, including its MIME type, to `images.avatar` or `images.header`.
+
+The three maturity flags are independent. They identify mature avatars, banners,
+and howls in existing profile responses. `emotes` contains resolved image metadata
+for custom tokens in display names and bios. It remains usable by readers outside
+the source Pack. See [Pack custom emotes](/reference/emotes).
 
 `pb.me.update()` returns `UpdateProfileResult`. This type adds `id` and sometimes `username` to the submitted fields. It is not a new full `Profile`. Call `pb.me()` after the update if you require the full current profile.
 

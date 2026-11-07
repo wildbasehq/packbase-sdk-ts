@@ -94,3 +94,10 @@ Do not include the trailing slash. The SDK adds the endpoint path for each reque
 | Public access only | `{ autoLogin: false }` | Any environment calling public endpoints |
 
 If an authenticated call returns `401`, make sure that the key is valid. Make sure that the environment variable has a value. For cookie authentication, make sure that the browser has a signed-in user. Then, read [Error Handling](/getting-started/error-handling) to process the failure in code.
+
+## External account connections
+
+Packbase authentication and external account authorization are separate.
+[`pb.me.connections`](/reference/connections) connects services such as Fluxer
+to the current Packbase member. Fluxer OAuth binds its state to a Clerk sign-in
+session. A long-lived Packbase API key alone cannot start or complete it.

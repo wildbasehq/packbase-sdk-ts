@@ -1,0 +1,113 @@
+---
+title: Add a connection provider
+description: Register OAuth or custom account providers on the Packbase server.
+---
+
+This guide is for developers extending the Packbase server. SDK consumers can
+use an existing provider through [`pb.me.connections`](/reference/connections).
+
+The earlier Fluxer-only flow now uses the server's `ConnectionsManager`.
+Registering a provider adds discovery metadata and its lifecycle routes. The
+Connected Accounts screen renders that metadata. The generic SDK accessor works
+with the registered provider ID without a new client-side registry.
+
+## Register an adapter
+
+Create the adapter under the server's `src/lib/connections/providers` directory.
+Register it once in `src/lib/connections/index.ts`. Use the existing
+[Fluxer adapter](https://github.com/wildbasehq/packbase/blob/master/apps/server/src/lib/connections/providers/fluxer.ts)
+as a reference.
+
+Each adapter supplies:
+
+| Member | Responsibility |
+| --- | --- |
+| `definition` | Provider ID, name, descriptions, method, and custom fields |
+| `enabled()` | Check whether the provider is configured and available |
+| `schemas` | TypeBox schemas for authorize/complete inputs and status/authorization/completion responses |
+| `status(user, signal?)` | Read the current member's external identity |
+| `authorize(user, input, signal?)` | Start OAuth or validate custom credentials |
+| `complete(user, input, signal?)` | Complete the flow and persist the verified identity |
+| `disconnect(user)` | Remove the identity and handle dependent features |
+
+IDs must match `^[a-z][a-z0-9-]*$` and must be unique. Evaluate configuration
+lazily in `enabled()`. Missing credentials for a disabled provider must not
+prevent server startup. Disabled providers are hidden and reject lifecycle calls
+with `404`.
+
+`ConnectionsManager` validates inputs against the adapter's schemas before
+dispatching to a handler, including direct manager calls. The adapter still owns
+identity verification, persistence, account/session binding, uniqueness rules,
+and authorization for dependent features.
+
+## Generated routes
+
+The shared registry adds these authenticated routes:
+
+| HTTP operation | Handler |
+| --- | --- |
+| `GET /user/me/connections` | Discover enabled definitions |
+| `GET /user/me/connections/:provider` | `status` |
+| `POST /user/me/connections/:provider/authorize` | `authorize` |
+| `POST /user/me/connections/:provider/complete` | `complete` |
+| `DELETE /user/me/connections/:provider` | `disconnect`; returns `204` |
+
+Do not add a second set of provider route files. Update the server's route
+contract and the SDK repository's OpenAPI schemas for provider-specific
+extensions. The generic OpenAPI operations describe the shared interface;
+an adapter's schemas govern the actual payload for its registered ID.
+
+## OAuth providers
+
+Use the server's `OAuth2Client` helper for authorization-code URLs, S256 PKCE,
+confidential token exchange, required scopes, cancellation, timeouts, and bounded
+responses. Register `/integrations/<id>/callback` on the Packbase frontend as the
+provider's redirect URI, and use the same URI in server configuration.
+
+The adapter must persist its authorization proof against the current member and
+Clerk session. Give the proof an expiry. Atomically consume it before external
+token exchange. Recheck cancellation and current authority before committing the
+identity. Keep provider tokens on the server. Fluxer's implementation demonstrates
+these boundaries; the protocol helper does not persist or consume proofs for you.
+
+Packbase's shared callback removes code/state parameters before analytics mount,
+uses one completion promise across remounts, and accepts only local return paths.
+The SDK does not perform these browser steps for a custom client.
+
+## Custom providers
+
+Set `method` to `custom`. Declare simple `text` or `password` inputs in `fields`.
+The shared settings form sends a record keyed by field name to `authorize()`.
+Return `{ connected: true }` for immediate completion, or `{ authorization_url }`
+when the member must visit another page. A custom flow can use `complete()` for
+additional server-defined inputs.
+
+Supply a truthful `disconnect_description`. The shared UI uses it in the
+confirmation dialog. Clear credentials from the form after success. More
+complex provider interfaces can use the same lifecycle methods from their own UI.
+
+## SDK access and dependent features
+
+All registered providers work through `pb.me.connections.provider(id)`. Add a
+typed accessor only when consumers need a provider's specific inputs or returned
+fields. Fluxer supplies `pb.me.connections.fluxer` for ownership and bot-install
+operations. The previous `pb.me.fluxer` accessor and `/user/me/fluxer` routes have
+no compatibility aliases.
+
+Connections manage authorization. `MigrationManager` still owns import jobs.
+An import adapter can consume a verified connection when appropriate, but
+registering a connection does not add an import service.
+
+## Verify a new provider
+
+Check discovery when enabled and disabled. Check validation, unauthenticated
+requests, and every lifecycle result. For OAuth, test state expiry, reuse,
+session changes, cancellation, and concurrent disconnects. For custom providers,
+test field submission, immediate completion, and credential clearing. Confirm
+that disconnect removes only the provider's intended dependent data.
+
+The existing server tests for `ConnectionsManager` and OAuth helpers, SDK
+connection request tests, and shared Connected Accounts UI fixtures provide
+examples. Read the server's
+[connections guide](https://github.com/wildbasehq/packbase/blob/master/apps/server/src/lib/connections/README.md)
+for the implementation entry points.

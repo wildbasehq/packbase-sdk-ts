@@ -5,7 +5,10 @@ description: Fetch and update the authenticated profile, settings, friends, pack
 
 `pb.me` is the resource for the current signed-in account. Each method on this page requires a valid browser session or API key. Use `pb.profiles(username)` if you require only a public profile.
 
-`pb.me.connections.fluxer` connects a verified Fluxer identity through `status()`, `authorize()`, `complete()`, and `disconnect()`. See [Packchat](/reference/packchat) for ownership verification, community linking, and read-only chat.
+Use [`pb.me.connections`](/reference/connections) to discover providers and manage
+external account authorization. It supports OAuth and custom methods.
+`pb.me.connections.fluxer` supplies typed Fluxer methods. See
+[Packchat](/reference/packchat) for community linking and read-only chat.
 
 ## Fetch the current user
 
@@ -36,7 +39,7 @@ const updated = await pb.me.update({
 })
 ```
 
-This is a partial update. Include only the fields that you want to change. Supported fields are `display_name`, `username`, `about.bio`, `space_type`, `post_privacy`, `images.avatar`, and `images.header`. Image fields accept complete base64 data URLs. The response contains the fields that the server wrote. It does not contain a new full profile. Call `pb.me()` after the update if you require the full result.
+This is a partial update. Include only the fields that you want to change. Supported fields are `display_name`, `username`, `about.bio`, `space_type`, `post_privacy`, `images.avatar`, `images.header`, `profile_avatar_mature`, `profile_banner_mature`, and `profile_howls_mature`. Image fields accept complete base64 data URLs. The response contains the fields that the server wrote. It does not contain a new full profile. Call `pb.me()` after the update if you require the full result.
 
 ## Settings
 

@@ -1,0 +1,189 @@
+---
+title: pb.me.connections
+description: Discover account providers, connect an identity, and disconnect it.
+---
+
+`pb.me.connections` manages the signed-in member's external accounts. The server
+registers the available providers. Clients use discovery to build a Connected
+Accounts screen. They do not need their own provider registry.
+
+`pb.me.fluxer` was removed. Use `pb.me.connections.fluxer` for typed Fluxer access.
+Use `pb.me.connections.provider(id)` for a provider discovered at runtime.
+
+## Methods
+
+| Method | Result | Purpose |
+| --- | --- | --- |
+| `list(options?)` | `ConnectionDefinition[]` | Discover enabled providers |
+| `provider(id).status(options?)` | `ConnectionStatus` | Read the current member's connection |
+| `provider(id).authorize(input?, options?)` | `ConnectionAuthorization` | Start OAuth or submit custom credentials |
+| `provider(id).complete(input, options?)` | `ConnectionCompletion` | Complete a provider's authorization flow |
+| `provider(id).disconnect(options?)` | `void` | Disconnect the current member's account |
+
+Each request accepts `RequestOptions`, including an `AbortSignal`. All account
+connection requests require Packbase authentication. Providers can impose further
+requirements. Fluxer OAuth requires a Clerk sign-in session; a long-lived API key
+alone cannot start or complete that flow.
+
+## Discover providers and read status
+
+```ts twoslash
+import { PackbaseSDK } from '@packbase/sdk-ts'
+const pb = new PackbaseSDK()
+declare const signal: AbortSignal
+// ---cut---
+const providers = await pb.me.connections.list({ signal })
+for (const provider of providers) {
+  const status = await pb.me.connections.provider(provider.id).status({ signal })
+  console.log(provider.name, status.connected, status.user?.username)
+}
+```
+
+Discovery returns definitions, not the member's connection status. A definition
+contains `id`, `name`, `description`, `disconnect_description`, `method`, and
+`fields`. Call `status()` to determine whether the member connected that provider.
+The optional `user` contains its external ID, username, and avatar.
+
+Disabled providers are absent from discovery. Direct requests to disabled or
+unknown providers return `404`. An empty array means that no providers are
+available. It does not mean that a provider is disconnected.
+
+Use `method` to describe the flow. Use `fields` to render custom inputs. Each
+field supplies a `name`, `label`, and a `type` of `text` or `password`.
+
+## Start authorization
+
+```ts twoslash
+import { PackbaseSDK } from '@packbase/sdk-ts'
+const pb = new PackbaseSDK()
+declare const providerId: string
+declare const signal: AbortSignal
+// ---cut---
+const connection = pb.me.connections.provider(providerId)
+const result = await connection.authorize({}, { signal })
+
+if ('authorization_url' in result) {
+  const destination = new URL(result.authorization_url)
+  if (destination.protocol !== 'https:') throw new Error('Invalid authorization URL')
+  window.location.assign(destination.href)
+} else {
+  console.log(result.connected) // A custom provider can connect immediately.
+}
+```
+
+The SDK sends the request to Packbase. It does not open a browser, follow the
+authorization URL, or process the callback automatically. The authorization
+result is either `{ authorization_url }` or `{ connected: true, return_path? }`.
+
+For custom methods, supply the values under the declared field names:
+
+```ts twoslash
+import { PackbaseSDK } from '@packbase/sdk-ts'
+const pb = new PackbaseSDK()
+declare const providerId: string
+declare const formValues: Record<string, string>
+declare const signal: AbortSignal
+// ---cut---
+const result = await pb.me.connections.provider(providerId).authorize(formValues, { signal })
+```
+
+Send only the provider's declared inputs. Keep password fields in memory and
+clear them after success. Do not put credentials in URLs or browser storage.
+Custom providers can also return an authorization URL. Providers with more
+complex interfaces can use `complete()` with their own server-defined inputs.
+
+## Complete an OAuth callback
+
+Packbase's shared UI callback is `/integrations/:provider/callback`. The callback
+must match the redirect URI configured on the server and registered with the
+external service. Changing the SDK's `baseUrl` does not change the redirect URI.
+
+For a custom callback implementation, capture its parameters before analytics
+start. Remove them from the address bar. Complete the flow in the same signed-in
+Packbase session that started it:
+
+```ts twoslash
+import { PackbaseSDK } from '@packbase/sdk-ts'
+const pb = new PackbaseSDK()
+declare const providerId: string
+declare const signal: AbortSignal
+// ---cut---
+const parameters = new URLSearchParams(window.location.search)
+const code = parameters.get('code')
+const state = parameters.get('state')
+const providerError = parameters.get('error')
+window.history.replaceState(window.history.state, '', window.location.pathname)
+
+if (providerError || !code || !state) throw new Error('Start a new connection from settings')
+const result = await pb.me.connections.provider(providerId).complete({ code, state }, { signal })
+const destination = new URL(result.return_path, window.location.origin)
+if (!result.return_path.startsWith('/') || destination.origin !== window.location.origin) {
+  throw new Error('Invalid return path')
+}
+window.location.replace(destination.href)
+```
+
+Completion returns `{ connected: true, return_path }`. Treat `return_path` as a
+local application path. Never use it as an unrestricted external redirect.
+
+OAuth state and codes are single-use. Reuse one pending completion promise if a
+UI framework mounts the callback twice. Do not resubmit completion after a lost
+response, an expired state, or a session change. Start a new authorization flow.
+Fluxer intents expire after ten minutes and are consumed before token exchange.
+
+Refresh connection status and affected feature data after a successful connect,
+completion, or disconnect. Packbase's shared UI refreshes connection and Packchat
+queries. Custom clients must refresh their own caches. Provider access and refresh
+tokens stay on the server; these SDK methods do not return them.
+
+## Disconnect
+
+Show the provider's `disconnect_description` before the member confirms:
+
+```ts twoslash
+import { PackbaseSDK } from '@packbase/sdk-ts'
+const pb = new PackbaseSDK()
+declare const providerId: string
+declare const signal: AbortSignal
+// ---cut---
+await pb.me.connections.provider(providerId).disconnect({ signal })
+const current = await pb.me.connections.provider(providerId).status({ signal })
+```
+
+Disconnect sends a bodyless `DELETE` and resolves without a response body. Its
+feature effects belong to the provider. Disconnecting Fluxer also unlinks
+Packchat from every Pack owned by that member. It differs from unlinking only
+one Pack with `pb.packs(packId).packchat.unlink()`.
+
+## Typed Fluxer access
+
+```ts twoslash
+import { PackbaseSDK } from '@packbase/sdk-ts'
+const pb = new PackbaseSDK()
+declare const signal: AbortSignal
+// ---cut---
+const fluxer = pb.me.connections.fluxer
+const status = await fluxer.status({ signal })
+for (const guild of status.owned_guilds) console.log(guild.id, guild.name)
+const authorization = await fluxer.authorize({}, { signal })
+```
+
+The typed accessor adds `owned_guilds` and typed `pack_id`, `guild_id`, and
+`install` inputs. All community IDs are strings. For ownership checks, community
+linking, installation, and read-only channels, see [Packchat](/reference/packchat).
+
+## Failures and related features
+
+- `401`: authenticate with Packbase before calling the method.
+- `404`: refresh discovery; the provider is unknown or disabled.
+- `CONNECTION_SESSION_REQUIRED`: sign in through Packbase before starting OAuth.
+- `FLUXER_INVALID_STATE`: start a new flow in the current session.
+- `CONNECTION_OAUTH_UNAVAILABLE`: the external authorization request failed; reconnect.
+- Other input, permission, or ownership errors depend on the provider. Handle
+  `PackbaseError` as described in [Error Handling](/getting-started/error-handling).
+
+Connections own external account authorization. Account import jobs remain under
+[`pb.migrations`](/reference/migrations). Adding a connection does not create or
+start an import. See [Add a connection provider](/guides/connections) for the
+server registration contract, and [Connection types](/types/connections) for
+the exported SDK shapes.

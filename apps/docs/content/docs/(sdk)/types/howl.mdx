@@ -9,6 +9,7 @@ description: TypeScript shapes for howls, creation input, interactions, assets, 
 
 ```ts
 interface Howl {
+  emotes?: PackEmote[]
   /** ID of this concrete howl record, including a rehowl or quote rehowl. */
   id: string
   /** @deprecated Legacy alias for a rehowl record ID. Use `id`. */
@@ -25,6 +26,7 @@ interface Howl {
   allow_rehowl?: boolean
   rehowled_by?: Profile
   user: Profile
+  copyright?: string | null
   assets?: HowlAsset[]
   tags?: string[]
   moderator_tags?: string[]
@@ -76,6 +78,7 @@ interface HowlAsset {
 }
 
 interface HowlLikes {
+  emote?: PackEmote
   emoji: string
   count: number
   likedByMe: boolean
@@ -87,6 +90,7 @@ interface HowlCommentResult {
 }
 
 interface HowlComment {
+  emotes?: PackEmote[]
   id: string
   body: string
   user: Profile
@@ -98,6 +102,10 @@ interface HowlComment {
 ```
 
 `likes` is always present on howls and comments, including when `count` is zero. Its emoji is fixed at creation from the author's `howl_like_emoji` setting (default 🔥). `likedByMe` reports whether the signed-in reader liked the howl.
+
+The emoji can be Unicode or a custom Pack emote token. `likes.emote` supplies the
+retained image for a custom choice. Content-level `emotes` supplies custom images
+used in the body. See [Pack custom emotes](/reference/emotes).
 
 ## `HowlCreateInput`
 
@@ -167,7 +175,7 @@ interface HowlModeratorTagEditInput {
   expected_revision: number
 }
 
-type HowlTagEditor = Pick<Profile, 'id' | 'username' | 'display_name'> & {
+type HowlTagEditor = Pick<Profile, 'id' | 'username' | 'display_name' | 'emotes'> & {
   images?: Profile['images']
 }
 
