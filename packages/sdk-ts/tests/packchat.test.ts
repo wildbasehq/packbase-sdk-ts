@@ -48,13 +48,13 @@ test('Fluxer account authorization uses authenticated POSTs and a bodyless disco
         return init?.method === 'DELETE' ? new Response(null, { status: 204 }) : Response.json({})
     }) as typeof fetch
     const signal = new AbortController().signal
-    const fluxer = sdk().me.fluxer
+    const fluxer = sdk().me.connections.fluxer
     await fluxer.status({ signal })
     await fluxer.authorize({ pack_id: 'pack', guild_id: '18446744073709551615', install: true }, { signal })
     await fluxer.complete({ code: 'one-use-code', state: 'opaque-state' }, { signal })
     await fluxer.disconnect({ signal })
     expect(requests.map(({ url }) => url.pathname)).toEqual([
-        '/user/me/fluxer', '/user/me/fluxer/authorize', '/user/me/fluxer/complete', '/user/me/fluxer',
+        '/user/me/connections/fluxer', '/user/me/connections/fluxer/authorize', '/user/me/connections/fluxer/complete', '/user/me/connections/fluxer',
     ])
     expect(requests.map(({ init }) => init.method)).toEqual(['GET', 'POST', 'POST', 'DELETE'])
     expect(JSON.parse(requests[1]!.init.body as string)).toEqual({ pack_id: 'pack', guild_id: '18446744073709551615', install: true })
@@ -119,4 +119,21 @@ test('community invite is an explicit bodyless action with inherited cancellatio
     expect(requests[0]!.init.method).toBe('POST')
     expect(requests[0]!.init.body).toBeUndefined()
     expect(requests[0]!.init.signal).toBe(signal)
+})
+
+test('connections discover providers and support custom authorization without SDK provider classes', async () => {
+    const calls: string[] = []
+    const original = globalThis.fetch
+    globalThis.fetch = (async (input: RequestInfo | URL) => {
+        const path = new URL(String(input)).pathname
+        calls.push(path)
+        if (path === '/user/me/connections') return Response.json([{ id: 'example', method: 'custom' }])
+        return Response.json({ connected: true })
+    }) as typeof fetch
+    try {
+        const connections = sdk().me.connections
+        expect((await connections.list())[0]?.id).toBe('example')
+        await connections.provider('example').authorize({ token: 'private' })
+        expect(calls).toEqual(['/user/me/connections', '/user/me/connections/example/authorize'])
+    } finally { globalThis.fetch = original }
 })

@@ -1,5 +1,6 @@
 import type { Profile } from './profile'
 import type { Pack } from './pack'
+import type { PackEmote } from './emote'
 
 export type HowlContentType = 'text' | 'howling_alongside' | 'howling_echo'
 export type HowlRating = 'rating_safe' | 'rating_mature' | 'rating_suggestive' | 'rating_explicit'
@@ -22,7 +23,7 @@ export interface HowlModeratorTagEditInput {
 }
 
 /** Public identity attached to a tag edit, or null when the account is unavailable. */
-export type HowlTagEditor = Pick<Profile, 'id' | 'username' | 'display_name'> & {
+export type HowlTagEditor = Pick<Profile, 'id' | 'username' | 'display_name' | 'emotes'> & {
     images?: Profile['images']
 }
 
@@ -54,6 +55,8 @@ export interface HowlAsset {
 
 /** One like per member; emoji is fixed when the howl is created. */
 export interface HowlLikes {
+    /** Retained custom image for emoji; absent for Unicode emoji. */
+    emote?: PackEmote
     emoji: string
     count: number
     likedByMe: boolean
@@ -66,6 +69,7 @@ export interface HowlCommentResult {
 }
 
 export interface HowlComment {
+    emotes?: PackEmote[]
     moderation_summary?: HowlModerationSummary
     id: string
     body: string
@@ -77,6 +81,8 @@ export interface HowlComment {
 }
 
 export interface Howl {
+    /** Resolved images used by this content, independent of the reader's membership. */
+    emotes?: PackEmote[]
     /** ID of this concrete howl record, including a rehowl or quote rehowl. */
     id: string
     /**

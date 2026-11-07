@@ -140,6 +140,10 @@ await pb.me.settings({ allow_rehowl: false })
 
 ## Roles
 
+Pack image emotes are managed through `pb.packs(id).emotes`. See [Pack custom
+emotes](/reference/emotes) for uploads, membership restrictions, rendering, and
+the dedicated `ManageEmotes` permission.
+
 Role management requires the `ManageRoles` permission. Permissions are numeric bit flags, and `|` combines several flags into one value.
 
 ```ts twoslash

@@ -50,7 +50,7 @@ For public-only use, disable the automatic `me()` request with
 
 - `pb.me()` gets the authenticated profile; `pb.me.update()` updates it.
 - `pb.me.maintenance` reviews, confirms, and tracks bulk howl deletion or factory reset.
-- `pb.me.fluxer` verifies the signed-in member's Fluxer identity; `pb.packs(id).packchat` links an owned community and reads selected channels.
+- `pb.me.connections.fluxer` verifies the signed-in member's Fluxer identity; `pb.packs(id).packchat` links an owned community and reads selected channels.
 - `pb.profiles(id)` returns a lazy, awaitable profile handle.
 - `pb.packs(id)` returns a lazy, awaitable pack handle; `pb.packs.list()` and `.create()` work with packs in bulk.
 - `pb.howls(id)` returns a lazy, awaitable howl handle; `pb.howls.create()` creates a howl and `pb.howls.upload` manages assets.
@@ -189,3 +189,35 @@ These owner-only operations use immutable IDs. Lists return static identity snap
 Post searches return fully hydrated howls, including authors, media, likes, replies, and public moderation summaries; render them without per-post detail requests. `SearchPost` extends `Howl` with selection metadata. Feed searches support `from('posts').context('feed')`; nested previews retain that context. If separately refreshing a howl, pass `{context: 'feed'}` to `pb.howls(id, options)`. Use direct context for explicit profile reads. Context never bypasses blocking.
 
 `pb.visibility.watch({cursor, waitMs: 25000, signal})` performs an uncached, optional-auth long poll returning only `{cursor, changed}`. On changes, call `pb.invalidateVisibility()` and immediately evict/conceal application content caches before refetching. Local relationship changes automatically invalidate and emit `visibilityChanged`. Use `getVisibilityGeneration()` to fence multi-request application work. SDK resource handles and in-flight reads reconcile generations; mutations are never automatically retried. The application owns the watch loop, reconnect/wake handling, and previously returned objects.
+
+## Pack custom emotes
+
+```ts
+import { formatEmoteToken } from '@packbase/sdk-ts'
+
+const emotes = await pb.me.emotes()
+const wave = emotes.find(emote => emote.shortcode === 'wave')
+if (wave) await pb.me.settings({ howl_like_emoji: formatEmoteToken(wave) })
+
+const collection = pb.packs('pack-id').emotes
+const uploaded = await collection.upload({
+  shortcode: 'wave', label: 'Wave', image: imageDataUrl,
+})
+await collection.update(uploaded.id, { shortcode: 'hello' })
+await collection.remove(uploaded.id)
+```
+
+Current Pack members may use its emotes across Packbase. Management requires
+`PackPermissionBits.ManageEmotes` (`16384`), owner, or administrator access;
+`ManagePack` alone is insufficient. Each Pack supports 100 active emotes,
+2 MiB uploads (PNG/JPEG/WebP/GIF), and 128 × 128 output with animated and still
+variants. All methods accept request options including `signal`.
+
+Tokens use `:shortcode(uuid):`. The server checks membership again on save and
+publication. Render from the content's `emotes` metadata and optional
+`likes.emote`, using `still_src` for reduced motion; the current-member catalogue
+is for new selection, not historical rendering. `await pb.me()` exposes the
+profile's retained metadata; `pb.me.emotes()` always remains the catalogue method.
+Removing an emote or ending membership prevents new use without breaking old
+posts/profile occurrences. An unavailable selected like emote resets to 🔥 with
+an in-app notice. See the custom emote guide in the SDK reference.

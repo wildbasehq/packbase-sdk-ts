@@ -2278,6 +2278,13 @@
                               "muted_by_me": {
                                 "type": "boolean",
                                 "description": "Only the authenticated viewer's outgoing mute state."
+                              },
+                              "emotes": {
+                                "type": "array",
+                                "items": {
+                                  "$ref": "#/components/schemas/PackEmote"
+                                },
+                                "description": "Retained custom emote metadata for rendering by all permitted readers."
                               }
                             }
                           }
@@ -2863,6 +2870,13 @@
                   "muted_by_me": {
                     "type": "boolean",
                     "description": "Only the authenticated viewer's outgoing mute state."
+                  },
+                  "emotes": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/components/schemas/PackEmote"
+                    },
+                    "description": "Retained custom emote metadata for rendering by all permitted readers."
                   }
                 }
               }
@@ -2915,6 +2929,13 @@
                           },
                           "status": {
                             "type": "string"
+                          },
+                          "emotes": {
+                            "type": "array",
+                            "items": {
+                              "$ref": "#/components/schemas/PackEmote"
+                            },
+                            "description": "Retained custom emote metadata for rendering by all permitted readers."
                           }
                         }
                       }
@@ -3929,6 +3950,9 @@
                         },
                         "likedByMe": {
                           "type": "boolean"
+                        },
+                        "emote": {
+                          "$ref": "#/components/schemas/PackEmote"
                         }
                       }
                     }
@@ -4300,6 +4324,13 @@
                               "muted_by_me": {
                                 "type": "boolean",
                                 "description": "Only the authenticated viewer's outgoing mute state."
+                              },
+                              "emotes": {
+                                "type": "array",
+                                "items": {
+                                  "$ref": "#/components/schemas/PackEmote"
+                                },
+                                "description": "Retained custom emote metadata for rendering by all permitted readers."
                               }
                             }
                           },
@@ -4464,6 +4495,13 @@
                               "muted_by_me": {
                                 "type": "boolean",
                                 "description": "Only the authenticated viewer's outgoing mute state."
+                              },
+                              "emotes": {
+                                "type": "array",
+                                "items": {
+                                  "$ref": "#/components/schemas/PackEmote"
+                                },
+                                "description": "Retained custom emote metadata for rendering by all permitted readers."
                               }
                             }
                           },
@@ -4485,6 +4523,9 @@
                               },
                               "likedByMe": {
                                 "type": "boolean"
+                              },
+                              "emote": {
+                                "$ref": "#/components/schemas/PackEmote"
                               }
                             }
                           },
@@ -4611,6 +4652,13 @@
                                     "muted_by_me": {
                                       "type": "boolean",
                                       "description": "Only the authenticated viewer's outgoing mute state."
+                                    },
+                                    "emotes": {
+                                      "type": "array",
+                                      "items": {
+                                        "$ref": "#/components/schemas/PackEmote"
+                                      },
+                                      "description": "Retained custom emote metadata for rendering by all permitted readers."
                                     }
                                   }
                                 },
@@ -4623,6 +4671,13 @@
                                 },
                                 "content_type": {
                                   "type": "string"
+                                },
+                                "emotes": {
+                                  "type": "array",
+                                  "items": {
+                                    "$ref": "#/components/schemas/PackEmote"
+                                  },
+                                  "description": "Retained custom emote metadata for rendering by all permitted readers."
                                 }
                               }
                             }
@@ -4773,6 +4828,13 @@
                                 "type": "number"
                               }
                             }
+                          },
+                          "emotes": {
+                            "type": "array",
+                            "items": {
+                              "$ref": "#/components/schemas/PackEmote"
+                            },
+                            "description": "Retained custom emote metadata for rendering by all permitted readers."
                           }
                         }
                       }
@@ -4936,6 +4998,13 @@
                               "muted_by_me": {
                                 "type": "boolean",
                                 "description": "Only the authenticated viewer's outgoing mute state."
+                              },
+                              "emotes": {
+                                "type": "array",
+                                "items": {
+                                  "$ref": "#/components/schemas/PackEmote"
+                                },
+                                "description": "Retained custom emote metadata for rendering by all permitted readers."
                               }
                             }
                           },
@@ -5100,6 +5169,13 @@
                               "muted_by_me": {
                                 "type": "boolean",
                                 "description": "Only the authenticated viewer's outgoing mute state."
+                              },
+                              "emotes": {
+                                "type": "array",
+                                "items": {
+                                  "$ref": "#/components/schemas/PackEmote"
+                                },
+                                "description": "Retained custom emote metadata for rendering by all permitted readers."
                               }
                             }
                           },
@@ -5121,6 +5197,9 @@
                               },
                               "likedByMe": {
                                 "type": "boolean"
+                              },
+                              "emote": {
+                                "$ref": "#/components/schemas/PackEmote"
                               }
                             }
                           },
@@ -5247,6 +5326,13 @@
                                     "muted_by_me": {
                                       "type": "boolean",
                                       "description": "Only the authenticated viewer's outgoing mute state."
+                                    },
+                                    "emotes": {
+                                      "type": "array",
+                                      "items": {
+                                        "$ref": "#/components/schemas/PackEmote"
+                                      },
+                                      "description": "Retained custom emote metadata for rendering by all permitted readers."
                                     }
                                   }
                                 },
@@ -5259,6 +5345,13 @@
                                 },
                                 "content_type": {
                                   "type": "string"
+                                },
+                                "emotes": {
+                                  "type": "array",
+                                  "items": {
+                                    "$ref": "#/components/schemas/PackEmote"
+                                  },
+                                  "description": "Retained custom emote metadata for rendering by all permitted readers."
                                 }
                               }
                             }
@@ -5409,6 +5502,13 @@
                                 "type": "number"
                               }
                             }
+                          },
+                          "emotes": {
+                            "type": "array",
+                            "items": {
+                              "$ref": "#/components/schemas/PackEmote"
+                            },
+                            "description": "Retained custom emote metadata for rendering by all permitted readers."
                           }
                         }
                       }
@@ -5637,6 +5737,13 @@
                     "muted_by_me": {
                       "type": "boolean",
                       "description": "Only the authenticated viewer's outgoing mute state."
+                    },
+                    "emotes": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/PackEmote"
+                      },
+                      "description": "Retained custom emote metadata for rendering by all permitted readers."
                     }
                   }
                 }
@@ -6634,6 +6741,13 @@
                           },
                           "permissions": {
                             "type": "integer"
+                          },
+                          "emotes": {
+                            "type": "array",
+                            "items": {
+                              "$ref": "#/components/schemas/PackEmote"
+                            },
+                            "description": "Retained custom emote metadata for rendering by all permitted readers."
                           }
                         }
                       }
@@ -7035,6 +7149,13 @@
                               "muted_by_me": {
                                 "type": "boolean",
                                 "description": "Only the authenticated viewer's outgoing mute state."
+                              },
+                              "emotes": {
+                                "type": "array",
+                                "items": {
+                                  "$ref": "#/components/schemas/PackEmote"
+                                },
+                                "description": "Retained custom emote metadata for rendering by all permitted readers."
                               }
                             }
                           },
@@ -7199,6 +7320,13 @@
                               "muted_by_me": {
                                 "type": "boolean",
                                 "description": "Only the authenticated viewer's outgoing mute state."
+                              },
+                              "emotes": {
+                                "type": "array",
+                                "items": {
+                                  "$ref": "#/components/schemas/PackEmote"
+                                },
+                                "description": "Retained custom emote metadata for rendering by all permitted readers."
                               }
                             }
                           },
@@ -7220,6 +7348,9 @@
                               },
                               "likedByMe": {
                                 "type": "boolean"
+                              },
+                              "emote": {
+                                "$ref": "#/components/schemas/PackEmote"
                               }
                             }
                           },
@@ -7346,6 +7477,13 @@
                                     "muted_by_me": {
                                       "type": "boolean",
                                       "description": "Only the authenticated viewer's outgoing mute state."
+                                    },
+                                    "emotes": {
+                                      "type": "array",
+                                      "items": {
+                                        "$ref": "#/components/schemas/PackEmote"
+                                      },
+                                      "description": "Retained custom emote metadata for rendering by all permitted readers."
                                     }
                                   }
                                 },
@@ -7358,6 +7496,13 @@
                                 },
                                 "content_type": {
                                   "type": "string"
+                                },
+                                "emotes": {
+                                  "type": "array",
+                                  "items": {
+                                    "$ref": "#/components/schemas/PackEmote"
+                                  },
+                                  "description": "Retained custom emote metadata for rendering by all permitted readers."
                                 }
                               }
                             }
@@ -7508,6 +7653,13 @@
                                 "type": "number"
                               }
                             }
+                          },
+                          "emotes": {
+                            "type": "array",
+                            "items": {
+                              "$ref": "#/components/schemas/PackEmote"
+                            },
+                            "description": "Retained custom emote metadata for rendering by all permitted readers."
                           }
                         }
                       }
@@ -7616,6 +7768,13 @@
                         },
                         "images_avatar": {
                           "type": "string"
+                        },
+                        "emotes": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/PackEmote"
+                          },
+                          "description": "Retained custom emote metadata for rendering by all permitted readers."
                         }
                       }
                     }
@@ -9500,7 +9659,7 @@
         ]
       }
     },
-    "/user/me/fluxer": {
+    "/user/me/connections/fluxer": {
       "get": {
         "operationId": "getUserMeFluxer",
         "tags": [
@@ -9565,7 +9724,7 @@
         }
       }
     },
-    "/user/me/fluxer/authorize": {
+    "/user/me/connections/fluxer/authorize": {
       "post": {
         "operationId": "postUserMeFluxerAuthorize",
         "tags": [
@@ -9612,7 +9771,7 @@
         }
       }
     },
-    "/user/me/fluxer/complete": {
+    "/user/me/connections/fluxer/complete": {
       "post": {
         "operationId": "postUserMeFluxerComplete",
         "tags": [
@@ -9697,6 +9856,348 @@
                 }
               }
             }
+          }
+        }
+      }
+    },
+    "/user/me/connections": {
+      "get": {
+        "operationId": "getUserMeConnections",
+        "tags": [
+          "user"
+        ],
+        "summary": "List available account connection providers",
+        "responses": {
+          "200": {
+            "description": "Available providers",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": [
+                      "id",
+                      "name",
+                      "description",
+                      "disconnect_description",
+                      "method",
+                      "fields"
+                    ],
+                    "properties": {
+                      "id": {
+                        "type": "string"
+                      },
+                      "name": {
+                        "type": "string"
+                      },
+                      "description": {
+                        "type": "string"
+                      },
+                      "disconnect_description": {
+                        "type": "string"
+                      },
+                      "method": {
+                        "type": "string",
+                        "enum": [
+                          "oauth2",
+                          "custom"
+                        ]
+                      },
+                      "fields": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "required": [
+                            "name",
+                            "label",
+                            "type"
+                          ],
+                          "properties": {
+                            "name": {
+                              "type": "string"
+                            },
+                            "label": {
+                              "type": "string"
+                            },
+                            "type": {
+                              "type": "string",
+                              "enum": [
+                                "text",
+                                "password"
+                              ]
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/pack/{id}/emotes": {
+      "get": {
+        "operationId": "getPackByIdEmotes",
+        "tags": [
+          "Pack",
+          "Emotes"
+        ],
+        "description": "List active emotes belonging to this Pack.",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PackEmote"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid emote input."
+          },
+          "403": {
+            "description": "Membership or Manage Emotes permission is required."
+          },
+          "404": {
+            "description": "Pack or emote is unavailable."
+          },
+          "409": {
+            "description": "Shortcode conflict or collection limit reached."
+          },
+          "413": {
+            "description": "Image exceeds upload or processing limits."
+          }
+        }
+      },
+      "post": {
+        "operationId": "postPackByIdEmotes",
+        "tags": [
+          "Pack",
+          "Emotes"
+        ],
+        "description": "Upload an image emote. Requires Manage Emotes (16384), owner, or administrator access. Maximum 100 active emotes per Pack. Generates animated and still variants.",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "400": {
+            "description": "Invalid emote input."
+          },
+          "403": {
+            "description": "Membership or Manage Emotes permission is required."
+          },
+          "404": {
+            "description": "Pack or emote is unavailable."
+          },
+          "409": {
+            "description": "Shortcode conflict or collection limit reached."
+          },
+          "413": {
+            "description": "Image exceeds upload or processing limits."
+          },
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PackEmote"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PackEmoteUploadInput"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/pack/{id}/emotes/{emoteId}": {
+      "put": {
+        "operationId": "putPackByIdEmotesByEmoteId",
+        "tags": [
+          "Pack",
+          "Emotes"
+        ],
+        "description": "Rename an emote or change its accessible label. Stable IDs preserve references. Requires Manage Emotes.",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "in": "path",
+            "name": "emoteId",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PackEmote"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid emote input."
+          },
+          "403": {
+            "description": "Membership or Manage Emotes permission is required."
+          },
+          "404": {
+            "description": "Pack or emote is unavailable."
+          },
+          "409": {
+            "description": "Shortcode conflict or collection limit reached."
+          },
+          "413": {
+            "description": "Image exceeds upload or processing limits."
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PackEmoteUpdateInput"
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "deletePackByIdEmotesByEmoteId",
+        "tags": [
+          "Pack",
+          "Emotes"
+        ],
+        "description": "Disable new use, retaining existing content and image assets. Requires Manage Emotes.",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "in": "path",
+            "name": "emoteId",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful response"
+          },
+          "400": {
+            "description": "Invalid emote input."
+          },
+          "403": {
+            "description": "Membership or Manage Emotes permission is required."
+          },
+          "404": {
+            "description": "Pack or emote is unavailable."
+          },
+          "409": {
+            "description": "Shortcode conflict or collection limit reached."
+          },
+          "413": {
+            "description": "Image exceeds upload or processing limits."
+          }
+        }
+      }
+    },
+    "/user/me/emotes": {
+      "get": {
+        "operationId": "getUserMeEmotes",
+        "tags": [
+          "Pack",
+          "Emotes"
+        ],
+        "description": "List currently usable custom emotes from active Pack memberships, excluding bans. Permission is checked again at save/publication. Content responses provide retained metadata for nonmember readers.",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PackEmote"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid emote input."
+          },
+          "403": {
+            "description": "Membership or Manage Emotes permission is required."
+          },
+          "404": {
+            "description": "Pack or emote is unavailable."
+          },
+          "409": {
+            "description": "Shortcode conflict or collection limit reached."
+          },
+          "413": {
+            "description": "Image exceeds upload or processing limits."
           }
         }
       }
@@ -9833,6 +10334,13 @@
                         ]
                       }
                     }
+                  },
+                  "emotes": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/components/schemas/PackEmote"
+                    },
+                    "description": "Retained custom emote metadata for rendering by all permitted readers."
                   }
                 }
               },
@@ -11203,8 +11711,22 @@
                       "string",
                       "null"
                     ]
+                  },
+                  "emotes": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/components/schemas/PackEmote"
+                    },
+                    "description": "Retained custom emote metadata for rendering by all permitted readers."
                   }
                 }
+              },
+              "emotes": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/PackEmote"
+                },
+                "description": "Retained custom emote metadata for rendering by all permitted readers."
               }
             },
             "required": [
@@ -11406,6 +11928,79 @@
         "required": [
           "guild_id"
         ]
+      },
+      "PackEmote": {
+        "type": "object",
+        "required": [
+          "id",
+          "pack_id",
+          "shortcode",
+          "label",
+          "src",
+          "still_src",
+          "animated"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "pack_id": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "pack_name": {
+            "type": "string"
+          },
+          "shortcode": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "src": {
+            "type": "string",
+            "format": "uri"
+          },
+          "still_src": {
+            "type": "string",
+            "format": "uri"
+          },
+          "animated": {
+            "type": "boolean"
+          }
+        }
+      },
+      "PackEmoteUploadInput": {
+        "type": "object",
+        "required": [
+          "shortcode",
+          "image"
+        ],
+        "properties": {
+          "shortcode": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "image": {
+            "type": "string",
+            "description": "PNG, JPEG, WebP, or GIF base64 data URL; decoded limit 2 MiB."
+          }
+        }
+      },
+      "PackEmoteUpdateInput": {
+        "type": "object",
+        "properties": {
+          "shortcode": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          }
+        }
       }
     }
   }

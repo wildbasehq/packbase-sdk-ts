@@ -10,11 +10,11 @@ Packchat lives at `pb.packs(packId).packchat`. It is read-only. Community and ch
 Only the actual pack owner may link or configure a community. The same person must be the current Fluxer community owner; administrator permissions and installing the bot do not establish ownership.
 
 ```ts
-const { authorization_url } = await pb.me.fluxer.authorize({ pack_id: packId })
+const { authorization_url } = await pb.me.connections.fluxer.authorize({ pack_id: packId })
 // Redirect the member to authorization_url. In the signed-in callback:
-const result = await pb.me.fluxer.complete({ code, state }, { signal })
+const result = await pb.me.connections.fluxer.complete({ code, state }, { signal })
 // Use the server-provided return_path after completion.
-const identity = await pb.me.fluxer.status({ signal })
+const identity = await pb.me.connections.fluxer.status({ signal })
 const chat = pb.packs(packId, { signal }).packchat
 const selectedGuild = identity.owned_guilds.find(guild => guild.id === selectedGuildId)
 if (!selectedGuild) throw new Error('Choose a community you own.')
@@ -61,7 +61,7 @@ Render message content as text or safely parsed Markdown with raw HTML disabled.
 
 ```ts
 await chat.unlink() // Pack owner: removes this pack's community link.
-await pb.me.fluxer.disconnect({ signal }) // Disconnects this member's identity.
+await pb.me.connections.fluxer.disconnect({ signal }) // Disconnects this member's identity.
 ```
 
 Disconnecting an identity also removes community links owned by that member. A stale OAuth grant, removed bot or ownership change must be resolved with fresh authorization; clients must not treat previous successful reads as continuing authorization.

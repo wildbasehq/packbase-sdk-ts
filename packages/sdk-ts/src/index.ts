@@ -6,6 +6,9 @@ export type { RequestOptions } from './request'
 export { decodeSettings } from './settings'
 export type { SettingDecoder, SettingDecoderMap } from './settings'
 export type { JsonPrimitive, JsonObject, JsonValue } from './types/json'
+export { formatEmoteToken } from './types/emote'
+export type { PackEmote, PackEmoteUploadInput, PackEmoteUpdateInput } from './types/emote'
+export { PackEmotesResource } from './resources/emotes'
 
 export { from, SearchQuery, isErrorEntry } from './search'
 export type {
@@ -171,3 +174,6 @@ export type * from './types/packchat'
 export { PackchatResource } from './resources/packchat'
 export type { PackchatMessageOptions } from './resources/packchat'
 export { FluxerResource } from './resources/fluxer'
+
+export { ConnectionsResource, ConnectionResource } from './resources/connections'
+export type { ConnectionDefinition, ConnectionStatus, ConnectionAuthorization, ConnectionCompletion } from './resources/connections'

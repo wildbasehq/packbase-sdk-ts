@@ -6,15 +6,15 @@ import type { FluxerConnection, FluxerAuthorizeInput, FluxerAuthorization, Fluxe
 export class FluxerResource {
     constructor(private readonly http: HttpClient) {}
     status(options?: RequestOptions): Promise<FluxerConnection> {
-        return this.http.get('/user/me/fluxer', undefined, options)
+        return this.http.get('/user/me/connections/fluxer', undefined, options)
     }
     authorize(input: FluxerAuthorizeInput = {}, options?: RequestOptions): Promise<FluxerAuthorization> {
-        return this.http.post('/user/me/fluxer/authorize', input, undefined, options)
+        return this.http.post('/user/me/connections/fluxer/authorize', input, undefined, options)
     }
     complete(input: FluxerCompleteInput, options?: RequestOptions): Promise<FluxerCompleteResult> {
-        return this.http.post('/user/me/fluxer/complete', input, undefined, options)
+        return this.http.post('/user/me/connections/fluxer/complete', input, undefined, options)
     }
     disconnect(options?: RequestOptions): Promise<void> {
-        return this.http.delete('/user/me/fluxer', undefined, options)
+        return this.http.delete('/user/me/connections/fluxer', undefined, options)
     }
 }

@@ -1,9 +1,10 @@
 import { makeMaintenance, type MaintenanceResource } from './maintenance'
-import { FluxerResource } from './fluxer'
+import { ConnectionsResource } from './connections'
 import { makeProfileRelationships, type ProfileRelationshipsResource } from './relationships'
 import type { HttpClient } from '../http'
 import type { RequestOptions } from '../request'
 import type { Pack } from '../types/pack'
+import type { PackEmote } from '../types/emote'
 import type {
     FriendsResponse,
     Profile,
@@ -28,9 +29,11 @@ import type {
  * await pb.me.settings({ dark_mode: true })
  * ```
  */
-export type MeFn = Profile & {
-    /** Verified Fluxer identity and community ownership authorization. */
-    fluxer: FluxerResource
+export type MeFn = Omit<Profile, 'emotes'> & {
+    /** Emotes available for new use from the current user's Packs. */
+    emotes(options?: RequestOptions): Promise<PackEmote[]>
+    /** Server-managed external account connections. */
+    connections: ConnectionsResource
     /** Private outgoing mutes. Muting preserves direct/profile access. */
     mutes: ProfileRelationshipsResource
     /** Private outgoing blocks. Removal does not restore follows or remove an incoming block. */
@@ -71,7 +74,8 @@ export type MeFn = Profile & {
      *
      * Merges the supplied key-value pairs into the existing settings.
      * You do not need to send the full settings object.
-     * `howl_like_emoji` chooses one emoji for new howls (default 🔥).
+     * `howl_like_emoji` chooses one Unicode emoji or an available custom emote token
+     * for new howls (default 🔥). Unavailable custom choices reset to 🔥 with an inbox notice.
      * Changing it leaves existing howl emojis unchanged.
      * `allow_tag_edits_from_others` defaults to true and allows other signed-in
      * members to edit ordinary tags on existing and future howls. Authors and
@@ -129,9 +133,11 @@ export function makeMe(http: HttpClient): MeFn & { hydrate(profile: Profile): vo
     }
 
     me.maintenance = makeMaintenance(http)
-    me.fluxer = new FluxerResource(http)
+    me.connections = new ConnectionsResource(http)
     me.mutes = makeProfileRelationships(http, 'mutes')
     me.blocks = makeProfileRelationships(http, 'blocks')
+    me.emotes = (options?: RequestOptions): Promise<PackEmote[]> =>
+        http.get<PackEmote[]>('/user/me/emotes', undefined, options)
 
     me.update = (data: UpdateProfileInput, options?: RequestOptions): Promise<UpdateProfileResult> =>
         http.post<UpdateProfileResult>('/user/me', data, undefined, options)
@@ -190,7 +196,9 @@ export function makeMe(http: HttpClient): MeFn & { hydrate(profile: Profile): vo
      * Called internally by `PackbaseSDK` once `attemptLogin` succeeds.
      */
     me.hydrate = (profile: Profile): void => {
-        Object.assign(me, profile)
+        // Reserve the catalogue method; await me() to read profile emote metadata.
+        const { emotes: _emotes, ...fields } = profile
+        Object.assign(me, fields)
     }
 
     return me as MeFn & { hydrate(profile: Profile): void }

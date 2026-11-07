@@ -1,6 +1,9 @@
 import type {Pack} from './pack.ts'
+import type { PackEmote } from './emote'
 
 export interface Profile {
+    /** Resolved images used by this profile, independent of the reader's membership. */
+    emotes?: PackEmote[]
     id: string
     username: string
     display_name: string | null
@@ -40,6 +43,7 @@ export interface UpdateProfileInput {
 
 /** The partial profile returned by `POST /user/me`. */
 export interface UpdateProfileResult extends UpdateProfileInput {
+    emotes?: PackEmote[]
     id: string
     username?: string
 }

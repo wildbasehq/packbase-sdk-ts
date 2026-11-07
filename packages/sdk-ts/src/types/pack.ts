@@ -73,6 +73,7 @@ export const PackPermissionBits = {
     ViewPackInsights: 2048,
     ManagePackPrompts: 4096,
     ManagePackReports: 8192,
+    ManageEmotes: 16384,
 } as const
 
 export type PackPermissionBit = typeof PackPermissionBits[keyof typeof PackPermissionBits]

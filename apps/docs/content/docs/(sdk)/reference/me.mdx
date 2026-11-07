@@ -5,7 +5,7 @@ description: Fetch and update the authenticated profile, settings, friends, pack
 
 `pb.me` is the resource for the current signed-in account. Each method on this page requires a valid browser session or API key. Use `pb.profiles(username)` if you require only a public profile.
 
-`pb.me.fluxer` connects a verified Fluxer identity through `status()`, `authorize()`, `complete()`, and `disconnect()`. See [Packchat](/reference/packchat) for ownership verification, community linking, and read-only chat.
+`pb.me.connections.fluxer` connects a verified Fluxer identity through `status()`, `authorize()`, `complete()`, and `disconnect()`. See [Packchat](/reference/packchat) for ownership verification, community linking, and read-only chat.
 
 ## Fetch the current user
 
@@ -69,6 +69,9 @@ const settings = decodeSettings(raw, {
 To cancel a settings read without confusing request options with update keys, pass `undefined` first: `pb.me.settings(undefined, { signal })`.
 
 ### Howl like emoji
+
+For custom images, use `pb.me.emotes()` and `formatEmoteToken()` to select a
+currently available Pack emote. See [Pack custom emotes](/reference/emotes).
 
 Set one emoji for members to use when liking your new howls:
 

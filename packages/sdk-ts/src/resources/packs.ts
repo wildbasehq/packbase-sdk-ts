@@ -1,5 +1,6 @@
 import { PackHostResource } from './pack-host'
 import { PackchatResource } from './packchat'
+import { PackEmotesResource } from './emotes'
 import type { HttpClient } from '../http'
 import type { RequestOptions } from '../request'
 import type { Howl } from '../types/howl'
@@ -34,6 +35,7 @@ import { ThenableResource } from './base'
 export class PackHandle extends ThenableResource<Pack> {
     readonly host: PackHostResource
     readonly packchat: PackchatResource
+    readonly emotes: PackEmotesResource
     constructor(
         private readonly http: HttpClient,
         private readonly id: string,
@@ -42,6 +44,7 @@ export class PackHandle extends ThenableResource<Pack> {
         super(() => http.getVisibilityGeneration())
         this.host = new PackHostResource(http, id, requestOptions)
         this.packchat = new PackchatResource(http, id, requestOptions)
+        this.emotes = new PackEmotesResource(http, id, requestOptions)
     }
 
     /** One bounded page, newest membership first (default 50, maximum 100).
