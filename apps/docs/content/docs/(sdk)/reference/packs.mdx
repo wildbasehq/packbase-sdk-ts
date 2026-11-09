@@ -214,3 +214,22 @@ Pack image emotes are managed through `pb.packs(id).emotes`. See
 [Pack custom emotes](/reference/emotes) for uploads, membership restrictions,
 rendering, and the dedicated `ManageEmotes` permission. These resources have
 separate authorization rules; being a Pack member does not grant management.
+
+## Visibility and join requests
+
+Pack visibility uses the owner's relationships: `everyone`, `followers`, `following`, `friends` (mutuals), or `private` (Just Me). Every member retains access regardless of current relationships or `joined_via`. Join provenance is informational only.
+
+Set `visibility` and `allow_access_requests` during creation or update. When changing visibility, explicitly send `remove_ineligible_members: false` to keep members or `true` to remove those outside the new audience. Call `pack.visibilityPreview(visibility)` to retrieve `{ members }`, the number who would be removed under the proposed audience. Ask the person making the change before sending this choice.
+
+Inaccessible packs stay out of discovery. A direct link can use `pack.access()` to show only identity, current rules, and request status. After rules acceptance, call `pack.requestJoin(rulesVersion)`; `pack.cancelJoinRequest()` cancels it.
+
+Managers use `pack.joinRequests({ cursor })` for bounded pages and `pack.reviewJoinRequest(userId, approve)` to decide. Approval uses ordinary membership creation with a server-controlled join eligibility exception. New rules require renewed acceptance. Turning requests off closes pending requests and preserves members. Use ordinary kick/ban controls to remove members.
+
+## Default Pack
+
+```ts
+const { id } = await pb.packs.getDefault()
+await pb.packs.setDefault('owned-pack-uuid')
+```
+
+These methods use `GET` and `PATCH /packs/default`. Only Packs owned by the signed-in account can be selected. If the default Pack is deleted or transferred, the account falls back to its oldest remaining owned Pack (or no default) and receives an in-app notification. Both methods accept request options, including `signal`.

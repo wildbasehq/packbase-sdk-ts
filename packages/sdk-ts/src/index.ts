@@ -44,6 +44,11 @@ export type {
 export type {
     Pack,
     PackFeedType,
+    PackVisibility,
+    PackJoinedVia,
+    PackAccessStatus,
+    PackJoinRequest,
+    PackJoinRequestPage,
     PackMember,
     PackMemberSummary,
     PackMemberPage,

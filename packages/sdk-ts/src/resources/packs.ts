@@ -6,6 +6,9 @@ import type { RequestOptions } from '../request'
 import type { Howl } from '../types/howl'
 import type {
     Pack,
+    PackAccessStatus,
+    PackVisibility,
+    PackJoinRequestPage,
     PackCreateInput,
     PackEditInput,
     PackList,
@@ -45,6 +48,32 @@ export class PackHandle extends ThenableResource<Pack> {
         this.host = new PackHostResource(http, id, requestOptions)
         this.packchat = new PackchatResource(http, id, requestOptions)
         this.emotes = new PackEmotesResource(http, id, requestOptions)
+    }
+
+    /** Number of current members outside the proposed audience; requires ManagePack. */
+    visibilityPreview(visibility: PackVisibility, options?: RequestOptions): Promise<{ members: number }> {
+        return this.http.getFresh(`/pack/${encodeURIComponent(this.id)}/visibility-preview`, { ...this.requestOptions, ...options }, { visibility })
+    }
+
+    /** Minimal direct-link admission screen, without pack content. */
+    access(options?: RequestOptions): Promise<PackAccessStatus> {
+        return this.http.getFresh(`/pack/${encodeURIComponent(this.id)}/access`, { ...this.requestOptions, ...options })
+    }
+
+    requestJoin(rulesVersion: number, options?: RequestOptions): Promise<{ requested: boolean }> {
+        return this.http.post(`/pack/${encodeURIComponent(this.id)}/access/request`, { rules_version: rulesVersion }, undefined, { ...this.requestOptions, ...options })
+    }
+
+    cancelJoinRequest(options?: RequestOptions): Promise<void> {
+        return this.http.delete(`/pack/${encodeURIComponent(this.id)}/access/request`, undefined, { ...this.requestOptions, ...options })
+    }
+
+    joinRequests(options?: RequestOptions & { cursor?: string }): Promise<PackJoinRequestPage> {
+        return this.http.getFresh(`/pack/${encodeURIComponent(this.id)}/join-requests`, { ...this.requestOptions, ...options }, { cursor: options?.cursor })
+    }
+
+    reviewJoinRequest(userId: string, approve: boolean, options?: RequestOptions): Promise<{ approved: boolean }> {
+        return this.http.post(`/pack/${encodeURIComponent(this.id)}/join-requests/${encodeURIComponent(userId)}`, { approve }, undefined, { ...this.requestOptions, ...options })
     }
 
     /** One bounded page, newest membership first (default 50, maximum 100).
@@ -274,6 +303,10 @@ export type PacksFn = {
      * @returns The pack list together with hidden-pack metadata.
      */
     list(options?: PackListOptions): Promise<PackList>
+    /** Read the authenticated account's persisted default Pack. */
+    getDefault(options?: RequestOptions): Promise<{ id: string | null }>
+    /** Select an owned Pack. Ownership is validated by the server. */
+    setDefault(packId: string, options?: RequestOptions): Promise<Record<string, never>>
     /**
      * Creates a new pack (`POST /pack/create`).
      *
@@ -305,6 +338,14 @@ export function makePacks(http: HttpClient): PacksFn {
 
     packs.create = (data: PackCreateInput, options?: RequestOptions): Promise<Pack> =>
         http.post<Pack>('/pack/create', data, undefined, options)
+
+    packs.getDefault = async (options?: RequestOptions): Promise<{ id: string | null }> => {
+        const result = await http.getFresh<{ id?: string | null }>('/packs/default', options)
+        // Ordinary API responses omit null fields.
+        return { id: result.id ?? null }
+    }
+    packs.setDefault = (packId: string, options?: RequestOptions) =>
+        http.patch<Record<string, never>>('/packs/default', { pack_id: packId }, options)
 
     return packs as PacksFn
 }

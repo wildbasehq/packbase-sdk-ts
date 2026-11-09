@@ -3,12 +3,39 @@ import type { Profile } from './profile'
 import type { JsonValue } from './json'
 import type { Paginated } from './common'
 
+export type PackVisibility = 'everyone' | 'followers' | 'following' | 'friends' | 'private'
+export type PackJoinedVia = 'discovery' | 'follower-of' | 'following-of' | 'friends-of' | 'request'
+
+export interface PackAccessStatus {
+    id: string
+    display_name: string
+    avatar: string | null
+    rules_version: number
+    rules: Array<{ id: string; title: string; body: string }>
+    requested: boolean
+    accepted_rules_version: number | null
+}
+
+export interface PackJoinRequest {
+    user: { id: string; username: string; display_name: string | null }
+    created_at: string
+    rules_version: number
+}
+
+export interface PackJoinRequestPage {
+    data: PackJoinRequest[]
+    has_more: boolean
+    cursor?: string
+}
+
 export type PackFeedType = 'list' | 'gallery'
 
 export interface Pack {
     host_rules?: PackHostRules
     id: string
     display_name: string
+    visibility: PackVisibility
+    allow_access_requests: boolean
     feed_type: PackFeedType
     about?: { bio?: string | null; flair?: string }
     images?: { avatar?: string | null; header?: string | null }
@@ -17,6 +44,7 @@ export interface Pack {
         id: number
         user_id: string
         permissions: number
+        joined_via: PackJoinedVia
     }
     statistics?: { members: number; heartbeat?: number }
     created_at: string
@@ -24,6 +52,7 @@ export interface Pack {
 
 /** Bounded pack-list projection; it does not include post-history tags. */
 export interface PackMemberSummary extends Omit<Profile, 'default_pack'> {
+    joined_via: PackJoinedVia
     membership_id: string
     joined_at: string
     joined_at_stamp?: string
@@ -79,11 +108,16 @@ export const PackPermissionBits = {
 export type PackPermissionBit = typeof PackPermissionBits[keyof typeof PackPermissionBits]
 
 export interface PackCreateInput {
+    visibility?: PackVisibility
+    allow_access_requests?: boolean
     display_name: string
     description: string
 }
 
 export interface PackEditInput {
+    visibility?: PackVisibility
+    allow_access_requests?: boolean
+    remove_ineligible_members?: boolean
     feed_type?: PackFeedType
     display_name?: string
     about?: { bio?: string; flair?: string }
@@ -99,6 +133,8 @@ export interface PackList {
 
 /** Database-shaped response returned after editing a pack. */
 export interface PackUpdateResult {
+    visibility: PackVisibility
+    allow_access_requests: boolean
     feed_type: PackFeedType
     id: string
     display_name: string

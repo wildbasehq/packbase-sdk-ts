@@ -8,11 +8,16 @@ description: TypeScript shapes for packs, members, roles, lists, and updates.
 `Pack` describes a Packbase community that the API returns. Optional fields end in `?`. These fields can be absent because of the endpoint or authentication state. Some fields can also be `null`. `null` means that Packbase does not have a stored value.
 
 ```ts
+type PackVisibility = 'everyone' | 'followers' | 'following' | 'friends' | 'private'
+type PackJoinedVia = 'discovery' | 'follower-of' | 'following-of' | 'friends-of' | 'request'
+
 type PackFeedType = 'list' | 'gallery'
 
 interface Pack {
   id: string
   display_name: string
+  visibility: PackVisibility
+  allow_access_requests: boolean
   feed_type: PackFeedType
   about?: { bio?: string | null; flair?: string }
   images?: { avatar?: string | null; header?: string | null }
@@ -21,6 +26,7 @@ interface Pack {
     id: number
     user_id: string
     permissions: number
+    joined_via: PackJoinedVia
   }
   statistics?: {
     members: number
@@ -50,6 +56,7 @@ Related pack references are nullable UUID strings, not hydrated pack objects.
 
 ```ts
 interface PackMemberSummary extends Omit<Profile, 'default_pack'> {
+  joined_via: PackJoinedVia
   membership_id: string
   joined_at: string
   permissions: number
@@ -101,11 +108,16 @@ For example, `PackPermissionBits.BanMembers | PackPermissionBits.KickMembers` cr
 
 ```ts
 interface PackCreateInput {
+  visibility?: PackVisibility
+  allow_access_requests?: boolean
   display_name: string
   description: string
 }
 
 interface PackEditInput {
+  visibility?: PackVisibility
+  allow_access_requests?: boolean
+  remove_ineligible_members?: boolean
   feed_type?: PackFeedType
   display_name?: string
   about?: { bio?: string; flair?: string }

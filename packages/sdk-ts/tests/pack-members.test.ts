@@ -4,7 +4,7 @@ import { PackbaseSDK, type PackMemberPage } from '../src'
 const originalFetch = globalThis.fetch
 afterEach(() => { globalThis.fetch = originalFetch })
 const member = (id: string, membership_id: string) => ({
-    id, membership_id, username: id, display_name: id, joined_at: '2026-10-24T00:00:00Z', permissions: 256,
+    id, membership_id, joined_via: 'discovery' as const, username: id, display_name: id, joined_at: '2026-10-24T00:00:00Z', permissions: 256,
 })
 const sdk = () => new PackbaseSDK({ baseUrl: 'https://api.example.test', autoLogin: false })
 

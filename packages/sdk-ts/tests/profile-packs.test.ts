@@ -6,7 +6,7 @@ afterEach(() => { globalThis.fetch = originalFetch })
 
 test('profile packs use one dedicated request, escape identifiers, inherit cancellation and read fresh', async () => {
     const requests: Array<{url: string; options?: RequestInit}> = []
-    const packs: Pack[] = [{id: 'shared-pack', display_name: 'Shared pack', feed_type: 'list', created_at: '2026-11-03T00:00:00Z'}]
+    const packs: Pack[] = [{id: 'shared-pack', display_name: 'Shared pack', feed_type: 'list', visibility: 'everyone', allow_access_requests: false, created_at: '2026-11-03T00:00:00Z'}]
     globalThis.fetch = (async (input, options) => {
         requests.push({url: String(input), options})
         return Response.json(packs)

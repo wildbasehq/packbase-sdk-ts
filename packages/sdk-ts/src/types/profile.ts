@@ -11,7 +11,6 @@ export interface Profile {
     xp?: number
     about?: { bio?: string | null; flair?: string }
     space_type?: 'default' | 'custom_free' | 'custom_unrestricted'
-    post_privacy?: 'everyone' | 'followers' | 'friends' | 'private'
     profile_avatar_mature?: boolean
     profile_banner_mature?: boolean
     profile_howls_mature?: boolean
@@ -34,7 +33,6 @@ export interface UpdateProfileInput {
     username?: string
     about?: { bio?: string }
     space_type?: 'default' | 'custom_free' | 'custom_unrestricted'
-    post_privacy?: 'everyone' | 'followers' | 'friends' | 'private'
     profile_avatar_mature?: boolean
     profile_banner_mature?: boolean
     profile_howls_mature?: boolean

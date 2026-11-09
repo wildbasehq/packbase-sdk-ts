@@ -12782,6 +12782,240 @@
           }
         }
       }
+    },
+    "/pack/{id}/access": {
+      "get": {
+        "operationId": "getPackAccess",
+        "description": "Minimal direct-link request screen. Returns name, avatar, rules and caller request status without pack content. Unavailable when requests are disabled or access is blocked.",
+        "tags": [
+          "Pack"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response."
+          }
+        }
+      }
+    },
+    "/pack/{id}/access/request": {
+      "post": {
+        "operationId": "postPackAccessRequest",
+        "description": "Request to join after accepting current rules. Requires authentication.",
+        "tags": [
+          "Pack"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response."
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "rules_version"
+                ],
+                "properties": {
+                  "rules_version": {
+                    "type": "integer",
+                    "minimum": 0
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "deletePackAccessRequest",
+        "description": "Cancel the caller\u2019s pending request.",
+        "tags": [
+          "Pack"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful response."
+          }
+        }
+      }
+    },
+    "/pack/{id}/join-requests": {
+      "get": {
+        "operationId": "getPackJoinRequests",
+        "description": "List up to 50 pending requests. Requires visible ManagePack authority.",
+        "tags": [
+          "Pack"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response."
+          }
+        }
+      }
+    },
+    "/pack/{id}/join-requests/{userId}": {
+      "post": {
+        "operationId": "postPackJoinRequestReview",
+        "description": "Approve through the regular join flow, or decline and remove the request. Requires ManagePack.",
+        "tags": [
+          "Pack"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "userId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response."
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "approve"
+                ],
+                "properties": {
+                  "approve": {
+                    "type": "boolean"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/pack/{id}/visibility-preview": {
+      "get": {
+        "operationId": "getPackVisibilityPreview",
+        "description": "Count current members who would be removed under the proposed visibility. Requires current ManagePack authority. Membership access and joined_via do not affect eligibility.",
+        "tags": [
+          "Pack"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "visibility",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "everyone",
+                "followers",
+                "following",
+                "friends",
+                "private"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "members"
+                  ],
+                  "properties": {
+                    "members": {
+                      "type": "integer",
+                      "minimum": 0
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -14768,34 +15002,6 @@
               }
             ]
           },
-          "post_privacy": {
-            "anyOf": [
-              {
-                "type": "string",
-                "enum": [
-                  "everyone"
-                ]
-              },
-              {
-                "type": "string",
-                "enum": [
-                  "followers"
-                ]
-              },
-              {
-                "type": "string",
-                "enum": [
-                  "friends"
-                ]
-              },
-              {
-                "type": "string",
-                "enum": [
-                  "private"
-                ]
-              }
-            ]
-          },
           "profile_avatar_mature": {
             "type": "boolean"
           },
@@ -14900,34 +15106,6 @@
                 "type": "string",
                 "enum": [
                   "custom_unrestricted"
-                ]
-              }
-            ]
-          },
-          "post_privacy": {
-            "anyOf": [
-              {
-                "type": "string",
-                "enum": [
-                  "everyone"
-                ]
-              },
-              {
-                "type": "string",
-                "enum": [
-                  "followers"
-                ]
-              },
-              {
-                "type": "string",
-                "enum": [
-                  "friends"
-                ]
-              },
-              {
-                "type": "string",
-                "enum": [
-                  "private"
                 ]
               }
             ]
@@ -15048,6 +15226,19 @@
           "description": {
             "type": "string",
             "maxLength": 256
+          },
+          "visibility": {
+            "type": "string",
+            "enum": [
+              "everyone",
+              "followers",
+              "following",
+              "friends",
+              "private"
+            ]
+          },
+          "allow_access_requests": {
+            "type": "boolean"
           }
         }
       },
@@ -15080,6 +15271,23 @@
               "avatar": {},
               "header": {}
             }
+          },
+          "visibility": {
+            "type": "string",
+            "enum": [
+              "everyone",
+              "followers",
+              "following",
+              "friends",
+              "private"
+            ]
+          },
+          "allow_access_requests": {
+            "type": "boolean"
+          },
+          "remove_ineligible_members": {
+            "type": "boolean",
+            "description": "Required when changing visibility. False retains current members; true removes members outside the new audience."
           }
         }
       },
@@ -15129,6 +15337,16 @@
           },
           "permissions": {
             "type": "number"
+          },
+          "joined_via": {
+            "type": "string",
+            "enum": [
+              "discovery",
+              "follower-of",
+              "following-of",
+              "friends-of",
+              "request"
+            ]
           }
         }
       },
@@ -15138,7 +15356,9 @@
           "feed_type",
           "id",
           "display_name",
-          "created_at"
+          "created_at",
+          "visibility",
+          "allow_access_requests"
         ],
         "properties": {
           "feed_type": {
@@ -15225,6 +15445,19 @@
                 "type": "boolean"
               }
             }
+          },
+          "visibility": {
+            "type": "string",
+            "enum": [
+              "everyone",
+              "followers",
+              "following",
+              "friends",
+              "private"
+            ]
+          },
+          "allow_access_requests": {
+            "type": "boolean"
           }
         }
       },
@@ -16757,34 +16990,6 @@
               }
             ]
           },
-          "post_privacy": {
-            "anyOf": [
-              {
-                "type": "string",
-                "enum": [
-                  "everyone"
-                ]
-              },
-              {
-                "type": "string",
-                "enum": [
-                  "followers"
-                ]
-              },
-              {
-                "type": "string",
-                "enum": [
-                  "friends"
-                ]
-              },
-              {
-                "type": "string",
-                "enum": [
-                  "private"
-                ]
-              }
-            ]
-          },
           "profile_avatar_mature": {
             "type": "boolean"
           },
@@ -16928,34 +17133,6 @@
               }
             ]
           },
-          "post_privacy": {
-            "anyOf": [
-              {
-                "type": "string",
-                "enum": [
-                  "everyone"
-                ]
-              },
-              {
-                "type": "string",
-                "enum": [
-                  "followers"
-                ]
-              },
-              {
-                "type": "string",
-                "enum": [
-                  "friends"
-                ]
-              },
-              {
-                "type": "string",
-                "enum": [
-                  "private"
-                ]
-              }
-            ]
-          },
           "profile_avatar_mature": {
             "type": "boolean"
           },
@@ -17016,34 +17193,6 @@
                 "type": "string",
                 "enum": [
                   "custom_unrestricted"
-                ]
-              }
-            ]
-          },
-          "post_privacy": {
-            "anyOf": [
-              {
-                "type": "string",
-                "enum": [
-                  "everyone"
-                ]
-              },
-              {
-                "type": "string",
-                "enum": [
-                  "followers"
-                ]
-              },
-              {
-                "type": "string",
-                "enum": [
-                  "friends"
-                ]
-              },
-              {
-                "type": "string",
-                "enum": [
-                  "private"
                 ]
               }
             ]
