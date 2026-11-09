@@ -13,6 +13,8 @@ import { ThenableResource } from './base'
 export interface HowlReadOptions extends RequestOptions {
     /** Defaults to direct. Blocking applies in both contexts. */
     context?: HowlReadContext
+    /** Offset into direct replies; each read includes five replies and five nesting levels. */
+    replyOffset?: number
     /** Bypasses pending-read sharing and HTTP caches for editing current state. */
     fresh?: boolean
 }
@@ -160,9 +162,9 @@ export class HowlHandle extends ThenableResource<Howl> {
     /** Fetches `GET /howl/:id`. */
     protected fetch(): Promise<Howl> {
         if (this.requestOptions?.fresh) {
-            return this.http.getFresh<Howl>(`/howl/${encodeURIComponent(this.id)}`, this.requestOptions, {context: this.requestOptions.context})
+            return this.http.getFresh<Howl>(`/howl/${encodeURIComponent(this.id)}`, this.requestOptions, {context: this.requestOptions.context, reply_offset: this.requestOptions.replyOffset})
         }
-        return this.http.get<Howl>(`/howl/${this.id}`, {context: this.requestOptions?.context}, this.requestOptions)
+        return this.http.get<Howl>(`/howl/${this.id}`, {context: this.requestOptions?.context, reply_offset: this.requestOptions?.replyOffset}, this.requestOptions)
     }
 }
 

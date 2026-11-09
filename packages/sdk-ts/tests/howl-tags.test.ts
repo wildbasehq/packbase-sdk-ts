@@ -1,5 +1,5 @@
 import {afterEach, expect, test} from 'bun:test'
-import {PackbaseSDK, type HowlTagEditResult} from '../src'
+import {PackbaseSDK, type Howl, type HowlTagEditResult} from '../src'
 
 const originalFetch = globalThis.fetch
 afterEach(() => { globalThis.fetch = originalFetch })
@@ -94,4 +94,21 @@ test('fresh howl reads bypass cached state for the tag editor and retain read co
     expect(url).toBe('https://api.example.test/howl/howl%2Fid?context=direct')
     expect(request?.cache).toBe('no-store')
     expect(request?.signal).toBe(signal)
+})
+
+test('reply pagination preserves offsets, visibility context and nested counts', async () => {
+    const urls: string[] = []
+    const reply = {id: 'reply', body: 'Nested reply', content_type: 'text', created_at: '2026-11-10T00:00:00Z', user: {id: 'author', username: 'author', display_name: 'Author'}, likes: {emoji: '🔥', count: 0, likedByMe: false}, comments_count: 2, comments: []}
+    const page: Howl = {...reply, content_type: 'text', id: 'root', comments_count: 6, comments: [reply]}
+    globalThis.fetch = (async (input) => {
+        urls.push(String(input))
+        return Response.json(page)
+    }) as typeof fetch
+    const sdk = new PackbaseSDK({baseUrl: 'https://api.example.test', autoLogin: false})
+    expect(await sdk.howls('root', {context: 'feed', replyOffset: 5})).toEqual(page)
+    expect(await sdk.howls('root', {context: 'direct', replyOffset: 0, fresh: true})).toEqual(page)
+    expect(urls).toEqual([
+        'https://api.example.test/howl/root?context=feed&reply_offset=5',
+        'https://api.example.test/howl/root?context=direct&reply_offset=0',
+    ])
 })

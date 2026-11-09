@@ -78,6 +78,8 @@ export interface HowlComment {
     content_type: string
     likes: HowlLikes
     comments?: HowlComment[]
+    /** Total visible direct replies, including replies outside the loaded window. */
+    comments_count?: number
 }
 
 export interface Howl {
@@ -119,6 +121,8 @@ export interface Howl {
     can_manage_tag_locks?: boolean
     likes: HowlLikes
     comments?: HowlComment[]
+    /** Total visible direct replies, including replies outside the loaded window. */
+    comments_count?: number
     pack?: Pack
     warning?: { reason: string } | null
     meta?: {
