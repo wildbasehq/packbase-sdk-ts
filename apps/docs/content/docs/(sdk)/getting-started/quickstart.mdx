@@ -9,9 +9,9 @@ This guide starts with an empty file. First, you fetch public data. Then, you ma
 ## 1. Import the SDK and create a client
 
 ```ts twoslash
-import { PackbaseSDK } from '@packbase/sdk-ts'
+import { PackbaseSDK } from "@packbase/sdk-ts";
 
-const pb = new PackbaseSDK()
+const pb = new PackbaseSDK();
 //    ^?
 ```
 
@@ -24,15 +24,15 @@ Without an API key, this client can read public endpoints. In a browser, it can 
 ## 2. Fetch a public profile
 
 ```ts twoslash
-import { PackbaseSDK } from '@packbase/sdk-ts'
-const pb = new PackbaseSDK()
+import { PackbaseSDK } from "@packbase/sdk-ts";
+const pb = new PackbaseSDK();
 // ---cut---
-const profile = await pb.profiles('rek')
+const profile = await pb.profiles("rek");
 //    ^?
 
-console.log(profile.id)
-console.log(profile.display_name)
-console.log(profile.about?.bio)
+console.log(profile.id);
+console.log(profile.display_name);
+console.log(profile.about?.bio);
 ```
 
 `pb.profiles('rek')` gets the profile with the username `rek`. Use `await` because the request is asynchronous. Your function must be `async` unless your environment supports top-level `await`.
@@ -44,20 +44,22 @@ The result is a `Profile` object. The `?.` operator in `profile.about?.bio` supp
 Some data is private to the current user. For example, `pb.me()` requests the profile of the signed-in user:
 
 ```ts twoslash
-import { PackbaseSDK } from '@packbase/sdk-ts'
+import { PackbaseSDK } from "@packbase/sdk-ts";
 
-const pb = new PackbaseSDK({ apiKey: 'your-api-key' })
+const pb = new PackbaseSDK({ apiKey: "your-api-key" });
 // ---cut---
-const me = await pb.me()
+const me = await pb.me();
 //    ^?
 
-console.log(me.username)
+console.log(me.username);
 ```
 
 Replace `'your-api-key'` with an API key or Clerk JWT. Do not put a secret key in source code that you commit. Load the key from an environment variable. In a browser application, you can omit `apiKey` if the user is signed in to Packbase. The browser sends the session cookie.
 
 <Callout type="info">
-  `pb.me()` requires a valid API key or browser session. If Packbase cannot identify the user, the request fails with status `401`. This status means that the user is not authenticated.
+  `pb.me()` requires a valid API key or browser session. If Packbase cannot
+  identify the user, the request fails with status `401`. This status means that
+  the user is not authenticated.
 </Callout>
 
 The [Authentication guide](/getting-started/authentication) gives more information about both methods.
@@ -67,44 +69,44 @@ The [Authentication guide](/getting-started/authentication) gives more informati
 A pack is a Packbase community. The list response contains a `packs` array and information about the list.
 
 ```ts twoslash
-import { PackbaseSDK } from '@packbase/sdk-ts'
-const pb = new PackbaseSDK()
+import { PackbaseSDK } from "@packbase/sdk-ts";
+const pb = new PackbaseSDK();
 // ---cut---
-const result = await pb.packs.list()
+const result = await pb.packs.list();
 //    ^?
 
 for (const pack of result.packs) {
-  console.log(pack.display_name)
+  console.log(pack.display_name);
 }
 ```
 
 To fetch one known pack, pass its real UUID:
 
 ```ts twoslash
-import { PackbaseSDK } from '@packbase/sdk-ts'
-const pb = new PackbaseSDK()
+import { PackbaseSDK } from "@packbase/sdk-ts";
+const pb = new PackbaseSDK();
 // ---cut---
-const pack = await pb.packs('00000000-0000-0000-0000-000000000000')
-console.log(pack.display_name)
+const pack = await pb.packs("00000000-0000-0000-0000-000000000000");
+console.log(pack.display_name);
 ```
 
 The all-zero UUID shows the required format. It does not identify a pack.
 
 ## 5. Create a howl
 
-Packbase calls posts “howls.” To create a howl, supply authentication, a pack ID, content, and one rating tag.
+Packbase calls posts "howls." To create a howl, supply authentication, a pack ID, content, and one rating tag.
 
 ```ts twoslash
-import { PackbaseSDK } from '@packbase/sdk-ts'
-const pb = new PackbaseSDK({ apiKey: 'your-api-key' })
+import { PackbaseSDK } from "@packbase/sdk-ts";
+const pb = new PackbaseSDK({ apiKey: "your-api-key" });
 // ---cut---
 const howl = await pb.howls.create({
-  tenant_id: 'your-pack-uuid',
-  body: 'Hello, Packbase! 🐾',
-  tags: ['rating_safe'],
-})
+  tenant_id: "your-pack-uuid",
+  body: "Hello, Packbase! 🐾",
+  tags: ["rating_safe"],
+});
 
-console.log('Howl created:', howl.id)
+console.log("Howl created:", howl.id);
 ```
 
 Replace the placeholder values before running this. The signed-in user also needs permission to post in that pack.
@@ -116,17 +118,17 @@ The server creates a howl in a background job. The SDK checks the job and waits 
 Requests can fail because of an incorrect ID, an expired key, or a server error. Put calls that can fail in a `try`/`catch` block:
 
 ```ts twoslash
-import { PackbaseSDK, PackbaseError } from '@packbase/sdk-ts'
-const pb = new PackbaseSDK()
+import { PackbaseSDK, PackbaseError } from "@packbase/sdk-ts";
+const pb = new PackbaseSDK();
 // ---cut---
 try {
-  const profile = await pb.profiles('rek')
-  console.log(profile.display_name)
+  const profile = await pb.profiles("rek");
+  console.log(profile.display_name);
 } catch (error) {
   if (error instanceof PackbaseError) {
-    console.error(`Packbase returned ${error.status}: ${error.summary}`)
+    console.error(`Packbase returned ${error.status}: ${error.summary}`);
   } else {
-    console.error('The request could not reach Packbase', error)
+    console.error("The request could not reach Packbase", error);
   }
 }
 ```
@@ -136,8 +138,24 @@ You can now use the SDK. The reference pages list each method. The guides explai
 ## Next steps
 
 <Cards>
-  <Card title="Authentication" href="/getting-started/authentication" description="Use an API key or an existing browser session safely." />
-  <Card title="Error Handling" href="/getting-started/error-handling" description="Respond to API and network failures." />
-  <Card title="Howls" href="/guides/howls" description="Create posts, attach assets, and track processing." />
-  <Card title="Search" href="/guides/search" description="Filter and sort Packbase data with the query builder." />
+  <Card
+    title="Authentication"
+    href="/getting-started/authentication"
+    description="Use an API key or an existing browser session safely."
+  />
+  <Card
+    title="Error Handling"
+    href="/getting-started/error-handling"
+    description="Respond to API and network failures."
+  />
+  <Card
+    title="Howls"
+    href="/guides/howls"
+    description="Create posts, attach assets, and track processing."
+  />
+  <Card
+    title="Search"
+    href="/guides/search"
+    description="Filter and sort Packbase data with the query builder."
+  />
 </Cards>
