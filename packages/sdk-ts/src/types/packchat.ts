@@ -1,5 +1,7 @@
 /** Fluxer snowflake IDs remain strings throughout Packchat. */
-export type PackchatAudience = 'public' | 'pack_members' | 'pack_and_fluxer_members'
+export type PackchatInstance = 'fluxer' | 'fluxfur'
+export type PackchatAudience =
+    'public' | 'pack_members' | 'pack_and_fluxer_members'
 
 export interface FluxerGuild {
     id: string
@@ -12,6 +14,9 @@ export interface PackchatCommunity extends FluxerGuild {
 }
 
 export interface PackchatStatus {
+    /** Missing on older servers means Fluxer. */
+    instance?: PackchatInstance
+    available_instances?: PackchatInstance[]
     enabled: boolean
     linked: boolean
     status: 'disabled' | 'unlinked' | 'linked' | 'unavailable'

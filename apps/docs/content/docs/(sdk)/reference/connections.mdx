@@ -12,13 +12,13 @@ Use `pb.me.connections.provider(id)` for a provider discovered at runtime.
 
 ## Methods
 
-| Method | Result | Purpose |
-| --- | --- | --- |
-| `list(options?)` | `ConnectionDefinition[]` | Discover enabled providers |
-| `provider(id).status(options?)` | `ConnectionStatus` | Read the current member's connection |
+| Method                                     | Result                    | Purpose                                  |
+| ------------------------------------------ | ------------------------- | ---------------------------------------- |
+| `list(options?)`                           | `ConnectionDefinition[]`  | Discover enabled providers               |
+| `provider(id).status(options?)`            | `ConnectionStatus`        | Read the current member's connection     |
 | `provider(id).authorize(input?, options?)` | `ConnectionAuthorization` | Start OAuth or submit custom credentials |
-| `provider(id).complete(input, options?)` | `ConnectionCompletion` | Complete a provider's authorization flow |
-| `provider(id).disconnect(options?)` | `void` | Disconnect the current member's account |
+| `provider(id).complete(input, options?)`   | `ConnectionCompletion`    | Complete a provider's authorization flow |
+| `provider(id).disconnect(options?)`        | `void`                    | Disconnect the current member's account  |
 
 Each request accepts `RequestOptions`, including an `AbortSignal`. All account
 connection requests require Packbase authentication. Providers can impose further
@@ -34,8 +34,10 @@ declare const signal: AbortSignal
 // ---cut---
 const providers = await pb.me.connections.list({ signal })
 for (const provider of providers) {
-  const status = await pb.me.connections.provider(provider.id).status({ signal })
-  console.log(provider.name, status.connected, status.user?.username)
+    const status = await pb.me.connections
+        .provider(provider.id)
+        .status({ signal })
+    console.log(provider.name, status.connected, status.user?.username)
 }
 ```
 
@@ -63,11 +65,12 @@ const connection = pb.me.connections.provider(providerId)
 const result = await connection.authorize({}, { signal })
 
 if ('authorization_url' in result) {
-  const destination = new URL(result.authorization_url)
-  if (destination.protocol !== 'https:') throw new Error('Invalid authorization URL')
-  window.location.assign(destination.href)
+    const destination = new URL(result.authorization_url)
+    if (destination.protocol !== 'https:')
+        throw new Error('Invalid authorization URL')
+    window.location.assign(destination.href)
 } else {
-  console.log(result.connected) // A custom provider can connect immediately.
+    console.log(result.connected) // A custom provider can connect immediately.
 }
 ```
 
@@ -84,7 +87,9 @@ declare const providerId: string
 declare const formValues: Record<string, string>
 declare const signal: AbortSignal
 // ---cut---
-const result = await pb.me.connections.provider(providerId).authorize(formValues, { signal })
+const result = await pb.me.connections
+    .provider(providerId)
+    .authorize(formValues, { signal })
 ```
 
 Send only the provider's declared inputs. Keep password fields in memory and
@@ -114,11 +119,17 @@ const state = parameters.get('state')
 const providerError = parameters.get('error')
 window.history.replaceState(window.history.state, '', window.location.pathname)
 
-if (providerError || !code || !state) throw new Error('Start a new connection from settings')
-const result = await pb.me.connections.provider(providerId).complete({ code, state }, { signal })
+if (providerError || !code || !state)
+    throw new Error('Start a new connection from settings')
+const result = await pb.me.connections
+    .provider(providerId)
+    .complete({ code, state }, { signal })
 const destination = new URL(result.return_path, window.location.origin)
-if (!result.return_path.startsWith('/') || destination.origin !== window.location.origin) {
-  throw new Error('Invalid return path')
+if (
+    !result.return_path.startsWith('/') ||
+    destination.origin !== window.location.origin
+) {
+    throw new Error('Invalid return path')
 }
 window.location.replace(destination.href)
 ```
@@ -171,6 +182,20 @@ const authorization = await fluxer.authorize({}, { signal })
 The typed accessor adds `owned_guilds` and typed `pack_id`, `guild_id`, and
 `install` inputs. All community IDs are strings. For ownership checks, community
 linking, installation, and read-only channels, see [Packchat](/reference/packchat).
+
+## Fluxfur
+
+`pb.me.connections.fluxfur` (or `provider("fluxfur")`) connects an account on
+fluxfur.com independently of Fluxer. It supports the standard status, authorize,
+complete and disconnect methods. It uses the same typed Packchat authorization inputs as Fluxer.
+Both accounts can be connected at once, including when their numeric IDs match.
+Disconnecting Fluxfur unlinks only Fluxfur Packchat communities; Fluxer connections
+and communities remain unchanged. Use `pb.me.connections.fluxfur.authorize({ pack_id, guild_id, install: true })`
+to install the bot, then `pb.packs(packId).packchat.link({ guild_id, instance: "fluxfur" })`.
+
+The server must configure Fluxfur separately before discovery lists it. Its
+callback is `/integrations/fluxfur/callback`; authorization requires a Clerk
+session and expires after ten minutes. `FLUXFUR_INVALID_STATE` means start a new flow.
 
 ## Failures and related features
 

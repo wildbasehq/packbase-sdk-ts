@@ -22,13 +22,20 @@ declare const code: string
 declare const state: string
 declare const signal: AbortSignal
 // ---cut---
-const { authorization_url } = await pb.me.connections.fluxer.authorize({ pack_id: packId })
+const { authorization_url } = await pb.me.connections.fluxer.authorize({
+    pack_id: packId,
+})
 // Redirect the member to authorization_url. In the signed-in callback:
-const result = await pb.me.connections.fluxer.complete({ code, state }, { signal })
+const result = await pb.me.connections.fluxer.complete(
+    { code, state },
+    { signal },
+)
 // Use the server-provided return_path after completion.
 const identity = await pb.me.connections.fluxer.status({ signal })
 const chat = pb.packs(packId, { signal }).packchat
-const selectedGuild = identity.owned_guilds.find(guild => guild.id === selectedGuildId)
+const selectedGuild = identity.owned_guilds.find(
+    (guild) => guild.id === selectedGuildId,
+)
 if (!selectedGuild) throw new Error('Choose a community you own.')
 await chat.link({ guild_id: selectedGuild.id })
 ```
@@ -43,8 +50,8 @@ declare const selectedChannelIds: string[]
 // ---cut---
 const settings = await chat.settings()
 await chat.configure({
-  audience: 'pack_members',
-  channel_ids: selectedChannelIds,
+    audience: 'pack_members',
+    channel_ids: selectedChannelIds,
 })
 ```
 
@@ -62,7 +69,10 @@ declare const signal: AbortSignal
 const listing = await chat.channels()
 const page = await chat.messages(channelId, { signal })
 if (page.has_more && page.before) {
-  const older = await chat.messages(channelId, { before: page.before, signal })
+    const older = await chat.messages(channelId, {
+        before: page.before,
+        signal,
+    })
 }
 ```
 
@@ -93,3 +103,15 @@ await pb.me.connections.fluxer.disconnect({ signal }) // Disconnects this member
 ```
 
 Disconnecting an identity also removes community links owned by that member. A stale OAuth grant, removed bot or ownership change must be resolved with fresh authorization; clients must not treat previous successful reads as continuing authorization.
+
+## Other instances
+
+Fluxfur uses the same Packchat methods and permissions as Fluxer. The server lists
+configured instances in `status.available_instances`; `status.instance` identifies
+the linked community's instance. Missing instance fields on older servers mean
+Fluxer. Use `pb.me.connections.fluxfur` for Fluxfur identity/ownership verification
+and bot installation, then pass `instance: "fluxfur"` to `chat.link({ guild_id, instance })`.
+Omitting `instance` retains Fluxer behavior. One community is linked per pack;
+unlink it before choosing another instance. Numeric IDs are scoped to the instance.
+The legacy `fluxer_connected` status field describes the selected instance's identity,
+and `pack_and_fluxer_members` applies to that instance's community membership.
