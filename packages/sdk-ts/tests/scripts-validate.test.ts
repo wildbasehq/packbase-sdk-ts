@@ -1,8 +1,7 @@
 import { describe, expect, test } from 'bun:test'
 import {
     accepts, describeNode, feedKind, parseScript, reachableQueries, themeKind, TOOLS, validateProgram,
-    type Program, type ScriptFile, type ScriptNode,
-} from '../src/scripts'
+    type Program, type ScriptFile, type ScriptNode, SCRIPT_FILE, scriptName, scriptPath } from '../src/scripts'
 
 const script = (
     nodes: Record<string, ScriptNode>,
@@ -270,4 +269,14 @@ describe('describeNode', () => {
         expect(ports.outputs[0]!.type).toBe('query<packs>')
         expect(describeNode(program, 'boot', 'run', feedKind).outputs[0]!.type).toBe('list<packs>')
     })
+})
+
+test('a script is named by its file, and its file by its name', () => {
+    expect(scriptName('scripts/boot.ruff')).toBe('boot')
+    expect(scriptName('scripts/top-10.ruff')).toBe('top-10')
+    expect(scriptName('scripts/nested/a.ruff')).toBeUndefined()
+    expect(scriptName('scripts/1st.ruff')).toBeUndefined()
+    expect(scriptName('meta.json')).toBeUndefined()
+    expect(scriptPath('boot')).toBe('scripts/boot.ruff')
+    expect(SCRIPT_FILE.test(scriptPath('a_b'))).toBe(true)
 })

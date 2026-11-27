@@ -1,4 +1,4 @@
-import { CALL, scriptInputs, splitRef, validateProgram, wires } from './validate'
+import { CALL, scriptInputs, scriptPath, splitRef, validateProgram, wires } from './validate'
 import type { Program, ScriptFile, ScriptKind, ScriptNode, ScriptProblem } from './types'
 
 /** A tool the host supplies, such as running a query. A rejection is reported against the node. */
@@ -71,21 +71,22 @@ export async function runProgram(
     const probed: { file: ScriptFile; get: (ref: string) => Promise<unknown> }[] = []
     /** Reports a node to the tracer. A failure is reported where it happened, not downstream. */
     const traced = (at: TraceAt, running: Promise<unknown>) => {
+        const { trace } = options
+        if (!trace) return running
         const report = (result: TraceResult) => {
             try {
-                options.trace?.(at, result)
+                trace(at, result)
             } catch {
                 /* A tracer never changes a run. */
             }
         }
-        if (options.trace)
-            running.then(
-                (value) => report({ value }),
-                (error) => {
-                    if (error instanceof Failure && error.problem.script === at.script && error.problem.node === at.node)
-                        report({ problem: error.problem })
-                },
-            )
+        running.then(
+            (value) => report({ value }),
+            (error) => {
+                if (error instanceof Failure && error.problem.script === at.script && error.problem.node === at.node)
+                    report({ problem: error.problem })
+            },
+        )
         return running
     }
 
@@ -119,9 +120,8 @@ export async function runProgram(
             const values: Record<string, unknown> = {}
             for (const name of names) {
                 const found = await Promise.all(wires(node, name).map(get))
-                const many = tool.inputs.find((port) => port.name === name)?.many
-                values[name] = many ? found : found[0]
                 const port = tool.inputs.find((entry) => entry.name === name)
+                values[name] = port?.many ? found : found[0]
                 if (port?.type.startsWith('list<'))
                     for (const list of found) {
                         if (!Array.isArray(list))
@@ -196,7 +196,7 @@ export async function runProgram(
 
     try {
         const entry = program[start]
-        if (!entry) return { problem: { script: start, path: '', message: `scripts/${start}.ruff does not exist.` } }
+        if (!entry) return { problem: { script: start, path: '', message: `${scriptPath(start)} does not exist.` } }
         const read = instance(start, options.inputs, [])
         const names = (options.outputs ?? Object.keys(entry.outputs)).filter((name) => Object.hasOwn(entry.outputs, name))
         const reading = names.map((name) => read(entry.outputs[name]!))

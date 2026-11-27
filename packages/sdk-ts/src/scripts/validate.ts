@@ -4,6 +4,12 @@ import type { PortType, Program, ScriptFile, ScriptKind, ScriptNode, ScriptProbl
 export const NODE_NAME = /^[A-Za-z][A-Za-z0-9_]{0,63}$/
 /** A script's name: `scripts/<name>.ruff`. */
 export const SCRIPT_NAME = /^[A-Za-z][A-Za-z0-9_-]{0,63}$/
+/** A script's file. Scripts sit directly in `scripts/`, never in a folder of their own. */
+export const SCRIPT_FILE = /^scripts\/([A-Za-z][A-Za-z0-9_-]{0,63})\.ruff$/
+/** The script a path holds, or undefined when the path is not a script's. */
+export const scriptName = (path: string): string | undefined => SCRIPT_FILE.exec(path)?.[1]
+/** Where a script is kept: `scripts/<name>.ruff`. */
+export const scriptPath = (name: string) => `scripts/${name}.ruff`
 const PORT_TYPE = /^[a-z][a-z_]*(?:<[a-z][a-z_]*>)?$/
 
 /** The tool that runs another script. Every kind that allows calls includes it. */
@@ -264,8 +270,8 @@ function checkParam(param: ToolParam, value: unknown, program: Program, script: 
             return
         case 'script':
             if (typeof value !== 'string' || !SCRIPT_NAME.test(value)) report(path, 'Choose a script to run.')
-            else if (!Object.hasOwn(program, value)) report(path, `scripts/${value}.ruff does not exist.`)
-            else if (value === script) report(path, `scripts/${value}.ruff calls itself through this node.`)
+            else if (!Object.hasOwn(program, value)) report(path, `${scriptPath(value)} does not exist.`)
+            else if (value === script) report(path, `${scriptPath(value)} calls itself through this node.`)
             return
     }
 }
@@ -279,7 +285,7 @@ function validateScript(ctx: Context, script: string, problems: ScriptProblem[])
     if (Object.keys(file.outputs).length > limits.outputs)
         top('outputs', `A script can have at most ${limits.outputs} outputs.`)
     if (Object.hasOwn(ctx.kind.entries, script) && Object.keys(file.inputs ?? {}).length)
-        top('inputs', `scripts/${script}.ruff is run directly, so it cannot declare inputs.`)
+        top('inputs', `${scriptPath(script)} is run directly, so it cannot declare inputs.`)
     for (const name of Object.keys(file.inputs ?? {}))
         if (!NODE_NAME.test(name)) top(`inputs.${name}`, 'Input names start with a letter and use letters, digits or underscores.')
 
@@ -419,7 +425,7 @@ function validateCalls(program: Program, kind: ScriptKind, problems: ScriptProbl
                         script,
                         node: id,
                         path: `nodes.${id}.params.script`,
-                        message: `scripts/${target}.ruff calls itself through this node.`,
+                        message: `${scriptPath(target)} calls itself through this node.`,
                     })
                 reported.add(key)
                 continue
@@ -452,7 +458,7 @@ export function validateProgram(program: Record<string, unknown>, kind: ScriptKi
     }
     for (const entry of kind.required)
         if (!Object.hasOwn(program, entry))
-            problems.push({ script: entry, path: '', message: `scripts/${entry}.ruff is required: it runs first.` })
+            problems.push({ script: entry, path: '', message: `${scriptPath(entry)} is required: it runs first.` })
     if (Object.keys(program).length > kind.limits.scripts)
         problems.push({
             script: first,
