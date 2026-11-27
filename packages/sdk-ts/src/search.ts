@@ -372,8 +372,6 @@ export interface CustomFeedRun {
      * Worked out from the script, never declared. Empty for a feed that has one page.
      */
     paged: string[]
-    /** @deprecated The first of `paged`, for clients that read one paging output. */
-    primary: string
     /** The owner's pagination mode, on every page. Feeds compiled before it was added scroll. */
     pagination: FeedPagination
     page: number

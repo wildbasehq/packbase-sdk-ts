@@ -47,6 +47,8 @@ async function useCustomFeed(pb: PackbaseSDK): Promise<SearchFeed[]> {
     if (isErrorEntry(feed) || isErrorEntry(pins)) return []
     const hasMore: boolean = feed.has_more
     const loadsMore: string[] = feed.paged
+    // @ts-expect-error the deprecated primary field is gone; read paged
+    void feed.primary
     const pagination: FeedPagination = feed.pagination
     const packbaseManagesWidth: boolean | undefined = feed.presentation?.packbase_manages_width
     const paged: boolean = pagination === 'paged'
