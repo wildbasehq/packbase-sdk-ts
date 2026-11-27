@@ -311,7 +311,7 @@ export interface QueryInput<M extends ModelName = ModelName> {
 /** The `run` named query: renders a whole custom feed in one search key. */
 export interface RunFeedQuery {
     run: string
-    /** 1-indexed page of the feed's primary query. Defaults to 1. */
+    /** 1-indexed page of the feed. Defaults to 1. */
     page?: number
     /** Include `presentation` after page 1. */
     presentation?: boolean
@@ -362,9 +362,17 @@ export interface CustomFeedRun {
         css: string
         packbase_manages_width: boolean
     }
-    /** The outputs of the feed's boot script by name; only the primary output is returned after page 1. */
+    /**
+     * The outputs of the feed's boot script by name. After page 1 only the outputs in `paged`
+     * are returned: the rest are the same on every page.
+     */
     results: Record<string, QueryResult<SearchRow>>
-    /** The name of the feed's primary query in `results`: the one that pages and `has_more` describes. */
+    /**
+     * The outputs that change with the page: the ones the page number reaches in the script.
+     * Worked out from the script, never declared. Empty for a feed that has one page.
+     */
+    paged: string[]
+    /** @deprecated The first of `paged`, for clients that read one paging output. */
     primary: string
     /** The owner's pagination mode, on every page. Feeds compiled before it was added scroll. */
     pagination: FeedPagination

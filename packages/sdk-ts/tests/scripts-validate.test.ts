@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'bun:test'
 import {
     accepts, describeNode, feedKind, parseScript, reachableQueries, themeKind, TOOLS, validateProgram,
-    type Program, type ScriptFile, type ScriptNode, SCRIPT_FILE, scriptName, scriptPath } from '../src/scripts'
+    type Program, type ScriptFile, type ScriptNode, SCRIPT_FILE, scriptName, scriptPath, pagedOutputs } from '../src/scripts'
 
 const script = (
     nodes: Record<string, ScriptNode>,
@@ -13,13 +13,12 @@ const build = (extra: Record<string, unknown> = {}): ScriptNode => ({
     tool: 'query.build',
     params: { from: 'posts', where: { parent: null }, orderBy: { created_at: 'desc' }, take: 30, ...extra },
 })
-const run = (query = 'build', paged = false): ScriptNode => ({
+const run = (query = 'build'): ScriptNode => ({
     tool: 'query.run',
     in: { query },
-    ...(paged ? { params: { paged: true } } : {}),
 })
 const basic = (): Program => ({
-    boot: script({ build: build(), run: run('build', true) }, { posts: 'run' }),
+    boot: script({ build: build(), run: run('build') }, { posts: 'run' }),
 })
 const problems = (program: Record<string, unknown>, kind = feedKind) => validateProgram(program, kind)
 const only = (program: Record<string, unknown>, kind = feedKind) => {
@@ -74,7 +73,7 @@ describe('validateProgram', () => {
             art: script(
                 {
                     build: { ...build({ where: { tags: { has: { $value: 'tag' } } } }), in: { tag: 'input.tag' } },
-                    run: run('build', true),
+                    run: run('build'),
                 },
                 { posts: 'run' },
                 { tag: 'text' },
@@ -181,17 +180,80 @@ describe('validateProgram', () => {
         program.boot!.nodes.r2 = run('b2')
         program.boot!.outputs.packs = 'r2'
         expect(reachableQueries(program)).toHaveLength(2)
-        expect(reachableQueries(program, ['posts'])).toEqual([{ script: 'boot', node: 'run', paged: true }])
+        expect(reachableQueries(program, ['posts'])).toEqual([{ script: 'boot', node: 'run' }])
     })
 
-    test('paged queries', () => {
-        const two = basic()
-        two.boot!.nodes.run2 = run('build', true)
-        two.boot!.outputs.more = 'run2'
-        expect(only(two).message).toContain('one paged query')
-        const found = only(basic(), themeKind)
-        expect(found.node).toBe('run')
-        expect(found.message).toContain('paged')
+    test('a query pages when a page number is wired into it', () => {
+        const paged = basic()
+        paged.boot!.nodes.build = { ...paged.boot!.nodes.build!, in: { page: 'input.page' } }
+        expect(validateProgram(paged, feedKind)).toEqual([])
+        expect(describeNode(paged, 'boot', 'build', feedKind).inputs[0]).toEqual({ name: 'page', label: 'Page', type: 'number', optional: true })
+        // A theme's page is its name, which is not a number to page by.
+        const [found] = validateProgram(paged, themeKind)
+        expect(found!.node).toBe('build')
+        expect(found!.path).toBe('nodes.build.in.page')
+        // Several queries may page together.
+        paged.boot!.nodes.b2 = { ...build({ from: 'packs', where: {}, orderBy: undefined }), in: { page: 'input.page' } }
+        paged.boot!.nodes.r2 = run('b2')
+        paged.boot!.outputs.packs = 'r2'
+        expect(validateProgram(paged, feedKind)).toEqual([])
+    })
+
+    test('a value in the filters cannot be called page', () => {
+        const program = basic()
+        program.boot!.nodes.build = { ...build({ where: { tags: { has: { $value: 'page' } } } }), in: { page: 'input.page' } }
+        expect(only(program).message).toContain('page')
+    })
+
+    test('the outputs that load more are the ones that depend on the page', () => {
+        const program: Program = {
+            boot: {
+                version: 1,
+                nodes: {
+                    build: { tool: 'query.build', params: { from: 'posts' }, in: { page: 'input.page' } },
+                    run: { tool: 'query.run', in: { query: 'build' } },
+                    top: { tool: 'limit', in: { list: 'run' }, params: { take: 3 } },
+                    pb: { tool: 'query.build', params: { from: 'packs' } },
+                    packs: { tool: 'query.run', in: { query: 'pb' } },
+                    more: { tool: 'call', params: { script: 'more' }, in: { at: 'input.page' } },
+                    same: { tool: 'call', params: { script: 'more' }, in: { at: 'one' } },
+                    one: { tool: 'number', params: { value: 1 } },
+                },
+                outputs: { posts: 'run', top: 'top', packs: 'packs', deep: 'more.rows', still: 'same.rows', where: 'input.page', fixed: 'more.fixed' },
+            },
+            more: {
+                version: 1,
+                inputs: { at: 'number' },
+                nodes: {
+                    build: { tool: 'query.build', params: { from: 'posts' }, in: { page: 'input.at' } },
+                    run: { tool: 'query.run', in: { query: 'build' } },
+                    pb: { tool: 'query.build', params: { from: 'packs' } },
+                    packs: { tool: 'query.run', in: { query: 'pb' } },
+                },
+                outputs: { rows: 'run', fixed: 'packs' },
+            },
+        }
+        expect(pagedOutputs(program, feedKind)).toEqual(['posts', 'top', 'deep', 'where'])
+        expect(pagedOutputs(basic(), feedKind)).toEqual([])
+        expect(pagedOutputs({}, feedKind)).toEqual([])
+    })
+
+    test('an output cannot take the name of something templates already receive', () => {
+        const program = basic()
+        program.boot!.outputs.hasMore = 'run'
+        const found = only(program)
+        expect(found.path).toBe('outputs.hasMore')
+        expect(found.message).toContain('hasMore')
+        expect(validateProgram(program, themeKind).some((problem) => problem.path === 'outputs.hasMore')).toBe(false)
+        const themed = basic()
+        themed.boot!.outputs.owner = 'run'
+        expect(validateProgram(themed, themeKind).some((problem) => problem.path === 'outputs.owner')).toBe(true)
+        // Only what the host runs directly feeds templates: a called script may name outputs freely.
+        const called = basic()
+        called.side = { version: 1, nodes: { n: { tool: 'number', params: { value: 1 } } }, outputs: { page: 'n' } }
+        called.boot!.nodes.c = { tool: 'call', params: { script: 'side' } }
+        called.boot!.outputs.n = 'c.page'
+        expect(validateProgram(called, feedKind)).toEqual([])
     })
 
     test('$value needs a wire', () => {
@@ -244,7 +306,7 @@ describe('validateProgram', () => {
     test('boot gets the kind inputs without declaring them', () => {
         const program = basic()
         program.boot!.nodes.n = { tool: 'limit', in: { list: 'run' }, params: { take: 2 } }
-        program.boot!.outputs.page = 'input.page'
+        program.boot!.outputs.at = 'input.page'
         expect(problems(program)).toEqual([])
         program.boot!.outputs.other = 'input.other'
         expect(only(program).path).toBe('outputs.other')
@@ -265,7 +327,7 @@ describe('describeNode', () => {
         const program = basic()
         program.boot!.nodes.build = build({ from: 'packs', where: { id: { in: { $value: 'ids' } } }, orderBy: undefined })
         const ports = describeNode(program, 'boot', 'build', feedKind)
-        expect(ports.inputs.map((port) => port.name)).toEqual(['ids'])
+        expect(ports.inputs.map((port) => port.name)).toEqual(['page', 'ids'])
         expect(ports.outputs[0]!.type).toBe('query<packs>')
         expect(describeNode(program, 'boot', 'run', feedKind).outputs[0]!.type).toBe('list<packs>')
     })

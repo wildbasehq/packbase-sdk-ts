@@ -1,4 +1,4 @@
-import { from, isErrorEntry, runFeed, viewer, type CustomFeedEditor, type FeedPagination, type FeedTemplateContext, type RunFeedError, type Howl, type PackbaseSDK, type SearchFeed, type ThemeTemplateContext } from '../src'
+import { feedTemplateContext, from, isErrorEntry, runFeed, themeTemplateContext, viewer, type CustomFeedEditor, type FeedPagination, type FeedTemplateContext, type RunFeedError, type Howl, type PackbaseSDK, type SearchFeed, type ThemeTemplateContext } from '../src'
 
 async function useSearchHowls(pb: PackbaseSDK): Promise<Howl[]> {
     const result = await pb.search({
@@ -46,7 +46,7 @@ async function useCustomFeed(pb: PackbaseSDK): Promise<SearchFeed[]> {
     })
     if (isErrorEntry(feed) || isErrorEntry(pins)) return []
     const hasMore: boolean = feed.has_more
-    const primary: string = feed.primary
+    const loadsMore: string[] = feed.paged
     const pagination: FeedPagination = feed.pagination
     const packbaseManagesWidth: boolean | undefined = feed.presentation?.packbase_manages_width
     const paged: boolean = pagination === 'paged'
@@ -55,14 +55,8 @@ async function useCustomFeed(pb: PackbaseSDK): Promise<SearchFeed[]> {
     const icons: (string | null)[] = pins.map((pin) => pin.icon)
     console.log(covers, icons)
     const templates: Record<string, string> | undefined = feed.presentation?.templates
-    const context: FeedTemplateContext = {
-        feed: feed.feed,
-        viewer: { signedIn: true },
-        results: feed.results,
-        page: feed.page,
-        hasMore,
-    }
-    console.log(templates, context, paged, packbaseManagesWidth)
+    const context: FeedTemplateContext = feedTemplateContext(feed, { signedIn: true })
+    console.log(templates, context, paged, packbaseManagesWidth, hasMore, loadsMore)
     return pins
 }
 void useCustomFeed
@@ -71,7 +65,7 @@ async function useThemePage(pb: PackbaseSDK): Promise<ThemeTemplateContext | str
     const page = await pb.themes('profile', 'owner').page()
     if (!page) return null
     if (page.kind === 'template')
-        return { owner: page.context.owner, page: page.context.page, results: page.results, viewer: { signedIn: false } }
+        return themeTemplateContext(page, { signedIn: false })
     return page.html
 }
 void useThemePage

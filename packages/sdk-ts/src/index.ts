@@ -150,7 +150,7 @@ export type {
     CustomFeedEditor,
     CustomFeedUpdateInput,
 } from './resources/custom-feeds'
-export { TEMPLATE_HELPERS, BUILTIN_PARTIALS } from './templates'
+export { TEMPLATE_HELPERS, BUILTIN_PARTIALS, feedTemplateContext, themeTemplateContext } from './templates'
 export type { TemplateHelper, BuiltinPartial, TemplateViewer, FeedTemplateContext, ThemeTemplateContext } from './templates'
 export type {
     FeedbackKind,

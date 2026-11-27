@@ -20,7 +20,7 @@ export interface ToolParam {
 }
 
 /**
- * `many`: accepts a list of wires. `like`: an output that takes the type of the named input,
+ * `many`: accepts a list of wires. `optional`: may be left unwired. `like`: an output that takes the type of the named input,
  * or of several inputs when they all carry the same type.
  */
 export interface ToolPort {
@@ -28,6 +28,7 @@ export interface ToolPort {
     label: string
     type: PortType
     many?: boolean
+    optional?: boolean
     like?: string | readonly string[]
 }
 

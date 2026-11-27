@@ -6,7 +6,7 @@ const program: Program = {
         version: 1,
         nodes: {
             posts_query: { tool: 'query.build', params: { from: 'posts', take: 30 }, at: [80, 80] },
-            posts: { tool: 'query.run', in: { query: 'posts_query' }, params: { paged: true }, at: [400, 80] },
+            posts: { tool: 'query.run', in: { query: 'posts_query' }, at: [400, 80] },
         },
         outputs: { posts: 'posts' },
     },
@@ -15,12 +15,12 @@ const program: Program = {
 test('stripLayout removes only positions', () => {
     const stripped = stripLayout(program)
     expect(Object.values(stripped.boot!.nodes).every((node) => node.at === undefined)).toBe(true)
-    expect(stripped.boot!.nodes.posts).toEqual({ tool: 'query.run', in: { query: 'posts_query' }, params: { paged: true } })
+    expect(stripped.boot!.nodes.posts).toEqual({ tool: 'query.run', in: { query: 'posts_query' } })
     expect(program.boot!.nodes.posts!.at).toBeDefined()
     expect(validateProgram(stripped, feedKind)).toEqual([])
 })
 
 test('reachable queries can start from any entry script', () => {
-    expect(reachableQueries(program)).toEqual([{ script: 'boot', node: 'posts', paged: true }])
+    expect(reachableQueries(program)).toEqual([{ script: 'boot', node: 'posts' }])
     expect(reachableQueries(program, undefined, 'other')).toEqual([])
 })

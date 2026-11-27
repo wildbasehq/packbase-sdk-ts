@@ -200,11 +200,14 @@ const list = (name = 'list', label = 'Rows'): ToolPort => ({ name, label, type: 
 const same = (like = 'list'): ToolPort => ({ name: 'out', label: 'Rows', type: 'list<any>', like })
 
 /** Every built-in tool, described well enough for an editor to draw its node and inspector. */
+/** A query's page: wire a number into it, such as the page a feed's boot is given, and the query returns that page of its rows. */
+const PAGE: ToolPort = { name: 'page', label: 'Page', type: 'number', optional: true }
+
 export const TOOLS: readonly ToolDefinition[] = [
     {
         id: 'query.build',
         ports: (node) => ({
-            inputs: valueNames(node.params?.where).map((name) => ({ name, label: name, type: 'any' })),
+            inputs: [PAGE, ...valueNames(node.params?.where).map((name) => ({ name, label: name, type: 'any' }))],
             outputs: [{ name: 'query', label: 'Query', type: `query<${modelOf(node)}>` }],
         }),
         check(node, report) {
@@ -212,19 +215,24 @@ export const TOOLS: readonly ToolDefinition[] = [
             const params = node.params ?? {}
             if (model === 'any') return report('from', `Choose what to search: ${SEARCH_MODELS.join(', ')}.`)
             const fields = SEARCH_FIELDS[model]
+            if (valueNames(params.where).includes(PAGE.name))
+                return report('where', 'A value in the filters cannot be called page: that is where the query’s page number goes.')
             if (params.where !== undefined && !checkWhere(params.where, { fields, model, placeholders: true }, (message) => report('where', message))) return
             if (params.orderBy !== undefined) checkOrderBy(params.orderBy, fields, model, (message) => report('orderBy', message))
         },
+        // A wired page travels with the query: whoever runs it gives it that page's rows.
         run: (inputs, params) =>
-        Object.fromEntries(
-            Object.entries({ ...params, where: params.where === undefined ? undefined : substitute(params.where, inputs) }).filter(
-                ([, value]) => value !== undefined,
+            Object.fromEntries(
+                Object.entries({
+                    ...params,
+                    where: params.where === undefined ? undefined : substitute(params.where, inputs),
+                    page: typeof inputs.page === 'number' ? inputs.page : undefined,
+                }).filter(([, value]) => value !== undefined),
             ),
-        ),
         label: 'Build query',
         description: 'Describes a search: what to look for, how to filter and order it, and how many rows to take.',
         group: 'Queries',
-        inputs: [],
+        inputs: [PAGE],
         outputs: [{ name: 'query', label: 'Query', type: 'query<any>' }],
         params: [
             { name: 'from', label: 'Search', kind: 'model', required: true },
@@ -251,7 +259,7 @@ export const TOOLS: readonly ToolDefinition[] = [
         group: 'Queries',
         inputs: [{ name: 'query', label: 'Query', type: 'query<any>' }],
         outputs: [{ name: 'rows', label: 'Rows', type: 'list<any>' }],
-        params: [{ name: 'paged', label: 'Pages with the feed', kind: 'boolean' }],
+        params: [],
         host: true,
     },
     {

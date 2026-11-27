@@ -133,9 +133,9 @@ describe('queries', () => {
                         from: 'posts', feed: true, take: 5, orderBy: { created_at: 'desc' },
                         where: { tags: { has: { $value: 'tag' } }, user_id: { in: { $viewer: 'following' } } },
                     },
-                    in: { tag: 'tag' },
+                    in: { tag: 'tag', page: 'input.page' },
                 },
-                run: { tool: 'query.run', in: { query: 'q' }, params: { paged: true } },
+                run: { tool: 'query.run', in: { query: 'q' } },
             },
             { posts: 'run' },
         )
@@ -145,8 +145,9 @@ describe('queries', () => {
                 query: {
                     from: 'posts', feed: true, take: 5, orderBy: { created_at: 'desc' },
                     where: { tags: { has: 'art' }, user_id: { in: { $viewer: 'following' } } },
+                    page: 1,
                 },
-                params: { paged: true },
+                params: {},
                 at: { script: 'boot', node: 'run' },
             },
         ])
@@ -160,7 +161,7 @@ describe('queries', () => {
                     n: { tool: 'text', params: { value: '2026-01-02' } },
                     c: { tool: 'call', params: { script: 'top' }, in: { take: 'n' } },
                 },
-                { posts: 'c.rows', total: 'c.total', page: 'input.page' },
+                { posts: 'c.rows', total: 'c.total', at: 'input.page' },
             ),
             top: script(
                 {
@@ -173,7 +174,7 @@ describe('queries', () => {
             ),
         }
         const result = await runProgram(program, { kind: feedKind, inputs: { page: 3 }, host: fixture.tools })
-        expect(result).toEqual({ outputs: { posts: rows, total: 4, page: 3 } })
+        expect(result).toEqual({ outputs: { posts: rows, total: 4, at: 3 } })
         expect(fixture.calls).toHaveLength(1)
         expect(fixture.calls[0]!.query.where).toEqual({ created_at: { gte: '2026-01-02' } })
         expect(fixture.calls[0]!.at).toEqual({ script: 'top', node: 'run' })

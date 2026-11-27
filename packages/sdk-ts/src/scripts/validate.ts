@@ -347,7 +347,7 @@ function validateScript(ctx: Context, script: string, problems: ScriptProblem[])
             const refs = wires(node, port.name)
             const path = `${at}.in.${port.name}`
             if (!refs.length) {
-                report(path, `Wire something into ${port.label}.`)
+                if (!port.optional) report(path, `Wire something into ${port.label}.`)
                 continue
             }
             if (refs.length > 1 && !port.many) {

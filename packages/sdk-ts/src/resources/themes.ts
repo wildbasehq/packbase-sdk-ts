@@ -72,7 +72,7 @@ export interface RenderedHtmlTheme {
     css: string
     pages: string[]
 }
-/** A `.hbs` theme page: the client renders `entry` from `templates` with `context`, `results` and its viewer. */
+/** A `.hbs` theme page: the client renders `entry` from `templates` with `themeTemplateContext`. */
 export interface RenderedTemplateTheme {
     repository_id: string
     revision: string
