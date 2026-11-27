@@ -1,5 +1,5 @@
 import { CALL, scriptInputs, splitRef, validateProgram, wires } from './validate'
-import type { Program, ScriptKind, ScriptNode, ScriptProblem } from './types'
+import type { Program, ScriptFile, ScriptKind, ScriptNode, ScriptProblem } from './types'
 
 /** A tool the host supplies, such as running a query. A rejection is reported against the node. */
 export type HostTool = (
@@ -17,7 +17,29 @@ export interface RunOptions {
     /** Entry outputs to compute; all of them when omitted. Nothing else runs. */
     outputs?: string[]
     host: Record<string, HostTool>
+    /**
+     * Called once for every node that runs, with its value or the problem that stopped it.
+     * For a call node, once per output that is read. For debugging: it never changes a run.
+     */
+    trace?(at: TraceAt, result: TraceResult): void
+    /**
+     * A script whose every node also runs, in each instance the run creates, after the
+     * requested outputs. Their failures are traced and never fail the run.
+     */
+    probe?: string
 }
+
+/** Where a traced node is. */
+export interface TraceAt {
+    script: string
+    node: string
+    /** Set for a call node: the output that was read. */
+    output?: string
+    /** The call nodes that led here, outermost first, as `<script>.<node>`. Empty in the entry script. */
+    via: readonly string[]
+}
+
+export type TraceResult = { value: unknown } | { problem: ScriptProblem }
 
 class Failure extends Error {
     constructor(readonly problem: ScriptProblem) {
@@ -46,8 +68,29 @@ export async function runProgram(
             throw new Failure({ script, node, path: `nodes.${node}`, message: 'This program does too much work for one run.' })
     }
 
+    const probed: { file: ScriptFile; get: (ref: string) => Promise<unknown> }[] = []
+    /** Reports a node to the tracer. A failure is reported where it happened, not downstream. */
+    const traced = (at: TraceAt, running: Promise<unknown>) => {
+        const report = (result: TraceResult) => {
+            try {
+                options.trace?.(at, result)
+            } catch {
+                /* A tracer never changes a run. */
+            }
+        }
+        if (options.trace)
+            running.then(
+                (value) => report({ value }),
+                (error) => {
+                    if (error instanceof Failure && error.problem.script === at.script && error.problem.node === at.node)
+                        report({ problem: error.problem })
+                },
+            )
+        return running
+    }
+
     /** Evaluates one script instance; each call node gets its own instance of the callee. */
-    const instance = (script: string, inputs: Record<string, unknown>) => {
+    const instance = (script: string, inputs: Record<string, unknown>, via: readonly string[]) => {
         const file = program[script]!
         const cache = new Map<string, Promise<unknown>>()
         const children = new Map<string, Promise<(ref: string) => Promise<unknown>>>()
@@ -55,8 +98,18 @@ export async function runProgram(
             const { node: id, output } = splitRef(ref)
             if (id === 'input') return Promise.resolve(output === undefined ? undefined : inputs[output])
             const node = file.nodes[id]!
-            if (node.tool === CALL) return child(id, node).then((read) => read(output!))
-            if (!cache.has(id)) cache.set(id, evaluate(id, node))
+            if (node.tool === CALL) {
+                if (!cache.has(ref))
+                    cache.set(
+                        ref,
+                        traced(
+                            { script, node: id, output: output!, via },
+                            child(id, node).then((read) => read(output!)),
+                        ),
+                    )
+                return cache.get(ref)!
+            }
+            if (!cache.has(id)) cache.set(id, traced({ script, node: id, via }, evaluate(id, node)))
             return cache.get(id)!
         }
         const gather = async (id: string, node: ScriptNode) => {
@@ -98,7 +151,7 @@ export async function runProgram(
                         spend(1, script, id)
                         const name = node.params!.script as string
                         const declared = Object.keys(scriptInputs(program, kind, name))
-                        const callee = instance(name, Object.fromEntries(declared.map((input) => [input, values[input]])))
+                        const callee = instance(name, Object.fromEntries(declared.map((input) => [input, values[input]])), [...via, `${script}.${id}`])
                         return (output: string) => callee(program[name]!.outputs[output]!)
                     }),
                 )
@@ -124,15 +177,34 @@ export async function runProgram(
                 throw failed(`${tool.label} failed.`)
             }
         }
+        if (script === options.probe) probed.push({ file, get })
         return get
+    }
+
+    /** Runs what nothing read in the probed script. The list grows as probing reaches new instances. */
+    const probe = async () => {
+        for (let index = 0; index < probed.length; index++) {
+            const { file, get } = probed[index]!
+            const refs = Object.entries(file.nodes).flatMap(([id, node]) =>
+                node.tool === CALL
+                    ? Object.keys(program[node.params?.script as string]?.outputs ?? {}).map((output) => `${id}.${output}`)
+                    : [id],
+            )
+            await Promise.allSettled(refs.map((ref) => get(ref)))
+        }
     }
 
     try {
         const entry = program[start]
         if (!entry) return { problem: { script: start, path: '', message: `scripts/${start}.ruff does not exist.` } }
-        const read = instance(start, options.inputs)
+        const read = instance(start, options.inputs, [])
         const names = (options.outputs ?? Object.keys(entry.outputs)).filter((name) => Object.hasOwn(entry.outputs, name))
-        const values = await Promise.all(names.map((name) => read(entry.outputs[name]!)))
+        const settled = await Promise.allSettled(names.map((name) => read(entry.outputs[name]!)))
+        await probe()
+        const values = settled.map((result) => {
+            if (result.status === 'rejected') throw result.reason
+            return result.value
+        })
         return { outputs: Object.fromEntries(names.map((name, index) => [name, values[index]])) }
     } catch (error) {
         if (error instanceof Failure) return { problem: error.problem }

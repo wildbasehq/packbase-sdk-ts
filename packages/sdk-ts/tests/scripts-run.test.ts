@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import { feedKind, runProgram, type HostTool, type Program, type ScriptFile, type ScriptNode } from '../src/scripts'
+import { feedKind, runProgram, type HostTool, type Program, type ScriptFile, type ScriptNode, type TraceAt, type TraceResult } from '../src/scripts'
 
 const script = (
     nodes: Record<string, ScriptNode>,
@@ -258,4 +258,85 @@ test('the same inputs give the same outputs', async () => {
     const once = await runProgram({ boot }, { kind: feedKind, inputs: { page: 1 }, host: host().tools })
     const twice = await runProgram({ boot }, { kind: feedKind, inputs: { page: 1 }, host: host().tools })
     expect(once).toEqual(twice)
+})
+
+describe('trace and probe', () => {
+    type Seen = { at: TraceAt; result: TraceResult }
+    const collect = () => {
+        const seen: Seen[] = []
+        return { seen, trace: (at: TraceAt, result: TraceResult) => void seen.push({ at, result }) }
+    }
+    const limited = { ...source, top: { tool: 'limit', in: { list: 'posts' }, params: { take: 2 } } }
+
+    test('trace reports each node once with its value', async () => {
+        const { seen, trace } = collect()
+        await runProgram({ boot: script(limited, { a: 'top', b: 'top' }) }, { kind: feedKind, inputs: { page: 1 }, host: host().tools, trace })
+        expect(seen.map((entry) => entry.at.node).sort()).toEqual(['posts', 'q', 'top'])
+        expect(seen.every((entry) => entry.at.script === 'boot' && entry.at.via.length === 0)).toBe(true)
+        expect(seen.find((entry) => entry.at.node === 'posts')!.result).toEqual({ value: rows })
+        expect(ids((seen.find((entry) => entry.at.node === 'top')!.result as { value: any }).value)).toBe('ab')
+    })
+    test('trace reports via for a called script', async () => {
+        const { seen, trace } = collect()
+        const program: Program = {
+            boot: script({ sub: { tool: 'call', params: { script: 'art' } } }, { out: 'sub.posts' }),
+            art: script(source, { posts: 'posts' }),
+        }
+        await runProgram(program, { kind: feedKind, inputs: { page: 1 }, host: host().tools, trace })
+        const inner = seen.filter((entry) => entry.at.script === 'art')
+        expect(inner.map((entry) => entry.at.node).sort()).toEqual(['posts', 'q'])
+        expect(inner.every((entry) => entry.at.via.join() === 'boot.sub')).toBe(true)
+        const call = seen.find((entry) => entry.at.script === 'boot' && entry.at.node === 'sub')!
+        expect(call.at.output).toBe('posts')
+        expect(call.result).toEqual({ value: rows })
+    })
+    test('a failing host tool is traced as a problem and earlier values are kept', async () => {
+        const { seen, trace } = collect()
+        const result = await runProgram(
+            { boot: script(source, { out: 'posts' }) },
+            { kind: feedKind, inputs: { page: 1 }, host: { 'query.run': async () => Promise.reject(new Error('down')) }, trace },
+        )
+        expect('problem' in result).toBe(true)
+        expect('value' in seen.find((entry) => entry.at.node === 'q')!.result).toBe(true)
+        expect(seen.find((entry) => entry.at.node === 'posts')!.result).toEqual({
+            problem: { script: 'boot', node: 'posts', path: 'nodes.posts', message: 'Run query failed.' },
+        })
+    })
+    const dangling = { ...source, n: { tool: 'count', in: { list: 'posts' } } }
+    test('probe runs nodes nothing reads', async () => {
+        const plain = collect()
+        await runProgram({ boot: script(dangling, { out: 'posts' }) }, { kind: feedKind, inputs: { page: 1 }, host: host().tools, trace: plain.trace })
+        expect(plain.seen.some((entry) => entry.at.node === 'n')).toBe(false)
+        const probed = collect()
+        await runProgram(
+            { boot: script(dangling, { out: 'posts' }) },
+            { kind: feedKind, inputs: { page: 1 }, host: host().tools, trace: probed.trace, probe: 'boot' },
+        )
+        expect(probed.seen.find((entry) => entry.at.node === 'n')!.result).toEqual({ value: 4 })
+    })
+    test('probe runs the unread nodes of a called script', async () => {
+        const { seen, trace } = collect()
+        const program: Program = {
+            boot: script({ sub: { tool: 'call', params: { script: 'art' } } }, { out: 'sub.posts' }),
+            art: script(dangling, { posts: 'posts' }),
+        }
+        await runProgram(program, { kind: feedKind, inputs: { page: 1 }, host: host().tools, trace, probe: 'art' })
+        expect(seen.find((entry) => entry.at.script === 'art' && entry.at.node === 'n')!.result).toEqual({ value: 4 })
+    })
+    test('a failing probed node does not fail the run', async () => {
+        const { seen, trace } = collect()
+        const result = await runProgram(
+            { boot: script({ ...source, n: { tool: 'count', in: { list: 'posts' } } }, { out: 'q' }) },
+            { kind: feedKind, inputs: { page: 1 }, host: { 'query.run': async () => Promise.reject(new Error('down')) }, trace, probe: 'boot' },
+        )
+        expect('outputs' in result).toBe(true)
+        expect('problem' in seen.find((entry) => entry.at.node === 'posts')!.result).toBe(true)
+    })
+    test('a trace that throws does not change the result', async () => {
+        const result = await runProgram(
+            { boot: script(source, { out: 'posts' }) },
+            { kind: feedKind, inputs: { page: 1 }, host: host().tools, trace: () => { throw new Error('boom') } },
+        )
+        expect(result).toEqual({ outputs: { out: rows } })
+    })
 })
