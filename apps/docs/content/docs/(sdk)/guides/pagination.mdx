@@ -125,7 +125,7 @@ const [{ p1 }, { p2 }] = await Promise.all([
 
 ## Custom feed pages
 
-A [`runFeed()`](/reference/search#runfeedid-opts-render-a-custom-feed) result pages by number: pass `page` (from 1, at most 1000) and continue while `has_more` is true. Page 1 returns the feed's `presentation` and every declared query; later pages return only the primary query. The feed's owner also chooses how readers page, and every result reports it as `pagination`:
+A [`runFeed()`](/reference/search#runfeedid-opts-render-a-custom-feed) result pages by number: pass `page` (from 1, at most 1000) and continue while `has_more` is true. Page 1 returns the feed's `presentation` and every declared query; later pages return only the results listed in `paged`. The feed's owner also chooses how readers page, and every result reports it as `pagination`:
 
 ```ts
 const { feed } = await pb.search({ feed: runFeed(feedId, { page }) })
