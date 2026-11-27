@@ -280,6 +280,10 @@ const result = await runProgram({ boot: boot.file }, {
 
 - `TOOLS` describes every node: its ports, its parameters and how to edit them.
 - `validateProgram` returns problems with the script, node and JSON path. It never throws.
+- `queryHost({ execute, page })` is the `query.run` host tool every runner shares: it gives
+  the paged query its page window and reports `hasMore()`, and runs the rest as built.
+- For debugging, `runProgram` takes `trace(at, result)`, called for every node that runs, and
+  `probe: '<script>'`, which also runs that script's nodes that nothing reads.
 - `runProgram` evaluates only what the requested outputs depend on, each node once, inside
   the kind's limits (16 scripts, 32 nodes each, 2,000 rows into a node).
 - A **kind** is a list of tools, its entry points and its own rules. `feedKind` gives `boot`
