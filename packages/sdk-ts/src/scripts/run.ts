@@ -199,12 +199,18 @@ export async function runProgram(
         if (!entry) return { problem: { script: start, path: '', message: `scripts/${start}.ruff does not exist.` } }
         const read = instance(start, options.inputs, [])
         const names = (options.outputs ?? Object.keys(entry.outputs)).filter((name) => Object.hasOwn(entry.outputs, name))
-        const settled = await Promise.allSettled(names.map((name) => read(entry.outputs[name]!)))
-        await probe()
-        const values = settled.map((result) => {
-            if (result.status === 'rejected') throw result.reason
-            return result.value
-        })
+        const reading = names.map((name) => read(entry.outputs[name]!))
+        let values: unknown[]
+        if (options.probe === undefined) values = await Promise.all(reading)
+        else {
+            // A probed run finishes everything it can before reporting, so every node has a say.
+            const settled = await Promise.allSettled(reading)
+            await probe()
+            values = settled.map((result) => {
+                if (result.status === 'rejected') throw result.reason
+                return result.value
+            })
+        }
         return { outputs: Object.fromEntries(names.map((name, index) => [name, values[index]])) }
     } catch (error) {
         if (error instanceof Failure) return { problem: error.problem }

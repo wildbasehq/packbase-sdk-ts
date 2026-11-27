@@ -332,6 +332,20 @@ describe('trace and probe', () => {
         expect('outputs' in result).toBe(true)
         expect('problem' in seen.find((entry) => entry.at.node === 'posts')!.result).toBe(true)
     })
+    test('without a probe, a failure does not wait for the other outputs', async () => {
+        const two = {
+            ...source,
+            pq: { tool: 'query.build', params: { from: 'packs' } },
+            packs: { tool: 'query.run', in: { query: 'pq' } },
+        }
+        const run: HostTool = (inputs) =>
+            (inputs.query as { from: string }).from === 'posts' ? Promise.reject(new Error('down')) : new Promise(() => {})
+        const result = await Promise.race([
+            runProgram({ boot: script(two, { a: 'posts', b: 'packs' }) }, { kind: feedKind, inputs: { page: 1 }, host: { 'query.run': run } }),
+            new Promise((resolve) => setTimeout(() => resolve('still waiting'), 200)),
+        ])
+        expect(result).toEqual({ problem: { script: 'boot', node: 'posts', path: 'nodes.posts', message: 'Run query failed.' } })
+    })
     test('a trace that throws does not change the result', async () => {
         const result = await runProgram(
             { boot: script(source, { out: 'posts' }) },
