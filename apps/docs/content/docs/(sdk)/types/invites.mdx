@@ -1,0 +1,68 @@
+---
+title: Invitations and access codes
+description: Email invitations, direct-access code pages, allowances, and claim results.
+---
+
+Email invitations and direct-access codes use different shapes. The full flows
+are documented in [`pb.invites`](/reference/invites).
+
+```ts
+interface AccessCode {
+  id: string
+  code: string
+  url: string
+  created_at: string
+  status: 'active' | 'reserved' | 'exhausted' | 'revoked'
+  credited_user_id: string
+  credited_username: string
+  created_by_me: boolean
+  max_uses?: number
+  used_count?: number
+  pending_count?: number
+}
+
+interface AccessCodeAllowance {
+  remaining: number | null
+  next_refresh_at: string | null
+}
+
+interface AccessCodeList {
+  codes: AccessCode[]
+  allowance: AccessCodeAllowance
+  next_cursor: string | null
+}
+
+interface CreateAccessCodeInput {
+  credited_user_id?: string
+  max_uses?: number
+}
+```
+
+Staff-only usage totals are absent from ordinary responses. An unlimited staff
+creation allowance uses `null`. `next_cursor` is this endpoint's continuation
+value; this response is not `Paginated<AccessCode>` and has no `has_more` flag.
+Nullable properties can be omitted by ordinary API response cleanup, so also
+handle missing continuation and allowance values.
+
+`claimAccessCode()` returns `AccessCodeClaimResult` (`{ success: true }`).
+`revokeAccessCode()` resolves as `void`, even though its REST operation returns
+a success object. `searchCreditedUsers()` resolves to `CreditedUser[]`, unwrapping
+the REST response's `users` field. Credited users include identity, avatar, and
+the three independent profile maturity flags.
+
+```ts twoslash
+import type {
+  Invite,
+  AccessCode,
+  AccessCodeAllowance,
+  AccessCodeList,
+  AccessCodeListOptions,
+  CreateAccessCodeInput,
+  AccessCodeClaimResult,
+  AccessCodeRevokeResult,
+  CreditedUser,
+  CreditedUserSearch,
+  WaitlistReferral,
+  RedeemWaitlistReferralResult,
+} from '@packbase/sdk-ts'
+```

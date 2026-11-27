@@ -1,0 +1,123 @@
+---
+title: pb.invites
+description: Manage direct-access codes, send email invites, and work with waitlist referrals.
+---
+
+This resource supports direct-access codes, email invitations, and waitlist
+referrals. Code management and email invitation methods require a signed-in
+account. Code claims and waitlist referrals can operate before an account exists.
+
+## Direct-access codes
+
+```ts twoslash
+import { PackbaseSDK } from '@packbase/sdk-ts'
+const pb = new PackbaseSDK()
+// ---cut---
+const page = await pb.invites.listAccessCodes()
+console.log(page.allowance.remaining, page.allowance.next_refresh_at)
+for (const code of page.codes) console.log(code.url, code.status)
+if (page.next_cursor) {
+  const older = await pb.invites.listAccessCodes({ cursor: page.next_cursor })
+}
+const created = await pb.invites.createAccessCode()
+await pb.invites.revokeAccessCode(created.id)
+```
+
+Regular members create one-use codes without overrides, subject to the server's
+rolling allowance. Staff must choose a credited member and a use limit from
+1 through 99. Use `searchCreditedUsers(query)` for that staff-only picker:
+
+```ts twoslash
+import { PackbaseSDK } from '@packbase/sdk-ts'
+const pb = new PackbaseSDK()
+// ---cut---
+const eligible = await pb.invites.searchCreditedUsers('rek')
+const credited = eligible[0]
+if (credited) {
+  const code = await pb.invites.createAccessCode({ credited_user_id: credited.id, max_uses: 3 })
+}
+```
+
+Codes do not expire, but can become reserved, exhausted, or revoked. Claims
+reserve a use while the recipient verifies their email. The verification
+invitation expires after 24 hours. The signup URL and raw code are accepted:
+
+```ts twoslash
+import { PackbaseSDK } from '@packbase/sdk-ts'
+const guest = new PackbaseSDK({ autoLogin: false })
+declare const codeOrUrl: string
+// ---cut---
+const result = await guest.invites.claimAccessCode(codeOrUrl, 'person@example.com')
+```
+
+Success means that verification was requested, not that an account has been
+created. The server enforces eligibility, remaining uses, and email/IP limits.
+Revocation invalidates pending invitations as well as future claims. Codes are
+visible only to their creator or credited inviter. See [Invitation types](/types/invites)
+for the code page and allowance shapes.
+
+## Email invitations
+
+```ts twoslash
+import { PackbaseSDK } from '@packbase/sdk-ts'
+const pb = new PackbaseSDK()
+// ---cut---
+const existing = await pb.invites.list()
+const invite = await pb.invites.generate('person@example.com')
+
+console.log(invite.invite_id, invite.created_at)
+```
+
+`list()` returns invitations that the current user created. `generate(email)` asks Clerk to send an invitation email. It does not return a shareable invite code.
+
+Both methods use the `Invite` shape:
+
+```ts
+interface Invite {
+  invite_id: string
+  created_at: string
+  [key: string]: JsonValue
+}
+```
+
+Invitation providers may add JSON fields beyond the two stable keys. Render recognized fields deliberately and retain a generic JSON fallback for additional record data.
+
+## Get a waitlist referral
+
+```ts twoslash
+import { PackbaseSDK } from '@packbase/sdk-ts'
+const pb = new PackbaseSDK()
+declare const waitlistId: string
+// ---cut---
+const referral = await pb.invites.getWaitlistReferral(waitlistId)
+
+console.log(referral.url)
+console.log(referral.referrals, referral.priority)
+```
+
+This gets referral information for one Clerk waitlist entry. On the first request, the server also creates an eight-character referral code.
+
+```ts
+interface WaitlistReferral {
+  code: string
+  url: string
+  referrals: number
+  priority: number
+  referred_by?: string
+}
+```
+
+Treat the Clerk waitlist ID as sensitive because it identifies a pre-signup entry. Locked, rejected, completed, or unknown entries cannot use this endpoint.
+
+## Redeem a waitlist referral
+
+```ts twoslash
+import { PackbaseSDK } from '@packbase/sdk-ts'
+const pb = new PackbaseSDK()
+declare const waitlistId: string
+// ---cut---
+const result = await pb.invites.redeemWaitlistReferral(waitlistId, 'ABCD1234')
+console.log(result.referrer_code)
+```
+
+The `waitlistId` identifies the person who redeems the code. The second argument is the referrer's code. Codes are case-insensitive and contain a maximum of eight characters. A person can redeem a code only one time. The server rejects self-referrals.

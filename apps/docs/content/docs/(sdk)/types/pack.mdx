@@ -1,0 +1,146 @@
+---
+title: Pack
+description: TypeScript shapes for packs, members, roles, lists, and updates.
+---
+
+## `Pack`
+
+`Pack` describes a Packbase community that the API returns. Optional fields end in `?`. These fields can be absent because of the endpoint or authentication state. Some fields can also be `null`. `null` means that Packbase does not have a stored value.
+
+```ts
+type PackVisibility = 'everyone' | 'followers' | 'following' | 'friends' | 'private'
+type PackJoinedVia = 'discovery' | 'follower-of' | 'following-of' | 'friends-of' | 'request'
+
+type PackFeedType = 'list' | 'gallery'
+
+interface Pack {
+  id: string
+  display_name: string
+  visibility: PackVisibility
+  allow_access_requests: boolean
+  feed_type: PackFeedType
+  about?: { bio?: string | null; flair?: string }
+  images?: { avatar?: string | null; header?: string | null }
+  owner_id?: string | null
+  membership?: {
+    id: number
+    user_id: string
+    permissions: number
+    joined_via: PackJoinedVia
+  }
+  statistics?: {
+    members: number
+  }
+  created_at: string
+}
+```
+
+The list endpoint wraps its array in `PackList` so it can return visibility information beside the packs:
+
+```ts
+interface PackList {
+  packs: Pack[]
+  hidden: number
+  total_count?: number
+}
+```
+
+`pb.packs.list({ search })` is all-at-once; the SDK does not expose a continuation flag without a usable continuation parameter.
+
+## `PackMember`
+
+`PackMember` aliases `PackMemberSummary`, the bounded public member projection.
+Related pack references are nullable UUID strings, not hydrated pack objects.
+`PackMemberPage` is `Paginated<PackMemberSummary>`.
+
+```ts
+interface PackMemberSummary extends Omit<Profile, 'default_pack'> {
+  joined_via: PackJoinedVia
+  membership_id: string
+  joined_at: string
+  permissions: number
+  online?: boolean | null
+  last_online?: string | null
+  default_pack?: string | null
+  roles?: PackRoleSummary[]
+}
+```
+
+## Roles and permissions
+
+Permissions are bit flags. One number contains multiple Boolean permissions. Use the exported `PackPermissionBits` values. Combine them with the bitwise OR operator (`|`). Do not use hard-coded totals.
+
+```ts
+interface PackRole {
+  id: string
+  tenant_id: string
+  name: string
+  permissions: number
+  created_at: string
+  updated_at: string
+}
+```
+
+```ts
+const PackPermissionBits = {
+  Owner: 1,
+  Administrator: 2,
+  BanMembers: 4,
+  KickMembers: 8,
+  ManageRoles: 16,
+  DeleteHowls: 128,
+  CreateHowls: 256,
+  ManagePack: 512,
+  PinHowls: 1024,
+  ViewPackInsights: 2048,
+  ManagePackReports: 8192,
+  ManageEmotes: 16384,
+} as const
+```
+
+Custom roles cannot carry the `Owner` bit.
+
+For example, `PackPermissionBits.BanMembers | PackPermissionBits.KickMembers` creates the permission number for a role that can do both.
+
+## Create and edit input
+
+```ts
+interface PackCreateInput {
+  visibility?: PackVisibility
+  allow_access_requests?: boolean
+  display_name: string
+  description: string
+}
+
+interface PackEditInput {
+  visibility?: PackVisibility
+  allow_access_requests?: boolean
+  remove_ineligible_members?: boolean
+  feed_type?: PackFeedType
+  display_name?: string
+  about?: { bio?: string; flair?: string }
+  images?: { header?: string; avatar?: string }
+}
+```
+
+New and existing packs default to `list`. Omitted `feed_type` updates retain the saved preference.
+
+The edit endpoint returns `PackUpdateResult`, including its saved `feed_type`. This type matches the database update result, not a formatted `Pack`. To get the standard response structure after an edit, fetch the pack again.
+
+## Import
+
+```ts
+import type {
+  Pack,
+  PackFeedType,
+  PackList,
+  PackMember,
+  PackRole,
+  PackRoleInput,
+  PackRoleSummary,
+  PackCreateInput,
+  PackEditInput,
+  PackUpdateResult,
+  PackSetting,
+} from '@packbase/sdk-ts'
+```

@@ -1,0 +1,117 @@
+---
+title: Packchat
+description: Link an owned Fluxer community and read its selected channels.
+---
+
+Packchat lives at `pb.packs(packId).packchat`. It is read-only. Community and channel IDs are strings; never convert Fluxer snowflakes to JavaScript numbers.
+
+Account authorization lives under [`pb.me.connections`](/reference/connections).
+That reference covers discovery, session requirements, callbacks, custom
+providers, and disconnect behavior. `pb.me.fluxer` is no longer available.
+
+## Link a community
+
+Only the actual pack owner may link or configure a community. The same person must be the current Fluxer community owner; administrator permissions and installing the bot do not establish ownership.
+
+```ts twoslash
+import { PackbaseSDK } from '@packbase/sdk-ts'
+const pb = new PackbaseSDK()
+declare const packId: string
+declare const selectedGuildId: string
+declare const code: string
+declare const state: string
+declare const signal: AbortSignal
+// ---cut---
+const { authorization_url } = await pb.me.connections.fluxer.authorize({
+    pack_id: packId,
+})
+// Redirect the member to authorization_url. In the signed-in callback:
+const result = await pb.me.connections.fluxer.complete(
+    { code, state },
+    { signal },
+)
+// Use the server-provided return_path after completion.
+const identity = await pb.me.connections.fluxer.status({ signal })
+const chat = pb.packs(packId, { signal }).packchat
+const selectedGuild = identity.owned_guilds.find(
+    (guild) => guild.id === selectedGuildId,
+)
+if (!selectedGuild) throw new Error('Choose a community you own.')
+await chat.link({ guild_id: selectedGuild.id })
+```
+
+The owner explicitly chooses a community from the returned list. `authorize({ pack_id, guild_id, install: true })` also requests bot installation for the selected community. OAuth credentials and bot tokens stay on the server; the SDK receives only verified identity summaries.
+
+```ts twoslash
+import { PackbaseSDK } from '@packbase/sdk-ts'
+const pb = new PackbaseSDK()
+const chat = pb.packs('pack-id').packchat
+declare const selectedChannelIds: string[]
+// ---cut---
+const settings = await chat.settings()
+await chat.configure({
+    audience: 'pack_members',
+    channel_ids: selectedChannelIds,
+})
+```
+
+Audiences are `public`, `pack_members`, and `pack_and_fluxer_members`. Publishing to a broader audience requires explicit confirmation through `confirm_publish: true`. Only selected eligible channels appear. `settings()` returns available channels and owned communities for management; `status()` returns the safe connection status.
+
+## Read channels and messages
+
+```ts twoslash
+import { PackbaseSDK } from '@packbase/sdk-ts'
+const pb = new PackbaseSDK()
+const chat = pb.packs('pack-id').packchat
+declare const channelId: string
+declare const signal: AbortSignal
+// ---cut---
+const listing = await chat.channels()
+const page = await chat.messages(channelId, { signal })
+if (page.has_more && page.before) {
+    const older = await chat.messages(channelId, {
+        before: page.before,
+        signal,
+    })
+}
+```
+
+Reads preserve request cancellation and apply the current pack audience, bans, account standing and Fluxer authorization on the server. Message pages include `generation` and `authorization_expires_at`; clear displayed chat when its authorization expires unless a fresh read succeeds. Clear old content when generation changes, access is denied, or the connection becomes unavailable. Settled chat responses are not retained by the SDK.
+
+Message `type` preserves Fluxer system events; `7` is a member join notice, which can have empty `content`. Render it as a join notice using the author rather than an empty message. An omitted type on older servers means an ordinary message.
+
+Render message content as text or safely parsed Markdown with raw HTML disabled. The API supplies external attachment URLs; the SDK does not download or rewrite them. Packchat has no send, reaction or moderation methods; the community URL opens Fluxer for those actions.
+
+## Author profiles
+
+`message.author.packbase_profile` contains a minimal Packbase profile when the author has a verified Fluxer connection, is visible to the reader, and allows attribution. Use its `username` for `/u/:username/` links. If absent, show the Fluxer author instead. The privacy setting `packchat_profile_link` defaults to `true`; members can change it in Privacy & Sharing. Author preferences are checked on each message read.
+
+## Join the community
+
+`await chat.invite()` returns `{ url }`: the community vanity invite, or a bot-created one-day invite when no vanity is configured. Resolve it on the join button click. The bot needs `CREATE_INSTANT_INVITE` on the invitation channel. Requests reuse matching invites and respect pack membership, visibility, bans and current link ownership, without requiring existing Fluxer membership. Message reads remain read-only.
+
+## Disconnect
+
+```ts twoslash
+import { PackbaseSDK } from '@packbase/sdk-ts'
+const pb = new PackbaseSDK()
+const chat = pb.packs('pack-id').packchat
+declare const signal: AbortSignal
+// ---cut---
+await chat.unlink() // Pack owner: removes this pack's community link.
+await pb.me.connections.fluxer.disconnect({ signal }) // Disconnects this member's identity.
+```
+
+Disconnecting an identity also removes community links owned by that member. A stale OAuth grant, removed bot or ownership change must be resolved with fresh authorization; clients must not treat previous successful reads as continuing authorization.
+
+## Other instances
+
+Fluxfur uses the same Packchat methods and permissions as Fluxer. The server lists
+configured instances in `status.available_instances`; `status.instance` identifies
+the linked community's instance. Missing instance fields on older servers mean
+Fluxer. Use `pb.me.connections.fluxfur` for Fluxfur identity/ownership verification
+and bot installation, then pass `instance: "fluxfur"` to `chat.link({ guild_id, instance })`.
+Omitting `instance` retains Fluxer behavior. One community is linked per pack;
+unlink it before choosing another instance. Numeric IDs are scoped to the instance.
+The legacy `fluxer_connected` status field describes the selected instance's identity,
+and `pack_and_fluxer_members` applies to that instance's community membership.

@@ -1,0 +1,103 @@
+---
+title: Authentication
+description: Help Packbase identify the user with an API key, JWT, or browser session cookie.
+icon: KeyRound
+---
+
+Authentication identifies the user who makes a request. Public calls can work without authentication. Account operations require a signed-in user. These operations include creating a howl, reading an inbox, and calling `pb.me()`.
+
+The SDK supports two authentication methods. You can pass a token to `apiKey`. In a browser, you can use the existing Packbase session cookie.
+
+## Option 1: Pass an API key or token
+
+Use this method in server code, scripts, command-line tools, and CI jobs. Pass the key when you create the client:
+
+```ts
+import { PackbaseSDK } from '@packbase/sdk-ts'
+
+const pb = new PackbaseSDK({
+  apiKey: process.env.PACKBASE_API_KEY,
+})
+```
+
+The `apiKey` option can contain a long-lived Packbase API key or a Clerk JWT. A JWT is a short-lived token that identifies a user.
+
+For each request, the SDK sends the value in an HTTP header that looks like this:
+
+```text
+Authorization: Bearer your-key-or-token
+```
+
+The SDK makes this header. When you set `apiKey`, the SDK does not send browser cookies.
+
+<Callout type="warn">
+  Do not commit an API key to Git. Do not put an API key in code that a browser receives. Keep server secrets in environment variables. Make sure that each environment variable is set where your application runs.
+</Callout>
+
+In Next.js, read the key in a Server Component, Route Handler, or Server Action. Do not use an environment variable name that starts with `NEXT_PUBLIC_`. Next.js includes these values in browser code.
+
+Clerk JWTs expire. Request a new token when a server session starts. Do not keep the token for an unlimited time.
+
+## Option 2: Use the browser session cookie
+
+If someone is already signed in to Packbase in the browser, create the client without `apiKey`:
+
+```ts twoslash
+import { PackbaseSDK } from '@packbase/sdk-ts'
+
+const pb = new PackbaseSDK()
+//    ^?
+```
+
+The SDK uses `credentials: 'include'`. This setting tells the browser to include the Packbase session cookie with requests. Your code usually does not read or process the cookie. For security, JavaScript frequently cannot read the cookie.
+
+Use cookie authentication for front-end web applications and custom browser clients.
+
+<Callout type="warn">
+  A client without `apiKey` does not sign in a user. The browser must have a valid Packbase session cookie. A server does not forward cookies automatically. Your application must forward the received cookie.
+</Callout>
+
+## Public requests without authentication
+
+For a public-only client, disable the constructor's automatic `pb.me()` request:
+
+```ts twoslash
+import { PackbaseSDK } from '@packbase/sdk-ts'
+// ---cut---
+const pb = new PackbaseSDK({ autoLogin: false })
+const packs = await pb.packs.list()
+```
+
+This option prevents an expected login error for an anonymous client. It does not disable authenticated methods. An explicit `pb.me()` call still makes its usual request.
+
+## Use a different API server
+
+The SDK calls `https://vgs.packbase.app` by default. For local development, staging, or a self-hosted instance, pass `baseUrl`:
+
+```ts
+import { PackbaseSDK } from '@packbase/sdk-ts'
+// ---cut---
+const pb = new PackbaseSDK({
+  apiKey: process.env.PACKBASE_API_KEY,
+  baseUrl: 'http://localhost:3001',
+})
+```
+
+Do not include the trailing slash. The SDK adds the endpoint path for each request.
+
+## Quick comparison
+
+| Method | Value | Use in |
+| --- | --- | --- |
+| API key or Clerk JWT | `{ apiKey: '...' }` | Servers, scripts, CLI tools, and CI |
+| Session cookie | Nothing | Browser apps with an existing Packbase login |
+| Public access only | `{ autoLogin: false }` | Any environment calling public endpoints |
+
+If an authenticated call returns `401`, make sure that the key is valid. Make sure that the environment variable has a value. For cookie authentication, make sure that the browser has a signed-in user. Then, read [Error Handling](/getting-started/error-handling) to process the failure in code.
+
+## External account connections
+
+Packbase authentication and external account authorization are separate.
+[`pb.me.connections`](/reference/connections) connects services such as Fluxer
+to the current Packbase member. Fluxer OAuth binds its state to a Clerk sign-in
+session. A long-lived Packbase API key alone cannot start or complete it.

@@ -1,0 +1,103 @@
+---
+title: Pack custom emotes
+description: Manage Pack image emotes and use member-only collections across Packbase.
+---
+
+Each Pack owns its emotes. Current members can use them in howls, replies, quotes,
+profile display names and bios, and author-selected like emojis. Everyone who can
+read the content can see its emotes, including guests and nonmembers.
+
+## Select and insert
+
+```ts twoslash
+import { PackbaseSDK, formatEmoteToken } from '@packbase/sdk-ts'
+const pb = new PackbaseSDK()
+// ---cut---
+const available = await pb.me.emotes()
+const wave = available.find(emote => emote.shortcode === 'wave')
+if (wave) {
+  await pb.howls.create({
+    tenant_id: 'destination-pack-id',
+    body: `Hello ${formatEmoteToken(wave)}`,
+    tags: ['rating_safe'],
+  })
+  await pb.me.settings({ howl_like_emoji: formatEmoteToken(wave) })
+}
+```
+
+`pb.me.emotes()` returns a fresh `PackEmote[]` of currently usable emotes; use
+`pack_id` and optional `pack_name` to group a picker. Membership in the source
+Pack permits use across Packbase, subject to normal destination permissions.
+The server checks permission again when saving or publishing. Refresh the
+catalogue after joining, leaving, or being removed from a Pack.
+
+`formatEmoteToken()` emits `:wave(uuid):`, never an image URL or HTML attribute.
+Plain `:wave:` does not identify a custom image. The stable UUID resolves the
+image after a shortcode is renamed and distinguishes the same name in different
+Packs. The formatter validates token syntax; it does not establish membership.
+
+## Manage a Pack's collection
+
+```ts twoslash
+import { PackbaseSDK, PackPermissionBits } from '@packbase/sdk-ts'
+const pb = new PackbaseSDK()
+declare const imageDataUrl: string
+// ---cut---
+const collection = pb.packs('pack-id').emotes
+const emotes = await collection.list()
+const added = await collection.upload({
+  shortcode: 'wave',
+  label: 'Wave',
+  image: imageDataUrl,
+})
+await collection.update(added.id, { shortcode: 'hello', label: 'Hello' })
+await collection.remove(added.id)
+
+const role = await pb.packs('pack-id').createRole({
+  name: 'Emote curator',
+  permissions: PackPermissionBits.ManageEmotes,
+})
+```
+
+Uploads and metadata changes require **Manage Emotes** (`16384`), owner, or
+administrator access. **Manage Pack** alone does not grant it. Role creation
+separately requires the existing role-management authority.
+
+Upload an image as a base64 data URL. PNG, JPEG, WebP, and GIF are supported, with
+up to 100 active emotes per Pack, a 2 MiB decoded upload limit, and images fitted
+within 128 × 128 pixels. Supported animation is retained; the server also creates
+a still image. Source image processing limits are validated by the server.
+
+Shortcodes are unique within a Pack. `update()` changes the name or label; replacing
+an image requires a new upload. `remove()` disables new use and returns no body.
+It keeps historical content and assets intact.
+
+Every method accepts `RequestOptions`, including `signal`. Server errors remain
+`PackbaseError`s: show the supplied message for unavailable emotes, denied
+membership/management, duplicate shortcodes, and invalid or oversized images.
+Do not retry an upload automatically after an uncertain response.
+
+## Render retained content
+
+Howls, replies, and profiles include optional `emotes: PackEmote[]` for references
+in their content. A custom author-selected like includes `likes.emote`; its
+`likes.emoji` still carries the canonical token. Unicode emojis keep the existing
+string representation and need no custom metadata.
+
+Use metadata on the content being rendered, rather than `pb.me.emotes()`: readers
+need not belong to the source Pack. Use `src` normally and `still_src` for reduced
+motion; `label` supplies the accessible image description. Missing metadata should
+leave the token as readable text. The SDK supplies records and token formatting,
+not a framework-specific rendering component.
+
+`await pb.me()` includes the current profile's retained `emotes` metadata.
+`pb.me.emotes()` is the usable-catalogue method and remains callable after login.
+
+Leaving, removal, or source-Pack deletion prevents new use while retaining
+existing references. Existing profile occurrences can remain during later edits;
+additional occurrences require current membership. Published like emojis remain
+fixed. If a selected like emote becomes unavailable, the preference resets to
+🔥 and an in-app notification explains why; new publication remains available.
+
+External Packchat emote importing and additional reaction types are not part of
+this feature.

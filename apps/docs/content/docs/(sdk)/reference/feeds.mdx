@@ -1,0 +1,59 @@
+---
+title: pb.feeds
+description: Fetch one page of a Packbase feed, including any pinned howls.
+---
+
+Call `pb.feeds(id)` with a feed name or pack ID to create a `FeedHandle`. This action does not fetch data. Call `.fetch()` to load a page.
+
+## Signatures
+
+```ts twoslash
+import { PackbaseSDK, type FeedHandle, type FeedPage } from '@packbase/sdk-ts'
+const pb = new PackbaseSDK()
+// ---cut---
+const handle: FeedHandle = pb.feeds('universe:home')
+```
+
+## `handle.fetch(options?)`: Fetch a feed page
+
+Fires `GET /feed/:id`.
+
+```ts twoslash
+import { PackbaseSDK } from '@packbase/sdk-ts'
+const pb = new PackbaseSDK()
+// ---cut---
+const page = await pb.feeds('universe:home').fetch({
+  page: 1,
+  includePinsFrom: 'pack-uuid',
+})
+
+console.log(page.pins)
+console.log(page.data)
+console.log(page.has_more)
+```
+
+Built-in feed IDs include `universe:home` and `gossip:network`. A pack UUID also works when you want that pack's feed.
+
+**Options:**
+
+| Option | Type | Description |
+| --- | --- | --- |
+| `page` | `number` | Page number, starting at 1. |
+| `mediaOnly` | `boolean` | Send `media_only` to include only image/video howls and pins, filtered before pagination. Defaults to false. |
+| `includePinsFrom` | `string` | Optional pack ID whose pins should be included in the feed. |
+| `signal` | `AbortSignal` | Cancel the request. |
+
+`mediaOnly` is supported for Pack and user feeds. Home (`universe:home`) and
+Gossip (`gossip:network`) reject that filter. The feed's list/gallery presentation
+is a separate preference; gallery mode does not imply media-only content.
+
+Responses can also include `explanations`, keyed by concrete howl ID. Treat it as
+provenance for that response, not as a persisted property of the howl. See
+[Feed and search types](/types/feed).
+
+The response puts pinned howls in `page.pins` and standard items in `page.data`. A pinned howl can include `meta.pin_expires_at` if a moderator set an automatic expiration.
+
+**Returns:** [`FeedPage`](/types/feed)
+
+
+Feed reads apply the viewer's private mutes and server-owned blocking before pagination and pin selection, including nested quote/reply previews. There is no feed option to bypass blocking. Profile and direct howl views use the separate direct mute context; see [visibility](/reference/visibility).

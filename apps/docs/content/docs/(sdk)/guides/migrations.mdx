@@ -1,0 +1,63 @@
+---
+title: Account migrations
+description: Build a complete import flow from the server's service schema.
+---
+
+Fetch `pb.migrations.services()` before offering a migration. Show each service's
+availability and reason, imports, exclusions, completed-import limit, post limit, and
+soft-lock description. Render its `fields` using their type, label, description,
+required flag, constraints, and select options. When `destination.required` is true,
+require a destination pack the signed-in user can post to. The server validates all
+inputs, limits, permissions, ownership, and lifecycle transitions independently.
+
+```ts twoslash
+import { PackbaseSDK } from '@packbase/sdk-ts'
+const pb = new PackbaseSDK({ apiKey: 'clerk-jwt', autoLogin: false })
+// ---cut---
+const schema = await pb.migrations.services()
+const state = await pb.migrations.status()
+console.log(schema.services, state.migrations, state.account_locked)
+```
+
+After the user supplies a service's inputs, create the challenge. This example assumes
+the current schema offers Bluesky with a `handle` field; forms must use the fetched
+schema rather than hardcoding that field.
+
+```ts twoslash
+import { PackbaseSDK } from '@packbase/sdk-ts'
+const pb = new PackbaseSDK({ apiKey: 'clerk-jwt', autoLogin: false })
+// ---cut---
+const migration = await pb.migrations.create({
+  service: 'bluesky',
+  inputs: { handle: 'example.bsky.social' },
+  tenant_id: 'destination-pack-id',
+})
+console.log(migration.secret, migration.secret_expires)
+```
+
+Show verification instructions from `migration.policy`, the record's proof text, and
+its expiry. Use this policy snapshot for every later review, even if the service
+catalog changes.
+The user publishes the proof on their external account, then explicitly requests
+verification with `pb.migrations.verify(migration.id)`. Keep the pending step and show
+a retryable inline error if proof is missing. Cancel expired challenges when permitted
+and create a fresh one.
+
+Once verified, show a final review of the destination, imported content, limits, and
+account restrictions. Start only after the user confirms with
+`pb.migrations.start(migration.id)`. Poll `status()` while an import is in progress;
+restore that same record after navigation or reload. Render progress from
+`progress_current` and `progress_total`. A total of zero means no count is available.
+
+Respect the current `account_locked` flag while polling. A lock pauses writes during
+the import and is released when the import completes or fails. Reading and migration
+status remain available. Never release a lock merely because a browser timeout occurs.
+
+Show completion when the server returns `completed`, then refresh affected feeds and
+profile data. Keep errors visible for `failed`. Offer `retry(id)` only when `can_retry`
+is true and `cancel(id)` only when `can_cancel` is true. Cancelling does not remove
+already imported content. Keep completed and cancelled entries available in history.
+
+SDK 0.7 replaces the legacy create-via-verify request shape. `create` now receives
+`{ service, inputs, tenant_id? }`; `verify`, `start`, `cancel`, and `retry` receive
+only the migration ID. Legacy migration requests are unsupported.

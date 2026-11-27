@@ -1,0 +1,116 @@
+---
+title: Connections
+description: Provider definitions, status, authorization results, and typed Fluxer data.
+---
+
+## Provider definitions
+
+`pb.me.connections.list()` returns enabled provider definitions:
+
+```ts
+interface ConnectionDefinition {
+  id: string
+  name: string
+  description: string
+  disconnect_description: string
+  method: 'oauth2' | 'custom'
+  fields: Array<{
+    name: string
+    label: string
+    type: 'text' | 'password'
+  }>
+}
+```
+
+The definition describes how to render a provider. It does not contain a member's
+connection status or credentials. Custom fields are supplied by the server.
+
+## Generic status and results
+
+```ts
+interface ConnectionStatus {
+  connected: boolean
+  user?: {
+    id: string
+    username: string
+    avatar?: string | null
+  }
+}
+
+type ConnectionAuthorization =
+  | { authorization_url: string }
+  | { connected: true; return_path?: string }
+
+interface ConnectionCompletion {
+  connected: true
+  return_path: string
+}
+```
+
+Generic `authorize()` and `complete()` accept `Record<string, unknown>` inputs.
+The provider validates its own schema on the server. Narrow authorization results
+with `'authorization_url' in result` before you use that field. A completion's
+`return_path` is a local application path.
+
+The SDK does not validate every provider response at runtime. The generic status
+type exposes shared fields only. Use a typed provider accessor when your client
+needs provider-specific fields.
+
+## Fluxer
+
+```ts
+interface FluxerConnection {
+  connected: boolean
+  user?: { id: string; username: string; avatar?: string | null }
+  owned_guilds: FluxerGuild[]
+}
+
+interface FluxerAuthorizeInput {
+  pack_id?: string
+  guild_id?: string
+  install?: boolean
+}
+
+interface FluxerAuthorization {
+  authorization_url: string
+}
+
+interface FluxerCompleteInput {
+  code: string
+  state: string
+}
+
+interface FluxerCompleteResult {
+  connected: true
+  pack_id?: string
+  return_path: string
+}
+```
+
+`owned_guilds` is empty when the account is disconnected or its ownership
+snapshot has expired. An empty list does not always mean that the member owns
+no communities. Reauthorize when current ownership proof is required. Keep
+external IDs as strings.
+
+## Imports
+
+```ts twoslash
+import type {
+  ConnectionsResource,
+  ConnectionResource,
+  ConnectionDefinition,
+  ConnectionStatus,
+  ConnectionAuthorization,
+  ConnectionCompletion,
+  FluxerResource,
+  FluxerConnection,
+  FluxerGuild,
+  FluxerAuthorizeInput,
+  FluxerAuthorization,
+  FluxerCompleteInput,
+  FluxerCompleteResult,
+} from '@packbase/sdk-ts'
+```
+
+See [`pb.me.connections`](/reference/connections) for lifecycle examples and
+[Packchat](/reference/packchat) for the linked community contract.

@@ -1,0 +1,215 @@
+---
+title: Templates
+description: Write HTML and Handlebars pages for profiles and packs, Handlebars layouts for custom feeds, and the CSS and images they use.
+---
+
+Packbase has two page formats:
+
+| Format | Where | Data | Rendered by |
+| --- | --- | --- | --- |
+| HTML (`.html`) | Profile and pack pages | The owner's name, username and description | The server, when it validates the revision |
+| Handlebars (`.hbs`) | Profile and pack pages, and every custom feed | Query results, run as the reader, plus the owner and the page | The reader's browser, in a sandbox |
+
+Neither format runs author JavaScript.
+
+## HTML pages
+
+An HTML page is a fragment, not a document: write the content, without `<html>`, `<head>` or `<body>`.
+
+```html
+<section class="intro">
+  <h2>Hi, I'm {{display_name}}</h2>
+  <p>{{description}}</p>
+  <img src="/assets/banner.png" alt="" />
+  <a href="about">About me</a>
+</section>
+```
+
+### Tokens
+
+HTML pages support three tokens. Their values are HTML-escaped.
+
+| Token | Profile | Pack |
+| --- | --- | --- |
+| `{{display_name}}` | Display name, or the username | Pack name |
+| `{{username}}` | Username | Empty |
+| `{{description}}` | Bio | Pack description |
+
+Any other `{{...}}` is a validation error. For query results, conditions or loops, use a Handlebars page.
+
+### Layout
+
+`layout.html` wraps every HTML page. It must contain exactly one `{{content}}` slot, where the page goes. It doesn't wrap Handlebars pages, and it never replaces Packbase's own layout.
+
+```html
+<div class="frame">
+  {{content}}
+  <footer>Made with care</footer>
+</div>
+```
+
+### What HTML can contain
+
+The server sanitizes HTML pages with DOMPurify and an allowlist.
+
+- **Elements:** text, headings, lists, tables, `details`/`summary`, `figure`, `img`, `a`, `time` and layout elements such as `section`, `article`, `header`, `footer`, `main`, `nav` and `aside`. `<style>` blocks are allowed and compiled with the page's CSS.
+- **Attributes:** `class`, `style`, `alt`, `title`, `href`, `src`, `width`, `height`, `lang`, `dir`, `datetime`, `colspan`, `rowspan`, `scope`, `open` and `rel`. `id`, `name`, `data-*` and `aria-*` attributes are removed.
+- **Not allowed:** scripts, event handlers, forms and controls, `iframe` and other embedded documents, `svg`, `math` and `template`.
+- **Links:** `https:`, `http:` and `mailto:` links, absolute app paths such as `/u/someone`, and relative links between your pages (`href="about"` from `pages/page.html` opens `pages/about`). Other schemes and `#` fragments lose their `href`. Every link gets `rel="nofollow noreferrer noopener"`.
+- **Images:** `<img src>` must name a file in `assets/`. An `img` without `src` is removed.
+
+## Handlebars templates
+
+Handlebars templates can use query results, loops and conditions. Write them as HTML with [Handlebars](https://handlebarsjs.com/guide/) expressions. The server checks each template's syntax, helpers and partials when it validates a revision. The reader's browser then renders the template in a sandboxed frame with no network access, sanitizes the output with the same policy as HTML pages and mounts it.
+
+```handlebars
+<h2>Latest from {{owner.display_name}}</h2>
+{{#each results.recent}}
+  {{> howl this}}
+{{else}}
+  <p>Nothing yet.</p>
+{{/each}}
+```
+
+### Context
+
+Each kind renders with a different context. Results come from the queries declared in the [manifest](/atelier/manifests), run as the reader, so a reader sees only what they're allowed to see.
+
+**Profile and pack pages** render with `ThemeTemplateContext`:
+
+| Field | Description |
+| --- | --- |
+| `owner` | The public profile, or the pack |
+| `page` | The page's path, such as `about`, `profile` or `''` for the index |
+| `results` | The `theme.json` queries by name, such as `results.recent` |
+| `viewer` | `{ signedIn }` |
+
+**Custom feeds** render `templates/feed.hbs` with `FeedTemplateContext`, once for each page of results:
+
+| Field | Description |
+| --- | --- |
+| `feed` | `{ id, display_name, description, owner, pinned, pin_count }` |
+| `results` | The `feed.json` queries by name. On page 1, every query. After page 1, only the `primary` query. |
+| `page` | The page number, starting at 1 |
+| `hasMore` | Whether another page exists |
+| `viewer` | `{ signedIn }` |
+
+Viewer identity is never in the context, and [viewer placeholders](/reference/search#viewer-placeholders) such as `{ "$viewer": "following" }` are never expanded into it.
+
+A failed query arrives as `{ __error }` instead of an array. Guard secondary results with `{{#if}}` or `{{#each}}...{{else}}`.
+
+### Pages of a feed
+
+Each page of a feed renders on its own, with only that page's results. Content outside the posts loop therefore repeats on every page unless you limit it to page 1:
+
+```handlebars
+{{#if (eq page 1)}}
+  <header class="feed-header">
+    <h2>{{feed.display_name}}</h2>
+    <p>{{feed.description}}</p>
+  </header>
+{{/if}}
+
+{{#each results.posts}}
+  {{> howl this}}
+{{/each}}
+```
+
+The feed's [`pagination`](/atelier/manifests#pagination) mode decides how readers see the pages:
+
+- **`infinite`:** pages stack as the reader scrolls, so wrap a header in `{{#if (eq page 1)}}` to show it once, at the top.
+- **`paged`:** the reader sees one page at a time. A header in `{{#if (eq page 1)}}` appears only on page 1. To show it on every page, leave out the condition. `{{page}}` and `hasMore` let you write something such as `Page {{page}}` in the layout.
+
+Packbase draws the Load more and Previous/Next controls itself, outside your template.
+
+### Helpers
+
+`TEMPLATE_HELPERS` lists every helper a template can call. Any other helper fails validation.
+
+| Helper | Example | Result |
+| --- | --- | --- |
+| `if`, `unless`, `each`, `with`, `lookup`, `log` | `{{#each results.posts}}` | Handlebars built-ins |
+| `eq`, `ne` | `{{#if (eq page 1)}}` | Strict equality |
+| `gt`, `gte`, `lt`, `lte` | `{{#if (gt likes 10)}}` | Numeric comparison |
+| `and`, `or`, `not` | `{{#if (and viewer.signedIn hasMore)}}` | Logic over any number of values |
+| `length` | `{{length results.posts}}` | Length of a string or list, or key count of an object |
+| `json` | `{{json this}}` | JSON text, for debugging |
+| `date` | `{{date created_at "long"}}` | A localized date. Styles: `short`, `medium` (default), `long`, `full`, `iso` |
+| `relativeTime` | `{{relativeTime created_at}}` | Such as `3 hours ago` |
+| `number` | `{{number pin_count "compact"}}` | A localized number. `compact` gives `1.2K` |
+| `truncate` | `{{truncate body 140}}` | The first characters, with `…` |
+| `lower`, `upper` | `{{upper feed.display_name}}` | Changed case |
+| `plural` | `{{plural pin_count "pin"}}` | `pin` for 1, otherwise `pins` or a given plural |
+| `url` | `{{url link}}` | The value if it's an app path or `https:` URL, otherwise empty |
+| `howlUrl`, `profileUrl`, `packUrl` | `{{profileUrl user.username}}` | `/h/<id>`, `/u/<username>`, `/p/<id>` |
+| `mediaUrl` | `{{mediaUrl asset}}` | A media item's URL |
+
+### Built-in partials
+
+`BUILTIN_PARTIALS` mount native Packbase components over your markup. Pass the howl as the context, as in `{{> like this}}`.
+
+| Partial | Renders |
+| --- | --- |
+| `howl` | The full native howl card |
+| `like` | The like button, with the emoji, count and the reader's like |
+| `replyButton` | The reply button and composer |
+| `menu` | The howl's menu |
+| `share` | The share button |
+| `media` | The howl's media and viewer |
+| `author` | The author's name and avatar |
+
+Your own partials live in `templates/<name>.hbs` and are used as `{{> name}}`, for example `{{> card this}}` for `templates/card.hbs`. Inline partials (`{{#*inline "name"}}...{{/inline}}`) work in any template. Other decorators aren't supported. Calling an unknown partial fails validation.
+
+### Actions
+
+Any element can run a howl action with `data-pb-action` and `data-pb-howl="{{id}}"`:
+
+```handlebars
+<article>
+  {{> author this}}
+  <p>{{truncate body 280}}</p>
+  <button data-pb-action="like" data-pb-howl="{{id}}">Like</button>
+  <button data-pb-action="open" data-pb-howl="{{id}}">Open</button>
+</article>
+```
+
+| `data-pb-action` | Effect |
+| --- | --- |
+| `like` | Likes or unlikes the howl |
+| `reply` | Opens the reply composer |
+| `open` | Opens the howl in the app |
+| `share` | Shares the howl |
+| `profile` | Opens the author's profile |
+
+Same-origin links open inside the app without reloading the page.
+
+### Restrictions
+
+- `src`, `srcset` and `poster` can't load external URLs. Use a value from your query results, such as a howl's media, or a theme asset through CSS.
+- Inline `style` attributes can't load images with `url()` or `image-set()`. Put those in a stylesheet.
+- Output is sanitized with the HTML page policy, plus Packbase's own `data-pb-*` markers.
+- A render that takes longer than 1 second, or produces more than 2 MB of HTML, fails. The owner sees the error in place of the page; readers see a short notice.
+
+## CSS
+
+| Kind | Stylesheets | Scope |
+| --- | --- | --- |
+| Profile and pack | `style.css`, plus `<style>` blocks and `style` attributes in HTML pages | The surrounding Packbase interface, while the theme is shown |
+| Custom feed | Every `styles/*.css`, in file-name order | The feed's container only |
+
+Feed CSS can't affect anything outside the feed. The server prefixes every selector with `[data-custom-feed="<id>"]`, so `:root`, `html` and `body` style the feed container itself. Custom properties defined there work as expected. Keyframe names are prefixed too, and the feed is clipped to its container, so fixed or raised elements stay inside it.
+
+All CSS is parsed and checked. `@import`, external `url()` values and unknown functions are rejected. `@media`, `@supports`, `@layer` and `@keyframes` are supported.
+
+## Images
+
+Reference files in `assets/` with a path relative to the file that uses them, or with a leading `/` from the repository root:
+
+```css
+/* styles/feed.css */
+.feed-header {
+  background-image: url("../assets/banner.png");
+}
+```
+
+The server embeds each referenced image in the compiled output, so readers never load anything from elsewhere. An unknown asset, a query string or fragment, or a remote URL fails validation. In HTML pages, `<img src="/assets/banner.png">` works the same way. In Handlebars templates, use assets from CSS.

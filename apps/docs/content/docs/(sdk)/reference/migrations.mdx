@@ -1,0 +1,42 @@
+---
+title: pb.migrations
+description: Server-controlled account migrations and ownership verification.
+---
+
+`pb.migrations` exposes the versioned service schema and the authenticated migration lifecycle.
+All methods accept an optional `{ signal: AbortSignal }` request option.
+
+| Method | Result | Purpose |
+| --- | --- | --- |
+| `services()` | `MigrationServicesResponse` | Public version-1 policy and supported services |
+| `create({ service, inputs, tenant_id? })` | `MigrationRecord` | Create an ownership challenge |
+| `verify(migrationId)` | `MigrationRecord` | Verify the published ownership proof |
+| `start(migrationId)` | `MigrationRecord` | Start a verified import |
+| `cancel(migrationId)` | `MigrationRecord` | Cancel an eligible migration |
+| `retry(migrationId)` | `MigrationRecord` | Retry an eligible failed migration |
+| `status()` | `MigrationStatusResponse` | Current account history and lock state |
+
+`services()` and `status()` bypass HTTP caches and concurrent-read sharing. The SDK
+validates all migration responses at runtime and throws `TypeError` for malformed
+records, unsupported schema versions, field types, or verification methods. API
+errors retain the SDK's normal `PackbaseError` behavior.
+
+`MigrationServiceDefinition` controls fields, destination requirements, availability,
+limits, temporary account restrictions, ownership verification, and imported/excluded
+content. Render those values directly; never derive capability from a service name.
+`max_migrations_per_account` counts completed imports; `null` means no configured limit.
+`max_posts` limits an import; `null` means no configured limit.
+
+`MigrationRecord.policy` is the server policy captured when the migration was created.
+Use that snapshot for the existing migration's review, limits, verification instructions,
+and account restrictions; the current service catalog governs new migrations.
+
+`MigrationRecord.status` is `pending`, `verified`, `in_progress`, `completed`, `failed`,
+or `cancelled`. Action availability comes from `can_cancel` and `can_retry`. Use
+`MigrationStatusResponse.account_locked` for current account restrictions; service
+`soft_lock.enabled` describes the policy, not the current lock state. Password inputs
+are omitted from returned records.
+
+The SDK exports `MigrationFieldDefinition` (`MigrationField`), `CreateMigrationInput`
+(`MigrationCreateInput`), `MigrationInputs`, `MigrationRecord`, `MigrationStatus`,
+`MigrationServicesResponse`, `MigrationStatusResponse`, and `MigrationsResource`.

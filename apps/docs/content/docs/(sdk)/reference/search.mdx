@@ -1,0 +1,222 @@
+---
+title: pb.search
+description: API reference for the search endpoint and the from() query builder.
+---
+
+`pb.search()` runs one or more named queries in one HTTP request. Use `from()` to build each query with editor hints for valid model fields. Then, call `.build()` before you pass the query to `pb.search()`.
+
+For a full tutorial, see the [Search guide](/guides/search).
+
+## `pb.search(queries)`: Execute search queries
+
+Fires `POST /search`.
+
+```ts twoslash
+import { PackbaseSDK, from, isErrorEntry } from '@packbase/sdk-ts'
+
+const pb = new PackbaseSDK()
+// ---cut---
+const results = await pb.search({
+  topPacks: from('packs').orderBy('last_activity_at').take(10).build(),
+  newProfiles: from('profiles').orderBy('created_at').take(5).build(),
+})
+
+if (!isErrorEntry(results.topPacks)) {
+  console.log(results.topPacks)
+  //                  ^?
+}
+```
+
+**Parameters:**
+
+| Param | Type | Description |
+| --- | --- | --- |
+| `queries` | `NamedQueryMap` | An object mapping query names to `QueryInput` objects. |
+
+**Returns:** A typed named result map. The object uses the names from `queries`. Each value is a `SearchPost[]`, `SearchProfile[]`, `SearchPack[]`, `SearchFeed[]`, a `CustomFeedRun` (for [`runFeed`](#runfeedid-opts-render-a-custom-feed) keys), or `ErrorEntry`. Use `isErrorEntry()` before you process the value as data. Post searches return complete `Howl` data, including the author, media, likes, replies, and public moderation summary. `SearchPost` extends `Howl` with `__index` and optional `feed_explanation` selection metadata; render it directly without fetching each howl again. Profile and pack search results retain database names such as `images_avatar`.
+
+## `from(model)`: Query builder
+
+Creates a query builder for the selected model. The chain does not send a request. `.build()` makes the request data, and `pb.search()` sends it.
+
+```ts twoslash
+import { from } from '@packbase/sdk-ts'
+// ---cut---
+const query = from('packs')           // start a query on 'packs'
+//    ^?
+  .where({ owner_id: 'uuid' })       // filter
+  .orderBy('last_activity_at')       // sort
+  .take(20)                          // limit
+  .build()                           // serialize to QueryInput
+```
+
+### Builder methods
+
+| Method | Description |
+| --- | --- |
+| `.where(conditions)` | Add AND filter conditions. Merges on multiple calls. |
+| `.and(conditions[])` | Explicit AND across multiple condition objects. |
+| `.or(conditions[])` | OR across multiple condition objects. |
+| `.not(conditions)` | Exclude records matching conditions. |
+| `.orderBy(field, direction?)` | Sort by field. Default direction is `'desc'`. |
+| `.take(count)` | Limit results. |
+| `.skip(count)` | Offset results. |
+| `.page(page, pageSize?)` | Calls `.take(pageSize).skip((page-1)*pageSize)`. |
+| `.build()` | Returns a `QueryInput` to pass to `pb.search()`. |
+
+### Filtering posts by attachment type
+
+Posts expose a query-only `asset_types` index. Use its string-list operators to keep pagination and filtering on the server. A post matches `has: 'video'` when at least one attached asset is a video. Supported asset types are `image` and `video`.
+
+```ts twoslash
+import { from } from '@packbase/sdk-ts'
+// ---cut---
+const videos = from('posts')
+  .where({ asset_types: { has: 'video' } })
+  .orderBy('created_at', 'desc')
+  .build()
+```
+
+## Viewer placeholders
+
+`viewer(key)` returns `{ $viewer: key }`, which you can use anywhere a filter value is allowed. The server replaces it with the signed-in reader's own data for each request. The resolved values never appear in the response, and `feed_explanation.query` echoes the placeholder form. Saved queries, such as a custom feed's `feed.json`, can depend on the reader without exposing that reader's data.
+
+```ts twoslash
+import { from, viewer } from '@packbase/sdk-ts'
+// ---cut---
+const circle = from('posts')
+  .where({ user_id: { in: viewer('following') }, parent: null })
+  .build()
+
+const mine = from('feeds').where({ owner_id: viewer('id') }).build()
+```
+
+| Key | Resolves to | Guest |
+| --- | --- | --- |
+| `id` | The reader's profile ID | The nil UUID, which matches no profile |
+| `following` | IDs of profiles the reader follows | `[]` |
+| `followers` | IDs of profiles that follow the reader | `[]` |
+| `packs` | IDs of packs the reader belongs to | `[]` |
+| `followed_tags` | Tags the reader follows | `[]` |
+
+List keys are capped at the 5,000 most recent entries. When a list is truncated, post results with `feed_explanation` include `{ kind: 'viewer_truncated', key }` in `filters`. An unknown key returns an `ErrorEntry` for that query.
+
+### Network ranking
+
+Posts can be ordered by `network_rank`, the reader's network ranking: howls people near them are interacting with, best first. The query's other filters still apply, and pages follow the ranking. Guests, and readers with nothing ranked, get newest first instead. The Discover feed uses it.
+
+```ts
+from('posts').where({ parent: null }).orderBy('network_rank', 'desc').take(30)
+```
+
+## The `feeds` model
+
+`from('feeds')` searches published custom feeds. Rows are `SearchFeed` objects with an embedded public `owner`. Filterable and sortable fields are `id`, `created_at`, `updated_at`, `display_name`, `description`, `owner_id` and `pin_count`.
+
+- `pinned` is a virtual boolean filter. `pinned: true` keeps the reader's pins (guests get none), and `pinned: false` leaves them out. Reading pins first pins the [built-in feeds](/reference/custom-feeds#built-in-feeds) once for the reader.
+- `editable` is a virtual filter: `editable: true` keeps the feeds the reader owns or edits, drafts and unlisted ones included. Guests get none.
+- `system_key` and `default_position` mark the built-in feeds; both are filterable and sortable. `can_edit` says whether the reader may edit and publish the feed (its owner, an editor, or staff).
+- `orderBy('pin_position', 'asc')` sorts by the reader's pin order. It applies only together with `pinned: true`.
+- Without an `orderBy`, results sort by `pin_count` descending.
+- Only published, non-deleted feeds whose owner is visible to the reader are returned. Unlisted feeds appear only with `pinned: true` or when you filter on the reader's own `owner_id` (for example, `owner_id: viewer('id')`).
+- Filtering on the reader's own `owner_id` (without `pinned: true`) also returns their unpublished drafts. `published` is `false` only for those drafts.
+- `cover` and `icon` are API paths to the published revision's 16:9 cover (1280 x 720) and square icon (256 x 256), both WebP, or `null` when the feed has none (drafts always have none). Each path includes the revision, so browsers cache it until the owner publishes again. Resolve a path with `pb.url()` before using it in `<img src>`; the images load without credentials.
+
+```ts
+const { feeds } = await pb.search({ feeds: from('feeds').take(20).build() })
+if (!isErrorEntry(feeds)) {
+  for (const feed of feeds) {
+    const cover = feed.cover ? pb.url(feed.cover) : undefined // e.g. https://vgs.packbase.app/feeds/custom/<id>/images/cover?v=…
+  }
+}
+```
+
+```ts twoslash
+import { from } from '@packbase/sdk-ts'
+// ---cut---
+const pins = from('feeds').where({ pinned: true }).orderBy('pin_position', 'asc').build()
+const directory = from('feeds')
+  .where({ display_name: { contains: 'art', mode: 'insensitive' } })
+  .orderBy('pin_count')
+  .take(20)
+  .build()
+```
+
+## `runFeed(id, opts?)`: Render a custom feed
+
+`runFeed()` builds a `run` named query. The server loads the feed's published revision, runs its declared queries as the reader and returns everything the feed needs in one key. You can batch it with other queries, such as the pinned-feeds search.
+
+```ts twoslash
+import { PackbaseSDK, from, isErrorEntry, runFeed } from '@packbase/sdk-ts'
+const pb = new PackbaseSDK()
+declare const feedId: string
+// ---cut---
+const { feed, pins } = await pb.search({
+  feed: runFeed(feedId),
+  pins: from('feeds').where({ pinned: true }).orderBy('pin_position', 'asc').build(),
+})
+
+if (!isErrorEntry(feed)) {
+  console.log(feed.presentation?.templates, feed.presentation?.packbase_manages_width, feed.results.posts, feed.has_more)
+  //                                                                  ^?
+}
+```
+
+| Option | Type | Description |
+| --- | --- | --- |
+| `page` | `number` | Page of the feed's primary query (1-indexed, default 1, max 1000). |
+| `presentation` | `boolean` | Include `presentation` after page 1. Page 1 always includes it. |
+| `revision` | `string` | Owner-only preview of a validated revision that might not be published. |
+| `workspace` | `string` | Owner-only live preview of the feed repository's autosaved working copy, by workspace version. Compiled on demand without a commit; can't be combined with `revision`. |
+
+The result is a `CustomFeedRun`: `{ feed, presentation?, results, primary, pagination, page, has_more }`. `feed` holds the display name, description, public owner, `pinned` and `pin_count`. `presentation` holds the `templates`, scoped `css`, `revision`, `policy_version` and `packbase_manages_width`. That boolean is `true` when Packbase owns the centered `max-w-2xl` width and `false` when the template uses the full available width. `results` maps the feed's declared query names to the same per-key shapes `POST /search` returns. `primary` names the primary query in `results` (owners can call it anything, not only `posts`). `pagination` is the owner's `FeedPagination` from `feed.json`: `'infinite'` (the default) to load more as the reader scrolls, or `'paged'` to show one page at a time with previous and next controls. Pages after the first run only the primary query, so keep page 1's presentation and other results whichever mode you render.
+
+A feed that is missing, deleted, unpublished or hidden (for example, a blocked owner, or a preview by anyone but the owner) returns `{ __error: 'not_found' }`. A malformed ID, revision or workspace version returns `'invalid'`; a `workspace` preview whose working copy doesn't compile also returns `'invalid'`, with the compiler's messages in `errors` (typed as `RunFeedError`). An execution failure returns `'Query failed'`. These values are typed as `RunFeedErrorCode`. A `run` counts as 1 plus the feed's declared queries against the request's query cap of 8.
+
+See [custom feeds](/reference/custom-feeds) for writes and the template guide.
+
+## `isErrorEntry(result)`: Type guard
+
+One named query can fail while other queries in the same request are successful. Use this helper to identify whether a specified result is an error or data:
+
+```ts twoslash
+import { PackbaseSDK, from, isErrorEntry } from '@packbase/sdk-ts'
+const pb = new PackbaseSDK()
+// ---cut---
+const { packs } = await pb.search({
+  packs: from('packs').build(),
+})
+
+if (isErrorEntry(packs)) {
+  console.error(packs.__error)
+  //            ^?
+} else {
+  console.log(packs)
+  //          ^?
+}
+```
+
+## Type reference
+
+```ts twoslash
+import type { QueryInput, ModelName, SortDirection, ErrorEntry, ViewerKey } from '@packbase/sdk-ts'
+
+// ModelName is a union of all queryable models
+type _Model = ModelName
+//   ^?
+
+// SortDirection
+type _Sort = SortDirection
+//   ^?
+
+// ViewerKey
+type _Viewer = ViewerKey
+//   ^?
+```
+
+
+## Feed and direct mute context
+
+Post queries accept `.context('feed')` (the default) or `.context('direct')`. Direct context preserves muted members for explicit profile views. Both contexts enforce blocking and server privacy even when the query filters by an exact profile or post ID. Context is serialized with each named query.
+
+Search hydrates howls and their nested previews in the selected context. Use the returned howls directly. If you separately refresh a howl, retain `{ context: 'feed' }` for feed reads because detail reads default to direct context. See [visibility](/reference/visibility).

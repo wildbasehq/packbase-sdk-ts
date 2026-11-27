@@ -1,0 +1,119 @@
+---
+title: Manifests
+description: Reference for feed.json and theme.json, the queries they declare, and how a feed pages.
+---
+
+A manifest is a JSON file at the repository root. Custom feeds need `feed.json`. Profile and pack themes use `theme.json`. Atelier completes and checks both as you type, and the server validates them again for every revision.
+
+## `feed.json`
+
+```json
+{
+  "name": "Art from my circle",
+  "description": "Image howls tagged #art from people I follow",
+  "primary": "posts",
+  "pagination": "paged",
+  "cover": "assets/cover.png",
+  "icon": "assets/icon.png",
+  "queries": {
+    "posts": {
+      "from": "posts",
+      "feed": true,
+      "where": {
+        "parent": null,
+        "tags": { "has": "art" },
+        "asset_types": { "has": "image" },
+        "user_id": { "in": { "$viewer": "following" } }
+      },
+      "orderBy": { "created_at": "desc" },
+      "take": 24
+    },
+    "packs": {
+      "from": "packs",
+      "where": { "id": { "in": { "$viewer": "packs" } } },
+      "take": 5
+    }
+  }
+}
+```
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `name` | `string` | No | The feed's published name, at most 60 characters. |
+| `description` | `string` | No | The feed's published description, at most 300 characters. |
+| `primary` | `string` | Yes | The name of the declared `from: "posts"` query that pages. |
+| `pagination` | `"infinite"` \| `"paged"` | No | How readers move through the primary results. Defaults to `"infinite"`. |
+| `cover` | `string` | No | A wide image under `assets/` that represents the feed in the directory. |
+| `icon` | `string` | No | A square image under `assets/` shown beside the feed's name. |
+| `queries` | `object` | Yes | Up to 6 named queries. |
+
+### `name` and `description`
+
+Publishing a revision copies `name` and `description` onto the feed, so they appear in the directory and in readers' tabs. Leaving out `name`, or leaving it blank, keeps the feed's current name. A new feed's starter `feed.json` already contains the name and description you chose when you created it.
+
+### `cover` and `icon`
+
+Both name a raster file in the repository's `assets/` folder (`.png`, `.jpg`, `.jpeg`, `.webp`, `.gif` or `.avif`). When the revision is validated, the server crops and converts them:
+
+| Field | Output | Crop | Size limit after conversion |
+| --- | --- | --- | --- |
+| `cover` | 1280 x 720 WebP | Fills 16:9, keeping the most detailed area | 768 KiB |
+| `icon` | 256 x 256 WebP | Fills the square, keeping the most detailed area | 128 KiB |
+
+The feed directory shows the cover in a shorter band beside the feed's preview, cropping its top and bottom, so keep names and faces in the middle of the image. Animated images keep their first frame. A missing file, another format or an image that can't be read makes the revision invalid. One file can serve as both.
+
+The images become public only when you publish the revision, and they change only when you publish again. The feed directory shows them; a feed without them gets a generated pattern instead. SDK clients read them from [`SearchFeed`](/reference/search#the-feeds-model) as `cover` and `icon`.
+
+### `primary`
+
+The primary query is the feed itself. It must be declared in `queries` with `"from": "posts"`. Packbase pages it with the query's `take` as the page size (up to 200, default 50) and applies the reader's feed preferences to it, such as content ratings and blocked tags. Up to 1000 pages can be read. Order it by `{ "network_rank": "desc" }` to rank howls by the reader's network instead of by time, as Discover does.
+
+The other queries run once, on page 1, for things like a header or sidebar. Templates read every query by name from `results`. See [Pages of a feed](/atelier/templates#pages-of-a-feed).
+
+### `pagination`
+
+| Value | What readers see |
+| --- | --- |
+| `"infinite"` | Pages append as the reader scrolls, with a Load more button as a fallback and an end-of-feed message. This is the default. |
+| `"paged"` | One page at a time, with Previous and Next buttons and the page number. Next is disabled on the last page. |
+
+The mode applies to every reader. Packbase doesn't count the total, so there is no "page 3 of 12". Any other value fails validation.
+
+SDK clients read the mode from every [`runFeed()`](/reference/search#runfeedid-opts-render-a-custom-feed) result as `pagination` (`FeedPagination`) and should render the matching controls. Feeds published before `pagination` existed return `"infinite"`.
+
+## `theme.json`
+
+Profile and pack repositories have a `theme.json` with the format version and, optionally, queries for their Handlebars pages:
+
+```json
+{
+  "version": 1,
+  "queries": {
+    "recent": {
+      "from": "posts",
+      "where": { "user_id": { "in": { "$viewer": "following" } } },
+      "orderBy": { "created_at": "desc" },
+      "take": 10
+    }
+  }
+}
+```
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `version` | `1` | Yes | Keep this set to `1`. Any other value makes every revision invalid. |
+| `queries` | `object` | No | Up to 6 named queries, available to every Handlebars page as `results.<name>`. |
+
+Theme queries run once for each page request, as the reader. They don't page and have no `primary`. HTML pages ignore them.
+
+## Queries
+
+Each query uses the [`POST /search` grammar](/reference/search). It is a JSON object with `from` (`posts`, `profiles`, `packs` or `feeds`) and optionally `where`, `orderBy`, `take`, `skip`, `feed` and `context`.
+
+- **Names** start with a letter and use letters, digits and `_`, up to 64 characters. `run` is reserved.
+- **Viewer placeholders** such as `{ "$viewer": "following" }`, `"packs"` and `"followed_tags"` resolve per reader on the server. See [viewer placeholders](/reference/search#viewer-placeholders).
+- **`feed: true`** applies the reader's feed preferences and adds selection details to posts. A feed's `primary` query always runs with it.
+- **Ratings:** posts queries in a manifest always apply the reader's own content-rating preference, so a feed or page can't show a reader more than they allow.
+- **Visibility:** blocked and hidden members, private packs and other content the reader can't see never appear, whoever wrote the query.
+
+Query keys, operators and `orderBy` directions are checked when the revision is validated. An invalid query makes the whole revision invalid, and the error names it, as in `queries.posts: ...`.

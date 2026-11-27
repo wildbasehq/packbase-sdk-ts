@@ -1,0 +1,66 @@
+---
+title: pb.folders
+description: Organize howls into saved folders.
+---
+
+Folders are collections of explicitly saved howls. Use `pb.folders` to create and manage folders for the signed-in user. You can also list the visible folders of another user if you know the user ID.
+
+## List folders
+
+```ts twoslash
+import { PackbaseSDK } from '@packbase/sdk-ts'
+const pb = new PackbaseSDK()
+// ---cut---
+const { folders } = await pb.folders.list('user-id')
+```
+
+Pass the profile UUID. Do not pass a username. The endpoint requires this target user ID when you list your folders.
+
+## Create and update
+
+```ts twoslash
+import { PackbaseSDK } from '@packbase/sdk-ts'
+const pb = new PackbaseSDK()
+// ---cut---
+const { folder } = await pb.folders.create({
+  name: 'Landscapes',
+  emoji: '🏞️',
+})
+
+await pb.folders.update(folder.id, {description: 'Landscape references'})
+```
+
+`name` is the visible folder name. `description` and `emoji` are optional display
+data. Each account can create at most 10 folders.
+
+## Fetch and delete
+
+```ts twoslash
+import { PackbaseSDK } from '@packbase/sdk-ts'
+const pb = new PackbaseSDK()
+declare const folderId: string
+// ---cut---
+const detail = await pb.folders.get(folderId)
+console.log(detail.folder.name, detail.profile.username)
+
+await pb.folders.delete(folderId)
+```
+
+`get()` returns an object that contains `folder` and the owner's `profile`. It does not return only the folder. Only the owner can update or delete the folder.
+
+## Add and remove howls
+
+```ts twoslash
+import { PackbaseSDK } from '@packbase/sdk-ts'
+const pb = new PackbaseSDK()
+// ---cut---
+await pb.folders.addHowl('folder-id', 'howl-id')
+await pb.folders.removeHowl('folder-id', 'howl-id')
+```
+
+`addHowl()` sends the howl ID in the documented POST body. `removeHowl()` encodes both IDs in the DELETE path.
+
+Folder reads also require authentication, including when reading another
+member's visible folders. The SDK currently exposes folder metadata and membership methods;
+it does not expose a method for `GET /folder/:id/query`. Use that REST operation
+from an authenticated HTTP client when you need its visible, hydrated howls.

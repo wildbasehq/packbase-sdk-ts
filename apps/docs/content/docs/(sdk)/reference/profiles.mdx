@@ -1,0 +1,82 @@
+---
+title: pb.profiles
+description: Fetch profiles, follow or unfollow users, and submit reports.
+---
+
+Call `pb.profiles(username)` with a Packbase username to get a lazy `ProfileHandle`. This action does not make a network request. Await the handle to fetch the profile. Alternatively, call an action such as `.follow()` directly. The action does not fetch the profile first.
+
+## Fetch a profile
+
+```ts twoslash
+import { PackbaseSDK } from '@packbase/sdk-ts'
+const pb = new PackbaseSDK()
+// ---cut---
+const profile = await pb.profiles('rek')
+
+console.log(profile.display_name)
+console.log(profile.about?.bio)
+```
+
+The result is a [`Profile`](/types/profile). Some properties are optional because public and authenticated requests can receive different data.
+
+## Follow and unfollow
+
+Following and unfollowing are separate server operations:
+
+```ts twoslash
+import { PackbaseSDK } from '@packbase/sdk-ts'
+const pb = new PackbaseSDK()
+// ---cut---
+await pb.profiles('rek').follow()   // POST /user/:username/follow
+await pb.profiles('rek').unfollow() // DELETE /user/:username/follow
+```
+
+Both methods finish without response data (`Promise<void>`). If you follow an account that you already follow, the server returns status `400`. The server returns the same status if you unfollow an account that you do not follow.
+
+## Report a user
+
+```ts twoslash
+import { PackbaseSDK, ReportReason } from '@packbase/sdk-ts'
+const pb = new PackbaseSDK()
+// ---cut---
+const ticket = await pb.profiles('rek').report(
+  ReportReason.Spam,
+  'Repeated unsolicited posts.',
+)
+
+console.log(ticket.id, ticket.status)
+```
+
+This sends `POST /user/:username/report` and returns a `ReportResult`.
+
+
+## Muting and blocking
+
+`profile.muted_by_me` contains only the signed-in viewer's outgoing mute state. Muted profiles remain accessible. A block in either direction makes ordinary profile reads and actions return the same `404` as a missing profile. Manage outgoing records through [`pb.me.mutes` and `pb.me.blocks`](/reference/visibility); remove a block using its stored profile ID without looking up the hidden profile.
+
+Awaited handles reuse their result until `pb.invalidateVisibility()` or a successful relationship mutation advances the SDK's visibility generation. Existing handles then fetch again.
+
+## Previous usernames
+
+Signed-in members can request previous usernames for profiles they can view, including their own. Blocked and inactive profiles are unavailable. Use the current username or permanent profile ID; old usernames are not aliases or reservations.
+
+```ts
+const firstPage = await pb.profiles('rek').usernameHistory()
+for (const entry of firstPage.data) {
+  console.log(entry.username, entry.changed_at)
+}
+if (firstPage.has_more) {
+  const older = await pb.profiles('rek').usernameHistory({cursor: firstPage.cursor})
+}
+```
+
+Each page has up to 20 entries, newest first, with `id`, `username`, and `changed_at` (the time the name was replaced). IDs and cursors are strings. A name can appear more than once if it was reused. `signal` is supported for cancellation. Requests bypass the SDK response cache. History starts when tracking is deployed; earlier names are not reconstructed.
+
+## Joined packs
+
+```ts
+const packs = await pb.profiles('rek').packs({signal})
+// A permanent profile UUID is also accepted.
+```
+
+Returns `Pack[]` from `GET /user/:username/packs`, including packs the viewer has already joined. Guests can read visible profiles' packs. Blocks and inactive profiles return `404`; packs hidden from the viewer or the listed member are omitted. Results include public pack metadata and visible member counts, without the listed member's permissions or roles. Each call reads fresh and supports cancellation.

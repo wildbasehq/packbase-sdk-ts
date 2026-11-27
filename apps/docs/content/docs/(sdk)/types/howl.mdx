@@ -1,0 +1,244 @@
+---
+title: Howl
+description: TypeScript shapes for howls, creation input, interactions, assets, and jobs.
+---
+
+## `Howl`
+
+`Howl` describes a post that Packbase returns. Many fields are optional because endpoints return different levels of detail. A field that ends in `?` can be absent. Check the field or use optional chaining before you read it.
+
+```ts
+interface Howl {
+  emotes?: PackEmote[]
+  /** ID of this concrete howl record, including a rehowl or quote rehowl. */
+  id: string
+  /** @deprecated Legacy alias for a rehowl record ID. Use `id`. */
+  rehowl_id?: string
+  /** ID of the canonical/original howl used as the interaction target. */
+  canonical_id?: string
+  quote_source_id?: string | null
+  quote_source_unavailable?: boolean
+  parent_post?: unknown
+  tenant_id?: string
+  content_type: 'text' | 'howling_alongside' | 'howling_echo'
+  created_at: string
+  body?: string
+  allow_rehowl?: boolean
+  rehowled_by?: Profile
+  user: Profile
+  copyright?: string | null
+  moderation_summary?: HowlModerationSummary
+  assets?: HowlAsset[]
+  tags?: string[]
+  moderator_tags?: string[]
+  tag_revision?: number
+  can_edit_tags?: boolean
+  can_manage_tag_locks?: boolean
+  likes: HowlLikes
+  comments?: HowlComment[]
+  pack?: Pack
+  warning?: { reason: string } | null
+  meta?: {
+    rehowled: boolean
+    pinned?: boolean
+    pin_expires_at?: string
+    folder_count?: number
+  }
+}
+```
+
+`id` always identifies the concrete record represented by the response. For a rehowl or quote rehowl, it is that rehowl record's ID—not the parent's ID. Use it for record-specific operations such as `pb.howls(howl.id).delete()`.
+
+`canonical_id`, when present, identifies the canonical/original howl. Use it when an interaction intentionally targets the original howl. `rehowl_id` is an optional legacy field retained for compatibility with older payloads; new code should use `id`.
+
+`quote_source_id` is the independent source reference for a quote. Quotes keep their own interaction identity and survive source deletion. `quote_source_unavailable: true` means the source is deleted, hidden, or inaccessible; show an unavailable-source message without retained source text/media. Regular rehowls and replies still cascade when their parent is deleted.
+
+`parent_post` can contain the visible original post for quote howls. Its structure is not stable, and its type is `unknown`. Check the value before you use it. `rehowled_by` identifies the account that rehowled the post when this data is available.
+
+The `warning` field can be absent or `null`. In both cases, the howl does not have a warning. If `warning` is an object, `reason` explains the warning.
+
+## Content and ratings
+
+```ts
+type HowlContentType = 'text' | 'howling_alongside' | 'howling_echo'
+type HowlRating =
+  | 'rating_safe'
+  | 'rating_mature'
+  | 'rating_suggestive'
+  | 'rating_explicit'
+```
+
+Howls that you create directly use `text`. The other values describe rehowls from the API. Each creation request requires exactly one rating tag. This tag can occur at any position in the list.
+
+## Assets, likes, and comments
+
+```ts
+interface HowlAsset {
+  type: 'image' | 'video' | 'audio' | 'file'
+  data: { name?: string; url: string }
+}
+
+interface HowlLikes {
+  emote?: PackEmote
+  emoji: string
+  count: number
+  likedByMe: boolean
+}
+
+interface HowlCommentResult {
+  id: string
+  likes: HowlLikes
+}
+
+interface HowlComment {
+  emotes?: PackEmote[]
+  moderation_summary?: HowlModerationSummary
+  id: string
+  body: string
+  user: Profile
+  created_at: string
+  content_type: string
+  likes: HowlLikes
+  comments?: HowlComment[]
+}
+```
+
+`likes` is always present on howls and comments, including when `count` is zero. Its emoji is fixed at creation from the author's `howl_like_emoji` setting (default 🔥). `likedByMe` reports whether the signed-in reader liked the howl.
+
+The emoji can be Unicode or a custom Pack emote token. `likes.emote` supplies the
+retained image for a custom choice. Content-level `emotes` supplies custom images
+used in the body. See [Pack custom emotes](/reference/emotes).
+
+## `HowlCreateInput`
+
+Pass this object to `pb.howls.create()`. It contains fewer fields than `Howl`. Supply only the data necessary to create a post. Packbase supplies fields such as `id`, `created_at`, and `user`.
+
+```ts
+interface HowlCreateInput {
+  tenant_id: string
+  parent_id?: string
+  content_type?: 'text'
+  body: string | null
+  asset_ids?: string[]
+  tags: [string, ...string[]]
+}
+```
+
+`parent_id` is the source to quote; use `pb.howls(id).comment()` to reply.
+
+`body` must be a string or `null`. Do not use a structured JSON object. Packbase sanitizes HTML in strings. Use `null` only when `asset_ids` supplies the howl content.
+
+## Creation jobs
+
+By default, `pb.howls.create()` waits and returns a completed `Howl`. With `{ poll: false }`, it returns the smaller `HowlCreationJob`:
+
+```ts
+interface HowlCreationJob {
+  id: string
+}
+```
+
+The job ID is also the future howl ID. Each status check returns this shape:
+
+```ts
+interface HowlJobStatus {
+  id: string
+  status:
+    | 'pending'
+    | 'uploading'
+    | 'converting'
+    | 'processing'
+    | 'completed'
+    | 'failed'
+  progress: {
+    currentAsset: number
+    totalAssets: number
+    currentAssetProgress?: number
+  }
+  createdAt: number
+  updatedAt: number
+  error?: string
+  error_code?: string
+  rules_version?: number
+}
+```
+
+`error_code` carries a machine-readable failed-job reason. A rules-acceptance
+conflict can include the latest `rules_version`. Neither a client timeout nor
+an aborted wait guarantees that the server job stopped.
+
+## Public moderation summary
+
+```ts
+interface HowlModerationSummary {
+  status: 'none' | 'under_review' | 'reviewed'
+  actions: Array<'warning' | 'restriction' | 'content_removed'>
+}
+```
+
+This is a public content summary, not a case or investigation record. Fetch it
+with `pb.howls(id).moderation()` when a fresh value is needed.
+
+## Tag edits and history
+
+```ts
+interface HowlTagEditInput {
+  tags: string[]
+  explanation: string
+  expected_revision: number
+  moderator_tags?: string[]
+}
+
+interface HowlModeratorTagEditInput {
+  tags: string[]
+  explanation: string
+  expected_revision: number
+}
+
+type HowlTagEditor = Pick<Profile, 'id' | 'username' | 'display_name' | 'emotes'> & {
+  images?: Profile['images']
+}
+
+interface HowlTagHistoryEntry {
+  id: string
+  revision: number
+  created_at: string
+  editor: HowlTagEditor | null
+  explanation: string
+  added_tags: string[]
+  removed_tags: string[]
+  locked_tags: string[]
+  unlocked_tags: string[]
+}
+
+interface HowlTagEditResult {
+  tags: string[]
+  moderator_tags: string[]
+  tag_revision: number
+  edit: HowlTagHistoryEntry
+}
+```
+
+`can_edit_tags` and `can_manage_tag_locks` are server-computed capabilities for the current reader. `tag_revision` is the concurrency token sent back as `expected_revision`. These optional fields can be absent on older servers; do not assume editing is allowed when absent. Fetch a fresh howl before opening an editor. All tag and lock changes require a public explanation. See [Edit tags](/reference/howls#edit-tags).
+
+## Import
+
+```ts
+import type {
+  Howl,
+  HowlCreateInput,
+  HowlCreationJob,
+  HowlJobStatus,
+  HowlContentType,
+  HowlRating,
+  HowlAsset,
+  HowlLikes,
+  HowlComment,
+  HowlCommentResult,
+  HowlTagEditInput,
+  HowlModeratorTagEditInput,
+  HowlTagEditor,
+  HowlTagHistoryEntry,
+  HowlTagEditResult,
+} from '@packbase/sdk-ts'
+```

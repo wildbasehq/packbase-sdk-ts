@@ -1,0 +1,163 @@
+---
+title: pb.me
+description: Fetch and update the authenticated profile, settings, friends, packs, badge, and storage usage.
+---
+
+`pb.me` is the resource for the current signed-in account. Each method on this page requires a valid browser session or API key. Use `pb.profiles(username)` if you require only a public profile.
+
+Use [`pb.me.connections`](/reference/connections) to discover providers and manage
+external account authorization. It supports OAuth and custom methods.
+`pb.me.connections.fluxer` supplies typed Fluxer methods. See
+[Packchat](/reference/packchat) for community linking and read-only chat.
+
+## Fetch the current user
+
+```ts twoslash
+import { PackbaseSDK } from '@packbase/sdk-ts'
+const pb = new PackbaseSDK()
+// ---cut---
+const user = await pb.me()
+
+console.log(user.username)
+console.log(user.is_staff)
+```
+
+`pb.me()` sends `GET /user/me` and returns `Promise<Profile>`.
+
+## Update the profile
+
+```ts twoslash
+import { PackbaseSDK } from '@packbase/sdk-ts'
+const pb = new PackbaseSDK()
+// ---cut---
+const updated = await pb.me.update({
+  display_name: 'New Display Name',
+  about: { bio: 'Updated bio text' },
+  images: { avatar: 'data:image/png;base64,iVBORw0KGgo...' },
+  space_type: 'custom_free',
+})
+```
+
+This is a partial update. Include only the fields that you want to change. Supported fields are `display_name`, `username`, `about.bio`, `space_type`, `images.avatar`, `images.header`, `profile_avatar_mature`, `profile_banner_mature`, and `profile_howls_mature`. Image fields accept complete base64 data URLs. The response contains the fields that the server wrote. It does not contain a new full profile. Call `pb.me()` after the update if you require the full result.
+
+## Settings
+
+```ts twoslash
+import { PackbaseSDK } from '@packbase/sdk-ts'
+const pb = new PackbaseSDK()
+// ---cut---
+const settings = await pb.me.settings()
+await pb.me.settings({ home_feed_type: 'gallery', feed_pagination: 'paged' })
+```
+
+Call `settings()` with no argument to read the settings. Call it with an object to update them. The read result is `Record<string, unknown>`. Decode each key that you use. Do not cast the full record.
+
+```ts twoslash
+import { PackbaseSDK, decodeSettings } from '@packbase/sdk-ts'
+const pb = new PackbaseSDK()
+// ---cut---
+const raw = await pb.me.settings()
+const settings = decodeSettings(raw, {
+  home_feed_type: (value): 'list' | 'gallery' => {
+    if (value !== 'list' && value !== 'gallery') throw new TypeError('Invalid feed layout')
+    return value
+  },
+})
+```
+
+To cancel a settings read without confusing request options with update keys, pass `undefined` first: `pb.me.settings(undefined, { signal })`.
+
+The read response also contains `definitions`, the server's current setting
+schema. Use it to find supported keys, defaults, allowed values, and which
+settings are user-modifiable. Unsupported keys are rejected. `dark_mode` and
+`notifications_email` are not current setting names. See [Settings](/reference/settings).
+
+### Howl like emoji
+
+For custom images, use `pb.me.emotes()` and `formatEmoteToken()` to select a
+currently available Pack emote. See [Pack custom emotes](/reference/emotes).
+
+Set one emoji for members to use when liking your new howls:
+
+```ts twoslash
+import { PackbaseSDK } from '@packbase/sdk-ts'
+const pb = new PackbaseSDK()
+// ---cut---
+await pb.me.settings({ howl_like_emoji: '🔥' })
+```
+
+The default is 🔥. The server stores your choice on each new howl at creation;
+changing this setting leaves existing howls and their like counts unchanged.
+
+### Allow other members to edit howl tags
+
+```ts twoslash
+import { PackbaseSDK } from '@packbase/sdk-ts'
+const pb = new PackbaseSDK()
+// ---cut---
+await pb.me.settings({ allow_tag_edits_from_others: false })
+```
+
+`allow_tag_edits_from_others` is a boolean that defaults to `true`, including for existing accounts without a stored value. When on, other signed-in members can edit unprotected tags on all your existing and future howls. When off, ordinary tag editing is limited to you. Staff and content moderators retain their moderation permissions. Every edit requires a public explanation and appears in the howl's public tag history. Turning the setting off leaves earlier edits and history intact.
+
+## Friends
+
+```ts twoslash
+import { PackbaseSDK } from '@packbase/sdk-ts'
+const pb = new PackbaseSDK()
+// ---cut---
+const { friends, count, message } = await pb.me.friends()
+
+for (const friend of friends) {
+  console.log(friend.username, friend.online)
+}
+```
+
+A friend is a mutual follow. The server returns up to 100 of them in an object containing `friends`, `count`, and sometimes `message`.
+
+## Packs
+
+```ts twoslash
+import { PackbaseSDK } from '@packbase/sdk-ts'
+const pb = new PackbaseSDK()
+// ---cut---
+const packs = await pb.me.packs()
+```
+
+This method returns each pack that the current user belongs to. The response includes membership data. The result is not limited to packs that the user owns.
+
+## Select a badge
+
+```ts twoslash
+import { PackbaseSDK } from '@packbase/sdk-ts'
+const pb = new PackbaseSDK()
+// ---cut---
+await pb.me.setBadge('founder-badge')
+```
+
+This method sends `POST /user/me/badge` with the store item ID of an owned badge. The server does not supply a related badge `GET` operation. The profile from `pb.me()` contains the active badge.
+
+## Storage usage
+
+```ts twoslash
+import { PackbaseSDK } from '@packbase/sdk-ts'
+const pb = new PackbaseSDK()
+// ---cut---
+const usage = await pb.me.storage()
+
+console.log(usage.totalBytes, usage.allowanceBytes, usage.remainingBytes, usage.overLimit)
+console.log(usage.breakdown.mediaBytes, usage.breakdown.themeBytes, usage.files[0]?.name)
+```
+
+`pb.me.storage()` returns `StorageUsage`: totals against the account's `allowanceBytes`, a `breakdown` by kind, and the billable `files`, largest first. Howls are excluded. While the storage inventory is still being counted or is unavailable, the request fails with a `PackbaseError` of status 503 and code `storage_inventory_unavailable`; its `body` includes `allowanceBytes` and the `inventory` progress, so you can show a progress message and retry.
+
+## Bulk deletion and factory reset
+
+Use [`pb.me.maintenance`](/reference/maintenance) for server-owned review,
+timed typed confirmation, durable progress, retry, and completion acknowledgement.
+Both actions preserve login identity and moderation restrictions.
+
+
+## Muted and blocked members
+
+Use `pb.me.mutes` and `pb.me.blocks` to list, add, or remove the current member's private outgoing relationships. Both use immutable profile IDs, preserve owner-only identity snapshots for removal, and accept request cancellation. See [Blocking, muting, and visibility](/reference/visibility) for the full contract and live-client cache handling.

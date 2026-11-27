@@ -1,0 +1,78 @@
+---
+title: Blocking, muting, and visibility
+description: Manage private outgoing relationships and keep open clients consistent with server visibility.
+---
+
+SDK 0.9.0 exposes private mute and block management through `pb.me`. All relationship mutations and lists require authentication. Targets use immutable profile IDs.
+
+## Manage outgoing relationships
+
+```ts twoslash
+import { PackbaseSDK } from '@packbase/sdk-ts'
+const pb = new PackbaseSDK()
+const profileId = 'profile-uuid'
+// ---cut---
+await pb.me.mutes.add(profileId)
+await pb.me.mutes.remove(profileId)
+await pb.me.blocks.add(profileId)
+const page = await pb.me.blocks.list({ limit: 25 })
+await pb.me.blocks.remove(profileId)
+```
+
+| Method | Request | Result |
+| --- | --- | --- |
+| `me.mutes.list(options?)` | `GET /user/me/mutes` | `Paginated<ProfileRelationship>` |
+| `me.mutes.add(profileId, options?)` | `PUT /user/me/mutes/:profileId` | `void` |
+| `me.mutes.remove(profileId, options?)` | `DELETE /user/me/mutes/:profileId` | `void` |
+| `me.blocks.list(options?)` | `GET /user/me/blocks` | `Paginated<ProfileRelationship>` |
+| `me.blocks.add(profileId, options?)` | `PUT /user/me/blocks/:profileId` | `void` |
+| `me.blocks.remove(profileId, options?)` | `DELETE /user/me/blocks/:profileId` | `void` |
+
+Adds and removals are idempotent and resolve after `204 No Content`. Every method accepts `signal`. Lists accept `cursor` and `limit`; continue with the returned `cursor` while `has_more` is true. Reads bypass HTTP caches and in-flight deduplication.
+
+Each record contains `profile_id`, `created_at`, and `identity: { username, display_name }`. Identity is a static snapshot from relationship creation, for managing the caller's outgoing records. It is not a live profile or profile link. No live avatar, presence, incoming block, or other member's mute state is returned. `remove()` works from this stored ID even when ordinary profile lookup returns 404.
+
+## What the server hides
+
+Muting privately excludes the target's howls and nested quote/reply previews from feed reads. Their profile and deliberately opened howls remain readable. `Profile.muted_by_me` reports only the authenticated viewer's own outgoing mute state.
+
+Blocking hides both members from each other, including historical howls, identities, notifications, and packs owned by the counterpart. Direct inaccessible reads and interactions return the ordinary not-found response. Blocking also removes follows in both directions. Unblocking does not restore follows, change a separate mute, or remove a block owned by the other member.
+
+For third-party viewers, including guests, blocked contributions are omitted beneath the counterpart's content in either direction. Outside those owner contexts, public access stays available. Normal application staff roles do not bypass blocking; the separate audited moderation workflow owns its exemption.
+
+## Preserve mute context in search
+
+Post search defaults to `feed` and returns fully hydrated howls. Nested quotes and replies use the same visibility context. Render the response directly without separate detail requests:
+
+```ts twoslash
+import { PackbaseSDK, from, isErrorEntry } from '@packbase/sdk-ts'
+const pb = new PackbaseSDK()
+// ---cut---
+const result = await pb.search({
+  posts: from('posts').context('feed').orderBy('created_at', 'desc').take(20).build(),
+})
+if (!isErrorEntry(result.posts)) {
+  console.log(result.posts) // Includes authors, media, likes, replies, and summaries.
+}
+```
+
+Use `context('direct')` for explicit profile views and their galleries. Direct howl reads default to `direct`; if you separately refresh a howl in a feed, pass `{ context: 'feed' }` to preserve mute filtering. Context changes only outgoing mute handling. Blocking and server privacy rules always apply, including exact-ID search filters. Relationship tables are never exposed through search.
+
+## Reconcile open clients
+
+`pb.visibility.watch({ cursor?, waitMs?, signal? })` makes one uncached long poll to `GET /visibility/watch`. The server defaults `wait_ms` to 25,000. Guests and authenticated clients receive `{ cursor: string, changed: boolean }`, with no relationship identities or reasons. The application owns the loop, cancellation, reconnection, and retry policy.
+
+```ts twoslash
+import { PackbaseSDK } from '@packbase/sdk-ts'
+const pb = new PackbaseSDK()
+// ---cut---
+const baseline = await pb.visibility.watch({ waitMs: 0 })
+const update = await pb.visibility.watch({ cursor: baseline.cursor, waitMs: 25000 })
+if (update.changed) pb.invalidateVisibility()
+```
+
+`pb.invalidateVisibility()` advances the client generation and emits `visibilityChanged` with that number. Successful local mute/block mutations do this automatically; `watch()` itself does not. Use `getVisibilityGeneration()` to fence application work spanning multiple requests.
+
+Invalidation clears pending read sharing, invalidates previously awaited profile/howl/pack handles, and retries stale in-flight reads before exposing their results. This includes read-only search POSTs. Mutations are never automatically retried. The SDK cannot erase objects already returned to an application: immediately conceal and evict rendered cached content on invalidation, cancel obsolete work, and refetch. Reconcile after reconnecting or waking before displaying retained content.
+
+When the server rejects an in-flight response with `409` and code `visibility_changed`, the SDK also invalidates its generation. Read operations retry under current visibility; mutations return the conflict once and require an explicit user retry.

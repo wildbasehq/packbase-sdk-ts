@@ -1,0 +1,177 @@
+---
+title: pb.customFeeds
+description: Create, pin and render custom feeds, and write Handlebars templates for them.
+---
+
+A custom feed is a theme repository (`kind: 'feed'`) that declares search queries and the Handlebars templates that lay out their results. Reading and rendering use `pb.search()`: the [`feeds` model](/reference/search#the-feeds-model) lists feeds, and [`runFeed()`](/reference/search#runfeedid-opts-render-a-custom-feed) renders one. `pb.customFeeds` holds the writes. Every write requires a signed-in session.
+
+## Writes
+
+```ts twoslash
+import { PackbaseSDK } from '@packbase/sdk-ts'
+const pb = new PackbaseSDK()
+// ---cut---
+const { id, repository } = await pb.customFeeds.create({
+  display_name: 'Art from my circle',
+  description: 'Image howls tagged #art from people I follow',
+})
+
+await pb.customFeeds.update(id, { listed: false }) // returns the SearchFeed row
+await pb.customFeeds.pin(id)
+await pb.customFeeds.reorder([id])
+await pb.customFeeds.unpin(id)
+await pb.customFeeds.delete(id)
+```
+
+| Method | Route | Returns |
+| --- | --- | --- |
+| `create({ display_name, description? })` | `POST /feeds/custom` | `{ id, repository: ThemeRepositoryStatus }` |
+| `update(id, { listed? })` | `PATCH /feeds/custom/:id` | `SearchFeed` |
+| `delete(id)` | `DELETE /feeds/custom/:id` | `void` |
+| `pin(id)` / `unpin(id)` | `PUT` / `DELETE /feeds/custom/:id/pin` | `void` (idempotent) |
+| `reorder(ids)` | `PUT /feeds/custom/pins/order` | `void` |
+| `editors(id)` | `GET /feeds/custom/:id/editors` | `CustomFeedEditor[]` |
+| `addEditor(id, username)` | `PUT /feeds/custom/:id/editors` | `CustomFeedEditor[]` |
+| `removeEditor(id, userId)` | `DELETE /feeds/custom/:id/editors/:userId` | `void` |
+
+`display_name` is 1 to 60 characters, and `description` is up to 300. Only the owner can update or delete a feed; built-in feeds can't be deleted. Each member can own up to 20 feeds and pin up to 50. An unlisted feed stays out of the directory, but it still runs, you can still pin it from its link, and it stays in readers' pinned tabs.
+
+Feeds are usually edited in [Atelier](/atelier), which previews the working copy live. Publishing uses the theme repository flow: edit and commit through `pb.themes('feed', id)`, wait for validation, then call `publish()`. Publishing syncs the feed's display name and description from `feed.json`.
+
+## Editors and staff
+
+A feed's owner can let other members edit its template: change the repository in Atelier, preview it and publish. Add them by username with `addEditor()`; a feed can have up to 20 editors. Staff can edit every feed. Only the owner and staff change the editor list, and an editor can remove themselves. Unlisting and deleting stay with the owner.
+
+Search rows carry `can_edit` for the reader, and `from('feeds').where({ editable: true })` lists the feeds the reader owns or edits, drafts and unlisted ones included.
+
+## Built-in feeds
+
+Following, Discover and Everything are ordinary custom feeds owned by the Packbase system profile, with `system_key` set to `'following'`, `'discover'` or `'everything'`. They have a `default_position`: each member gets them pinned once, ahead of their own pins, the first time their pins are read. Unpinning one sticks, and it can be pinned again like any feed. Guests see them too: search for `from('feeds').where({ default_position: { not: null } }).orderBy('default_position', 'asc')`. Staff edit them in Atelier like any feed. Discover orders its posts by `network_rank`; see [the search reference](/reference/search#the-feeds-model).
+
+## Repository layout
+
+```
+feed.json          # manifest (required)
+templates/feed.hbs # whole-feed layout (required)
+templates/*.hbs    # partials, referenced as {{> name}}
+styles/*.css       # scoped to the feed container
+assets/*           # images
+```
+
+`feed.json` declares up to 6 named queries in the `POST /search` grammar, including [viewer placeholders](/reference/search#viewer-placeholders). `primary` names the `posts` query that pages. The other queries run once, on page 1. `cover` and `icon` name images in `assets/` that the directory shows once the revision is published; search results return them as `cover` and `icon` paths. `pagination` chooses `"infinite"` scrolling (the default) or `"paged"` Previous/Next pages; every `CustomFeedRun` reports it, so render the matching controls. See [Manifests](/atelier/manifests#feedjson) for the full reference and [Templates](/atelier/templates) for the whole template language.
+
+| Manifest key | Type | Default | Description |
+| --- | --- | --- | --- |
+| `packbaseManagesWidth` | `boolean` | `true` | Keep Packbase's centered `max-w-2xl` width; set to `false` to let the template use the full available width. |
+
+```json
+{
+  "name": "Art from my circle",
+  "description": "Image howls tagged #art from people I follow",
+  "primary": "posts",
+  "pagination": "infinite",
+  "packbaseManagesWidth": true,
+  "cover": "assets/cover.png",
+  "icon": "assets/icon.png",
+  "queries": {
+    "posts": {
+      "from": "posts",
+      "feed": true,
+      "where": {
+        "parent": null,
+        "tags": { "has": "art" },
+        "asset_types": { "has": "image" },
+        "user_id": { "in": { "$viewer": "following" } }
+      },
+      "orderBy": { "created_at": "desc" },
+      "take": 30
+    }
+  }
+}
+```
+
+## Template guide
+
+Templates use Handlebars. The app renders them in a sandboxed frame with no network access, sanitizes the HTML output, and then mounts it in `<div data-custom-feed="<id>">`. Feed CSS is always scoped to that container.
+
+### Context
+
+A feed's templates render with `FeedTemplateContext`. The app builds it from a `CustomFeedRun`:
+
+```ts twoslash
+import type { FeedTemplateContext } from '@packbase/sdk-ts'
+type _Context = FeedTemplateContext
+//   ^?
+```
+
+| Field | Description |
+| --- | --- |
+| `feed` | `{ id, display_name, description, owner, pinned, pin_count }` |
+| `viewer` | `{ signedIn }`. Viewer identity is never exposed. |
+| `results` | The declared queries by name, such as `results.posts` |
+| `page` | The current page, starting at 1 |
+| `hasMore` | Whether another page exists |
+
+Placeholder expansions are never included in the context.
+
+### Helpers
+
+`TEMPLATE_HELPERS` lists every helper a template can call. The server rejects any other helper when it validates the revision.
+
+| Group | Helpers |
+| --- | --- |
+| Handlebars built-ins | `if`, `unless`, `each`, `with`, `lookup`, `log` |
+| Comparison and logic | `eq`, `ne`, `gt`, `gte`, `lt`, `lte`, `and`, `or`, `not` |
+| Values | `length`, `json`, `date`, `relativeTime`, `number`, `truncate`, `lower`, `upper`, `plural` |
+| URLs | `url`, `asset`, `howlUrl`, `profileUrl`, `packUrl`, `mediaUrl` |
+
+URL helpers return only same-origin app paths, theme asset URLs, or `https:` URLs.
+
+### Built-in partials
+
+`BUILTIN_PARTIALS` are native components that the app mounts over the rendered markup. Pass the howl as the partial's context, as in `{{> howl this}}`.
+
+| Partial | Renders |
+| --- | --- |
+| `howl` | The full native howl card |
+| `like` | The like button, with the emoji, count and the reader's like state |
+| `replyButton` | The reply button and composer |
+| `menu` | The howl's dropdown menu |
+| `share` | The share button |
+| `media` | The howl's media and viewer |
+| `author` | The author's name and avatar |
+
+Partials from `templates/*.hbs` and inline partials are also available. Repository partials use their file name, such as `{{> card this}}` for `templates/card.hbs`.
+
+### Actions
+
+Any element can carry `data-pb-action` with `data-pb-howl="{{id}}"` to run the same handler as the native card:
+
+| `data-pb-action` | Effect |
+| --- | --- |
+| `like` | Likes or unlikes the howl |
+| `reply` | Opens the reply composer |
+| `open` | Opens the howl in the app, without reloading the page |
+| `share` | Shares the howl |
+| `profile` | Opens the author's profile |
+
+Same-origin links in the container open inside the app.
+
+### Starter template
+
+```handlebars
+{{#each results.posts}}
+  {{> howl this}}
+{{/each}}
+
+{{!-- A hand-built card:
+<article>
+  {{> author this}}
+  <p>{{body}}</p>
+  {{> like this}}
+  <button data-pb-action="open" data-pb-howl="{{id}}">Open</button>
+</article>
+--}}
+```
+
+Add `?theme=off` to a feed URL to show its posts in the default list.

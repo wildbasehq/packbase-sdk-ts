@@ -1,0 +1,181 @@
+---
+title: Error Handling
+description: Catch failed Packbase requests and show a useful response to the user.
+icon: TriangleAlert
+---
+
+An API request can fail when your code is valid. The user can be signed out. An ID can be incorrect. The server can have an error. The SDK throws an error for these failures. Put applicable calls that use `await` in a `try`/`catch` block.
+
+There are two broad kinds of failure:
+
+- `PackbaseError` means that Packbase received the request and sent an error status.
+- A native error such as `TypeError` usually means that the request did not receive an HTTP response. For example, the device can be offline or DNS can fail.
+
+## Catch a failed request
+
+```ts twoslash
+import { PackbaseSDK, PackbaseError } from '@packbase/sdk-ts'
+
+const pb = new PackbaseSDK({ apiKey: 'your-api-key' })
+// ---cut---
+try {
+  const pack = await pb.packs('a-pack-id')
+  console.log(pack.display_name)
+} catch (error) {
+  if (error instanceof PackbaseError) {
+    console.error(`Packbase returned ${error.status}: ${error.summary}`)
+  } else {
+    console.error('Could not reach Packbase', error)
+  }
+}
+```
+
+JavaScript can throw a value of any type. Thus, TypeScript initially gives a caught value the `unknown` type. The `instanceof PackbaseError` check changes it to the SDK error class. You can then use properties such as `status`.
+
+## `PackbaseError` properties
+
+| Property | Description |
+| --- | --- |
+| `status` | The HTTP status number, such as `401`, `404`, or `500`. |
+| `summary` | A readable explanation returned by Packbase. |
+| `code` | An optional machine-readable code for a more specific case. |
+| `raw` | The full parsed error response. Use it for fault isolation. |
+| `message` | The standard JavaScript `Error` message; it matches `summary`. |
+
+These properties identify frequently used HTTP status codes:
+
+| Property | Status | Usual meaning |
+| --- | --- | --- |
+| `isUnauthorized` | `401` | The user is not signed in, or the key is invalid. |
+| `isForbidden` | `403` | The user does not have permission. |
+| `isNotFound` | `404` | The requested item does not exist. |
+| `isConflict` | `409` | The request conflicts with the current state. |
+| `isServerError` | `500` or higher | The server has an error. |
+
+This example gives the user a message for each error type:
+
+```ts twoslash
+import { PackbaseSDK, PackbaseError } from '@packbase/sdk-ts'
+const pb = new PackbaseSDK({ apiKey: 'your-api-key' })
+// ---cut---
+try {
+  const pack = await pb.packs('a-pack-id')
+  console.log(pack.display_name)
+} catch (error) {
+  if (!(error instanceof PackbaseError)) {
+    console.error('Check your internet connection and try again.')
+  } else if (error.isNotFound) {
+    console.error('That pack could not be found.')
+  } else if (error.isUnauthorized) {
+    console.error('Please sign in and try again.')
+  } else if (error.isForbidden) {
+    console.error('You are signed in, but you do not have access to that pack.')
+  } else {
+    console.error(`Packbase error: ${error.summary}`)
+  }
+}
+```
+
+## Check a specific error code
+
+Two failures can have the same HTTP status. The optional `code` property gives a more specific cause when the server supplies one.
+
+```ts twoslash
+import { PackbaseSDK, PackbaseError } from '@packbase/sdk-ts'
+const pb = new PackbaseSDK({ apiKey: 'your-api-key' })
+// ---cut---
+try {
+  await pb.packs('a-pack-id').join()
+} catch (error) {
+  if (error instanceof PackbaseError && error.code === 'PACK_RULES_ACCEPTANCE_REQUIRED') {
+    console.log('Review and accept the current Pack rules before joining.')
+  } else if (error instanceof PackbaseError && error.isConflict) {
+    console.log('You may already be a member of this pack.')
+  } else {
+    throw error
+  }
+}
+```
+
+The final `throw error` passes unexpected failures to the surrounding error handler. Do not ignore these errors. Ignored errors make subsequent fault isolation difficult.
+
+## Timeouts while creating a howl
+
+The server creates howls in a background job. If the wait time is more than the configured timeout, the SDK throws a `PackbaseError` with status `408`:
+
+```ts twoslash
+import { PackbaseSDK, PackbaseError } from '@packbase/sdk-ts'
+const pb = new PackbaseSDK({ apiKey: 'your-api-key' })
+// ---cut---
+try {
+  const howl = await pb.howls.create(
+    { tenant_id: 'pack-id', body: 'Hello', tags: ['rating_safe'] },
+    { timeoutMs: 60_000 },
+  )
+} catch (error) {
+  if (error instanceof PackbaseError && error.status === 408) {
+    console.log('Check the existing job status before submitting this content again.')
+  } else {
+    throw error
+  }
+}
+```
+
+This timeout means that the SDK stopped the wait. The server can continue the job.
+
+## Cancel a request
+
+All SDK requests accept an `AbortSignal`. Howl creation carries the same signal through the initial request, polling delays, status checks, and final fetch.
+
+```ts twoslash
+import { PackbaseSDK } from '@packbase/sdk-ts'
+const pb = new PackbaseSDK({ autoLogin: false })
+// ---cut---
+const controller = new AbortController()
+const request = pb.packs.list({ signal: controller.signal })
+controller.abort()
+
+try {
+  await request
+} catch (error) {
+  if (error instanceof DOMException && error.name === 'AbortError') {
+    console.log('Request cancelled')
+  }
+}
+```
+
+## Network failures
+
+The SDK does not wrap low-level errors that `fetch` throws. In most runtimes, these failures are `TypeError` values:
+
+```ts twoslash
+import { PackbaseSDK, PackbaseError } from '@packbase/sdk-ts'
+const pb = new PackbaseSDK()
+// ---cut---
+try {
+  await pb.packs.list()
+} catch (error) {
+  if (error instanceof PackbaseError) {
+    console.error('Packbase rejected the request:', error.summary)
+  } else if (error instanceof TypeError) {
+    console.error('Network request failed:', error.message)
+  } else {
+    throw error
+  }
+}
+```
+
+## A testing helper
+
+`PackbaseError.fromResponse()` creates an error from a status and response body:
+
+```ts twoslash
+import { PackbaseError } from '@packbase/sdk-ts'
+// ---cut---
+const error = PackbaseError.fromResponse(422, {
+  summary: 'Validation failed',
+  code: 'INVALID_SLUG',
+})
+```
+
+The SDK uses this method internally. Most applications do not call it directly. Use it in a unit test to simulate an API failure.

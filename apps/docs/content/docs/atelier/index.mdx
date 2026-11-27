@@ -1,0 +1,76 @@
+---
+title: Atelier overview
+description: How Packbase's in-browser editor edits, previews and publishes profile themes, pack themes and custom feeds.
+---
+
+<Callout type="warn">
+  Atelier is experimental. Its interface, file formats and limits can change. Check this section again when Packbase updates.
+</Callout>
+
+Atelier is the repository editor that runs inside Packbase. It edits a **theme repository**: a private Git repository that holds a profile theme, a pack theme or a custom feed. Everything Atelier does goes through [`pb.themes(kind, ownerId)`](/reference/themes), so you can build the same workflow with the SDK or skip Atelier and push with Git.
+
+Atelier runs fully in the browser. Author code never runs in it: repository files are HTML, Handlebars, CSS, JSON and images, and the server validates every revision before anyone can preview or publish it.
+
+## Repository kinds
+
+Atelier opens at `/theme-editor/:kind/:ownerId`.
+
+| Kind | Owner | Who can edit | What it changes |
+| --- | --- | --- | --- |
+| `profile` | Profile ID | The profile's member | The profile page and its custom pages under `/u/<username>/pages` |
+| `pack` | Pack ID | Members with Manage Pack | The pack home and its custom pages under `/p/<pack-id>/pages` |
+| `feed` | Custom feed ID | The feed's owner, editors the owner adds, and staff | How a [custom feed](/reference/custom-feeds) queries and lays out howls |
+
+Open a profile theme from **Settings → Custom theme → Browse files**, and a pack theme from **Browse files** on the pack's **Custom theme** management page. Open a feed from its page or from **Settings → Custom feeds**. Leaving Atelier returns you to the profile, pack or feed.
+
+See [Repository layout](/atelier/repositories) for the files each kind may contain.
+
+The built-in Following, Discover and Everything tabs are feed repositories too, owned by Packbase and edited by staff. Their templates show how much a feed can express; see [Built-in feeds](/reference/custom-feeds#built-in-feeds).
+
+## From edit to publication
+
+A repository has three layers. Only the last one is visible to readers.
+
+1. **Working copy.** Atelier saves your edits to a private working copy on the server about 700 ms after you stop typing. Saving never creates a commit or changes what readers see. The working copy survives closing the tab. `pb.themes(...).workspace()` and `changeWorkspace()` are the SDK calls.
+2. **Commits.** Commit from the Git panel to record your saved changes as a real Git commit on `main`. Stage individual files to commit only some of them. The server then validates the commit: it compiles the repository and marks the revision `valid` or `invalid` with a list of errors.
+3. **Publication.** Publish a `valid` revision to show it to readers. Publishing a different revision later, including an older one, rolls back. An invalid revision can never replace the published one.
+
+Discard restores the working copy to the latest commit. History shows each commit's author, message and diff, and you can open an older commit read-only.
+
+## Previews
+
+The preview pane renders the repository the same way readers see it, but keeps you in the editor: links, `open` and `profile` actions and howl card navigation do nothing.
+
+| You're editing | The preview shows |
+| --- | --- |
+| A feed file (`feed.json`, `templates/*.hbs`, `styles/*.css`) | The whole feed, **live**: the server compiles your saved working copy without a commit, and the preview updates after each autosave. If the working copy doesn't compile, the preview lists the errors until the next save. Selecting a history commit previews that commit instead. |
+| A Handlebars page (`pages/**/page.hbs`, `pages/profile.hbs`) | The selected history commit, otherwise the latest commit, once it is `valid`. Commit to see new edits. |
+| Markdown | Rendered Markdown, with Packbase emotes |
+
+A feed preview offers **Publish** when the latest commit is valid and nothing is left to commit. Profile and pack themes publish from **Settings → Custom theme**.
+
+For SDK clients, the live feed preview is [`runFeed(id, { workspace })`](/reference/search#runfeedid-opts-render-a-custom-feed) with the working copy's `version`, and a committed preview is `runFeed(id, { revision })`. Both are owner-only.
+
+## Working with Git
+
+Each repository also has an HTTPS Git remote. Generate a repository password in the theme settings, clone, edit locally and push `main`. The password works only for Git transport for that one repository; it cannot publish. Never put it in a URL or commit it.
+
+```bash
+git clone <your HTTPS repository URL> packbase-theme
+cd packbase-theme
+git commit -am "Update my theme"
+git push origin HEAD:main
+```
+
+Pushed commits are validated like commits made in Atelier. Preview and publish them in Packbase.
+
+## Editor settings
+
+Atelier's plugins and preferences can be stored in a root-level `atelier.json`. Atelier never creates the file; without it, plugin and preference changes apply to the current session only. Preferences include Atelier's own light and dark themes; see [Appearance and themes](/atelier/appearance). `atelier.json`, `README.md` and `AGENTS.md` are allowed in every repository and never affect rendering.
+
+## In this section
+
+- [Repository layout](/atelier/repositories): the files each kind may contain, and the limits.
+- [Templates](/atelier/templates): HTML pages, Handlebars templates, CSS and images.
+- [Manifests](/atelier/manifests): `feed.json` and `theme.json`, including queries and pagination.
+- [Appearance and themes](/atelier/appearance): Atelier's light and dark themes, colour overrides and workspace settings.

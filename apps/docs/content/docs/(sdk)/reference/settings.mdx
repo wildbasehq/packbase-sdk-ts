@@ -1,0 +1,80 @@
+---
+title: User settings
+description: Read current setting definitions and update supported account preferences.
+---
+
+`pb.me.settings()` reads `GET /user/me/settings`. The response is a flat map of
+setting values plus a `definitions` object containing the server's current
+setting schema. The SDK exposes this as `Record<string, unknown>` because the
+server can add settings without a client release.
+
+```ts twoslash
+import { PackbaseSDK, decodeSettings } from '@packbase/sdk-ts'
+const pb = new PackbaseSDK()
+// ---cut---
+const raw = await pb.me.settings()
+const settings = decodeSettings(raw, {
+  home_feed_type: (value): 'gallery' | 'list' => {
+    if (value !== 'gallery' && value !== 'list') throw new TypeError('Invalid feed layout')
+    return value
+  },
+  feed_pagination: (value): 'infinite' | 'paged' => {
+    if (value !== 'infinite' && value !== 'paged') throw new TypeError('Invalid pagination')
+    return value
+  },
+})
+await pb.me.settings({ home_feed_type: 'list', feed_pagination: 'paged' })
+```
+
+Updates merge only the supplied keys and return `{ success: boolean }`. Do not
+send `definitions` back as a setting. To cancel a read, use
+`pb.me.settings(undefined, { signal })`; the first argument otherwise means
+update data.
+
+## Current preferences
+
+| Key | Values and current default | Behavior |
+| --- | --- | --- |
+| `home_feed_type` | `gallery` or `list`; `gallery` | Presentation for non-Pack feeds; does not filter media |
+| `feed_pagination` | `infinite` or `paged`; `infinite` | Client feed browsing preference |
+| `content.show_nsfw` | Boolean; `false` | Include Suggestive, Mature, and Explicit ratings in feeds |
+| `content.blur_sensitive` | Boolean; `true` | Ask before revealing sensitive content |
+| `block_tags` | String array; `[]` | Personal tag exclusions, including `*` wildcard patterns |
+| `howl_like_emoji` | One Unicode emoji or available Pack emote token; `🔥` | Snapshotted on new publications |
+| `allow_tag_edits_from_others` | Boolean; `true` | Other members may edit unlocked tags, subject to normal permission checks |
+| `allow_rehowl` | Boolean; `true` | Whether other members may rehowl this account's content |
+| `packchat_profile_link` | Boolean; `true` | Show permitted Packbase attribution for verified Fluxer authors |
+| `accent` | Server-defined colour name; `blue` | Client accent colour; use the definition's `values` list |
+| `share_accent` | Boolean; `false` | Allow the profile's shared accent colour |
+| `disallow_ai_search_parsing` | Boolean; `true` | Request exclusion from AI search parsing |
+| `disallow_search_engine_indexing` | Boolean; `false` | Request exclusion from search indexing |
+| `gossip_discovery` | Boolean; `false` | Marked `not_implemented`; does not enable a supported feature |
+
+Search exclusion preferences are requests to crawlers, not content access
+controls. Use profile and Pack visibility rules for access restrictions.
+
+The schema also contains client onboarding state: `expand_pack_nag_dismissed`,
+`first_howl_nag_dismissed`, `onboarding_checklist_dismissed`,
+`checklist_howled_in_basecamp`, `checklist_joined_non_basecamp`,
+`checklist_liked_howl`, `checklist_howled_outside_basecamp`, and
+`checklist_invited_friend` are booleans defaulting to `false`.
+`first_howl_nag_activated_at` is a timestamp string defaulting to `''`.
+
+The response's `definitions` is authoritative for available keys, defaults,
+enum values, ranges, requirements, and `user_modifiable`. Unknown keys and invalid
+values are rejected. Fields marked `not_implemented` do not promise an active
+feature. Old examples using `dark_mode` or `notifications_email` do not describe
+the current schema.
+
+Tag exclusions apply to mixed and Pack discovery, pins, and search. Direct profile
+browsing has its own context. Account maturity flags no longer select content
+ratings: `profile_avatar_mature`, `profile_banner_mature`, and
+`profile_howls_mature` belong to `pb.me.update()`, not this settings map.
+
+`pb.packs(id).settings()` is a read-only list of setting definitions and values.
+It does not write Pack metadata. Change Pack presentation through
+`pb.packs(id).update({ feed_type })`; change account preferences through
+`pb.me.settings()`.
+
+See [Pack custom emotes](/reference/emotes), [Tag editing](/reference/howls#edit-tags),
+and [Visibility](/reference/visibility) for the associated authorization rules.

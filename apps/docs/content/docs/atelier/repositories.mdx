@@ -1,0 +1,71 @@
+---
+title: Repository layout
+description: The files profile, pack and feed repositories may contain, how pages map to URLs, and the limits.
+---
+
+The server accepts only the files listed here. A commit with any other file is `invalid`, and its error names the file.
+
+## Profile and pack themes
+
+```
+theme.json                   # manifest: version and optional queries
+layout.html                  # optional wrapper for every HTML page
+style.css                    # stylesheet for every page
+pages/profile.html           # profile repositories only: content below the profile header
+pages/page.html              # the custom-page index (packs: also above the home feed)
+pages/<path>/page.html       # a custom page at /pages/<path>
+pages/<path>/page.hbs        # the same page as a Handlebars template
+templates/<name>.hbs         # partials for Handlebars pages, used as {{> name}}
+assets/*                     # raster images
+```
+
+Pages use file-based routing. `pages/about/page.html` serves `/u/<username>/pages/about` on a profile and `/p/<pack-id>/pages/about` on a pack. A folder becomes a route only when it contains a `page.html` or `page.hbs`. There is no `index.html`: Packbase's own layout always surrounds your pages.
+
+| File | Where it appears |
+| --- | --- |
+| `pages/profile.html` or `pages/profile.hbs` | Below the profile header, above the normal profile content. Reserved for profile repositories. |
+| `pages/page.html` or `pages/page.hbs` | The custom-page index. In a pack, it also appears above the home feed. |
+| `pages/<path>/page.html` or `.hbs` | Its own custom page |
+
+Each page path can have one file: `page.html` or `page.hbs`, not both. A repository with only `style.css` still styles its home page.
+
+Theme CSS applies to the surrounding Packbase interface while a reader views the theme. Readers can add `?theme=off` to any URL to browse without it.
+
+## Custom feeds
+
+```
+feed.json            # manifest: name, queries, primary, pagination, cover, icon (required)
+templates/feed.hbs   # the feed layout (required)
+templates/<name>.hbs # partials, used as {{> name}}
+styles/<name>.css    # stylesheets, scoped to the feed
+assets/*             # raster images, including the cover and icon feed.json names
+```
+
+A feed has a single layout, `templates/feed.hbs`, which renders once for each page of results. See [`feed.json`](/atelier/manifests#feedjson) for the manifest.
+
+## Paths
+
+- Use letters, digits, `_` and `-` in each path segment, with dots only between name parts (`card.hbs`, `hero.dark.png`). Hidden files, `..`, absolute paths, symbolic links and submodules are rejected.
+- A path can be at most 8 segments deep.
+- `templates/<name>.hbs` must start with a letter. Its file name is the partial name.
+- Empty folders are stored as an empty `.gitkeep` file. Atelier shows them as folders.
+
+## Images
+
+Put raster images (`.png`, `.jpg`, `.jpeg`, `.webp`, `.gif`, `.avif`) under `assets/`. The server checks each image, rotates it upright and converts it to PNG, then embeds it in the compiled output. Animated images keep only their first frame. SVG and other vector formats aren't supported. Reference images from CSS or HTML pages; see [Images](/atelier/templates#images).
+
+## Limits
+
+| Limit | Value |
+| --- | --- |
+| Files per repository | 500 |
+| Page files (`pages/**`) | 100 |
+| Text file | 256 KiB |
+| Image, after conversion to PNG | 2 MiB |
+| Image size | 16 million pixels |
+| Revision, all files together | 20 MiB |
+| Compiled theme | 20 MiB |
+| Compiled feed | 2 MiB, because readers download it with page 1 |
+| Declared queries | 6 |
+
+Validation also caps how much `{{display_name}}` and similar tokens may expand. Validation errors name the file and, where possible, the line.

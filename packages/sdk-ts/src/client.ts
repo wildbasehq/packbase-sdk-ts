@@ -1,0 +1,401 @@
+import { makeThemes, type ThemesFn } from './resources/themes'
+import { TypedEventEmitter } from './events'
+import { makeVisibility, type VisibilityResource } from './resources/visibility'
+import { HttpClient, type SDKConfig } from './http'
+import type { RequestOptions } from './request'
+import { Poller } from './poll'
+import { type FeedsFn, makeFeeds } from './resources/feeds'
+import { type HowlsFn, makeHowls } from './resources/howls'
+import { type InboxResource, makeInbox } from './resources/inbox'
+import { type InvitesResource, makeInvites } from './resources/invites'
+import { type FoldersResource, makeFolders } from './resources/folders'
+import { type FeedbackResource, makeFeedback } from './resources/feedback'
+import { type CustomFeedsResource, makeCustomFeeds } from './resources/custom-feeds'
+import { type MigrationsResource, makeMigrations } from './resources/migrations'
+import { makeMe, type MeFn } from './resources/me'
+import { makePacks, type PacksFn } from './resources/packs'
+import { makeProfiles, type ProfilesFn } from './resources/profiles'
+import { makeTags, type TagsFn } from './resources/tags'
+import type { NamedQueryMap, TypedNamedResultMap } from './search'
+import type { Profile } from './types/profile'
+
+/**
+ * Configuration for `PackbaseSDK`.
+ *
+ * This is the public constructor config for the high-level SDK.
+ */
+export interface PackbaseSDKConfig extends Partial<SDKConfig> {
+    /**
+     * Base URL of the Packbase API, without a trailing slash.
+     *
+     * @default 'https://vgs.packbase.app'
+     */
+    baseUrl?: string
+
+    /**
+     * Whether construction should automatically fetch and hydrate `me`.
+     * Disable this for anonymous, public-only clients.
+     * @default true
+     */
+    autoLogin?: boolean
+}
+
+/**
+ * Event map for {@link PackbaseSDK}.
+ *
+ * @example
+ * ```ts
+ * pb.on('ready', (profile) => console.log('Logged in as', profile.username))
+ * ```
+ */
+export interface PackbaseSDKEvents {
+    /** Emitted after local relationship changes or explicit visibility invalidation. */
+    visibilityChanged: [generation: number]
+    /**
+     * Emitted once the SDK has successfully authenticated and the `me` object
+     * has been populated with the current user's profile.
+     *
+     * @param profile - The authenticated user's profile.
+     */
+    ready: [profile: Profile]
+    /**
+     * Emitted when the initial authentication attempt fails.
+     *
+     * @param error - The error that caused login to fail.
+     */
+    error: [error: unknown]
+}
+
+/**
+ * The Packbase SDK client. Create one instance and reuse it across your app.
+ *
+ * ## Auth
+ *
+ * Pass `apiKey` to use a Clerk JWT or API key:
+ * ```ts
+ * const pb = new PackbaseSDK({ apiKey: 'your-clerk-jwt' })
+ * ```
+ *
+ * Omit it to fall back to cookie-based auth (useful in browser contexts where
+ * the session cookie is set by the server):
+ * ```ts
+ * const pb = new PackbaseSDK()
+ * ```
+ *
+ * ## Usage
+ *
+ * ```ts
+ * // Profiles
+ * const profile = await pb.profiles('rek')
+ * await pb.profiles('rek').follow()
+ *
+ * // Current user
+ * const me = await pb.me()
+ * await pb.me.update({ display_name: 'New Name' })
+ * console.log(pb.me.username) // available after 'ready' event
+ *
+ * // Packs
+ * const pack = await pb.packs('pack-uuid')
+ * await pb.packs('pack-uuid').join()
+ * const all = await pb.packs.list()
+ *
+ * // Howls
+ * const howl = await pb.howls.create({
+ *   tenant_id: 'pack-uuid',
+ *   body: '<p>Hello</p>',
+ *   tags: ['rating_safe'],
+ * })
+ * await pb.howls('howl-id').like()
+ *
+ * // Inbox
+ * const { data } = await pb.inbox.fetch({ unreadOnly: true })
+ * await pb.inbox.markRead('all')
+ *
+ * // Search
+ * import { from } from '@packbase/sdk-ts'
+ * const results = await pb.search({
+ *   packs: from('packs').orderBy('last_activity_at').take(10).build(),
+ * })
+ *
+ * // Events
+ * pb.on('ready', (profile) => console.log('Logged in as', profile.username))
+ * pb.on('error', (err) => console.error('Auth failed', err))
+ * ```
+ */
+export class PackbaseSDK {
+    /** Optional-auth visibility change polling. The application owns the watch loop. */
+    readonly themes: ThemesFn
+    readonly visibility: VisibilityResource
+    /**
+     * Profile resource. Call with a username or UUID to get a `ProfileHandle`,
+     * or call methods on the handle to follow, report, etc.
+     *
+     * @example
+     * ```ts
+     * await pb.profiles('rek')
+     * await pb.profiles('rek').follow()
+     * ```
+     */
+    readonly profiles: ProfilesFn
+    /**
+     * Current user resource. Call to fetch your profile, or use the attached
+     * methods for account-level operations.
+     *
+     * @example
+     * ```ts
+     * await pb.me()
+     * await pb.me.update({ about: { bio: 'hello' } })
+     * await pb.me.settings()
+     * await pb.me.settings({ home_feed_type: 'gallery' })
+     * await pb.me.packs()
+     * ```
+     */
+    readonly me: MeFn
+    /**
+     * Pack resource. Call with a UUID to get a `PackHandle`, or use
+     * `list`/`create` to work with packs in bulk.
+     *
+     * @example
+     * ```ts
+     * await pb.packs('pack-uuid')
+     * await pb.packs('pack-uuid').join()
+     * await pb.packs('pack-uuid').members()
+     * await pb.packs.list()
+     * await pb.packs.create({ display_name: 'Art Pack', description: '...' })
+     * ```
+     */
+    readonly packs: PacksFn
+    /**
+     * Howl (post) resource. Call with an ID to get a `HowlHandle`, or use
+     * `create` to post a new howl.
+     *
+     * Howl creation is async on the server. By default, `create` polls until
+     * the job completes and returns the finished howl.
+     *
+     * @example
+     * ```ts
+     * await pb.howls('id')
+     * await pb.howls('id').like()
+     * await pb.howls('id').rehowl()
+     * await pb.howls.create({ tenant_id: 'pack-id', body: 'hi', tags: ['rating_safe'] })
+     * ```
+     */
+    readonly howls: HowlsFn
+    /**
+     * Feed resource. Call with a feed ID to fetch paginated feed data,
+     * including any pinned howls for that feed.
+     *
+     * @example
+     * ```ts
+     * const page = await pb.feeds('universe:home').fetch({ page: 2 })
+     * console.log(page.pins)
+     * ```
+     */
+    readonly feeds: FeedsFn
+
+    /**
+     * Inbox (notifications) resource.
+     *
+     * @example
+     * ```ts
+     * const { data, has_more } = await pb.inbox.fetch({ unreadOnly: true })
+     * const { count } = await pb.inbox.count()
+     * await pb.inbox.markRead(['id1', 'id2'])
+     * await pb.inbox.markRead('all')
+     * ```
+     */
+    readonly inbox: InboxResource
+    /**
+     * Invite endpoints.
+     *
+     * @example
+     * ```ts
+     * await pb.invites.list()
+     * const invite = await pb.invites.generate('person@example.com')
+     * ```
+     */
+    readonly invites: InvitesResource
+    /**
+     * Folder endpoints.
+     *
+     * @example
+     * ```ts
+     * await pb.folders.list('user-id')
+     * await pb.folders.get('folder-id')
+     * ```
+     */
+    readonly folders: FoldersResource
+    /** Submits product feedback for the authenticated user. */
+    readonly feedback: FeedbackResource
+    /** Custom feed writes; read and render feeds with `search()` (`feeds` model and `runFeed`). */
+    readonly customFeeds: CustomFeedsResource
+    /** Schema-controlled account imports and ownership verification. */
+    readonly migrations: MigrationsResource
+    /**
+     * Tag catalog. Call it to list registered machine-readable tag names, or
+     * use `get`, `create`, `update`, and `delete` to manage tag metadata.
+     * Authenticated users can also follow tags for their home and gossip feeds.
+     *
+     * @example
+     * ```ts
+     * const names = await pb.tags()
+     * const art = await pb.tags.get('art')
+     * await pb.tags.follow('art')
+     * const followed = await pb.tags.following()
+     * await pb.tags.unfollow('art')
+     * await pb.tags.create({
+     *   tag: 'digital_art',
+     *   title: 'Digital art',
+     *   description: '<p>Artwork made with digital tools.</p>',
+     * })
+     * await pb.tags.update('digital_art', { title: 'Digital illustration' })
+     * await pb.tags.delete('digital_art')
+     * ```
+     */
+    readonly tags: TagsFn
+    private readonly http: HttpClient
+    private readonly events = new TypedEventEmitter<PackbaseSDKEvents>()
+    private readonly hydrateMe: (profile: Profile) => void
+
+    constructor(config: PackbaseSDKConfig = {}) {
+        this.http = new HttpClient({
+            baseUrl: config.baseUrl ?? 'https://vgs.packbase.app',
+            apiKey: config.apiKey,
+        }, generation => this.emit('visibilityChanged', generation))
+        this.themes = makeThemes(this.http)
+        this.visibility = makeVisibility(this.http)
+
+        const poller = new Poller(this.http)
+
+        const me = makeMe(this.http)
+        this.me = me
+        this.hydrateMe = me.hydrate
+        this.profiles = makeProfiles(this.http)
+        this.packs = makePacks(this.http)
+        this.howls = makeHowls(this.http, poller)
+        this.feeds = makeFeeds(this.http)
+        this.inbox = makeInbox(this.http)
+
+        this.invites = makeInvites(this.http)
+        this.folders = makeFolders(this.http)
+        this.feedback = makeFeedback(this.http)
+        this.customFeeds = makeCustomFeeds(this.http)
+        this.migrations = makeMigrations(this.http)
+        this.tags = makeTags(this.http)
+
+        if (config.autoLogin ?? true) {
+            void this.attemptLogin()
+        }
+    }
+
+    /**
+     * Registers a listener for a SDK lifecycle event.
+     *
+     * | Event | When |
+     * |-------|------|
+     * | `ready` | The SDK authenticated successfully; `me` is fully populated. |
+     * | `error` | The initial authentication attempt failed. |
+     *
+     * @param event - The event name.
+     * @param listener - The callback to invoke.
+     * @returns `this` for chaining.
+     *
+     * @example
+     * ```ts
+     * pb.on('ready', (profile) => console.log('Hello', profile.username))
+     * pb.on('error', (err) => console.error('Auth error', err))
+     * ```
+     */
+    on<K extends keyof PackbaseSDKEvents>(
+        event: K,
+        listener: (...args: PackbaseSDKEvents[K]) => void,
+    ): this {
+        this.events.on(event, listener)
+        return this
+    }
+
+    /** Removes a previously registered SDK lifecycle listener. */
+    off<K extends keyof PackbaseSDKEvents>(
+        event: K,
+        listener: (...args: PackbaseSDKEvents[K]) => void,
+    ): this {
+        this.events.off(event, listener)
+        return this
+    }
+
+    /** Invalidates SDK read caches and fences in-flight reads; does not erase application state. */
+    invalidateVisibility(): number {
+        return this.http.invalidateVisibility()
+    }
+
+    /**
+     * Resolves an API path returned by the server, such as a custom feed's `cover` or `icon`,
+     * into an absolute URL on this client's API. Use it for `<img src>`.
+     *
+     * @example
+     * ```ts
+     * const cover = feed.cover ? pb.url(feed.cover) : undefined
+     * ```
+     */
+    url(path: string): string {
+        return this.http.resolveUrl(path)
+    }
+
+    /** Capture this generation to fence application work that spans multiple reads. */
+    getVisibilityGeneration(): number {
+        return this.http.getVisibilityGeneration()
+    }
+
+    /**
+     * Executes one or more named search queries in a single request (`POST /search`).
+     *
+     * Use the `from()` builder to construct queries. Results are keyed by the
+     * same names you pass in.
+     *
+     * Check each result with `isErrorEntry()` before using it!! the server can
+     * return a per-query error without failing the whole request.
+     *
+     * @param queries - A map of query names to `QueryInput` objects.
+     * @param options
+     * @returns A map of query names to their results.
+     *
+     * @example
+     * ```ts
+     * import { PackbaseSDK, from, isErrorEntry } from '@packbase/sdk-ts'
+     *
+     * const pb = new PackbaseSDK()
+     * const { topPacks, recentUsers } = await pb.search({
+     *   topPacks: from('packs').orderBy('last_activity_at').take(10).build(),
+     *   recentUsers: from('profiles').orderBy('created_at').take(5).build(),
+     * })
+     *
+     * if (!isErrorEntry(topPacks)) {
+     *   console.log(topPacks) // Pack[]
+     * }
+     * ```
+     */
+    search<Q extends NamedQueryMap>(
+        queries: Q,
+        options?: RequestOptions,
+    ): Promise<TypedNamedResultMap<Q>> {
+        return this.http.postRead<TypedNamedResultMap<Q>>('/search', queries, options)
+    }
+
+    /** @internal Emits a typed SDK event. Not exposed on the public API. */
+    private emit<K extends keyof PackbaseSDKEvents>(
+        event: K,
+        ...args: PackbaseSDKEvents[K]
+    ): void {
+        this.events.emit(event, ...args)
+    }
+
+    private async attemptLogin(): Promise<void> {
+        try {
+            const profile = await this.me()
+            this.hydrateMe(profile)
+            this.emit('ready', profile)
+        } catch (error) {
+            this.emit('error', error)
+        }
+    }
+}

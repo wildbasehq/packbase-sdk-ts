@@ -1,0 +1,5 @@
+{
+  "title": "Atelier",
+  "root": true,
+  "pages": ["index", "repositories", "templates", "manifests", "appearance"]
+}

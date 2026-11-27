@@ -1,0 +1,17 @@
+import type { JsonValue } from './json'
+
+export interface Notification {
+    id: string
+    created_at: string
+    user_id: string
+    type: string
+    title: string
+    content?: string
+    read: boolean
+    read_at?: string | null
+    metadata?: JsonValue
+    related_id?: string | null
+}
+
+/** Known host events; other historical inbox types remain supported. */
+export type PackHostNotification = Omit<Notification, 'type' | 'metadata'> & { type: 'pack_report_outcome'; metadata: import('./pack-host').PackReportOutcomeMetadata }

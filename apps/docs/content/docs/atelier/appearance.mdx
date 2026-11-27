@@ -1,0 +1,55 @@
+---
+title: Appearance and themes
+description: Choose Atelier's light and dark themes, override individual colours, and keep the choice with the repository.
+---
+
+Atelier has its own look, separate from Packbase's theme and from the theme you are editing. Nothing on this page changes what readers see.
+
+Open **File → Preferences → Settings** (Ctrl+, or Cmd+, on macOS) and go to **Themes**.
+
+## Light and dark
+
+| Setting | Key | Values | Default |
+| --- | --- | --- | --- |
+| Appearance | `appearance.colorScheme` | `auto`, `light`, `dark` | `auto` |
+| Light theme | `appearance.lightTheme` | A light theme's ID | `atelier.light` |
+| Dark theme | `appearance.darkTheme` | A dark theme's ID | `atelier.dark` |
+
+**Appearance** decides whether Atelier is light or dark. `auto` follows Packbase's own light or dark setting. `light` and `dark` keep Atelier that way whatever Packbase uses.
+
+**Light theme** and **Dark theme** each name the theme used for that appearance, so you pick one of each and Atelier switches between them. Atelier ships with **Atelier Light** and **Atelier Dark**. If a saved theme isn't available, Atelier uses the built-in theme for that appearance.
+
+Page and feed previews inside Atelier keep Packbase's colours, not Atelier's, so a preview looks the way readers will see it.
+
+## Overriding colours
+
+The **Colours** and **Syntax colours** sections override single colours on top of the selected theme. Leave a field empty to follow the theme. Fields accept `#RRGGBB` and `#RRGGBBAA`.
+
+An override applies in both light and dark. To change a whole palette, choose a different theme instead.
+
+## Keeping settings with the repository
+
+Without a root `atelier.json`, these settings last for the current session. With one, Atelier writes them to its `preferences` object in your working copy. Commit the file to keep them in history and share them with other editors of the repository.
+
+```json title="atelier.json"
+{
+  "version": 1,
+  "plugins": {},
+  "preferences": {
+    "appearance.colorScheme": "dark",
+    "appearance.darkTheme": "atelier.dark",
+    "appearance.lightTheme": "atelier.light",
+    "colours.accent": "#c3adf0"
+  }
+}
+```
+
+Atelier never creates `atelier.json` for you, and the file never affects rendering.
+
+## Workspace shape
+
+The **Workspace** section holds sizes and motion: tab text size and corner radius, toolbar height, sidebar width, file-row height, and transition durations. Tabs are square by default; raise **Tab corner radius** to round them. **Reduce workspace motion** turns off transitions, including the highlight that glides between menu items and rows.
+
+## Themes come from plugins
+
+A theme is something an Atelier plugin contributes. The **Themes** plugin supplies the two built-in themes and the three settings above. Turn plugins on and off under **File → Preferences → Plugins**. With Themes off, Atelier keeps the built-in themes and follows Packbase's light or dark setting.

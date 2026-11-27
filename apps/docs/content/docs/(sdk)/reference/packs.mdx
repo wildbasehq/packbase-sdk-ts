@@ -1,0 +1,234 @@
+---
+title: pb.packs
+description: Fetch, create, join, and manage packs with the TypeScript SDK.
+---
+
+A pack is a Packbase community. Call `pb.packs(id)` with a pack UUID to get a lazy `PackHandle`. The SDK does not send a request until you await the handle or call one of its methods. Use list methods such as `pb.packs.list()` and `.create()` directly on `pb.packs`.
+
+## Fetch and list packs
+
+```ts twoslash
+import { PackbaseSDK } from '@packbase/sdk-ts'
+const pb = new PackbaseSDK()
+// ---cut---
+const pack = await pb.packs('00000000-0000-0000-0000-000000000000')
+const result = await pb.packs.list()
+
+console.log(pack.about?.bio)
+for (const listedPack of result.packs) {
+  console.log(listedPack.display_name)
+}
+console.log(`${result.hidden} packs hidden because you already belong to them`)
+```
+
+Awaiting a handle returns one `Pack`. `list()` returns a `PackList` object rather than a plain array because the response also includes visibility information:
+
+```ts
+interface PackList {
+  packs: Pack[]
+  hidden: number
+  total_count?: number
+}
+```
+
+Pass `{ search: 'text' }` to filter the complete list. This endpoint has no continuation parameter, so the SDK removes the server's unusable `has_more` field.
+
+## Create a pack
+
+```ts twoslash
+import { PackbaseSDK } from '@packbase/sdk-ts'
+const pb = new PackbaseSDK()
+// ---cut---
+const pack = await pb.packs.create({
+  display_name: 'My Art Community',
+  description: 'A place for digital artists.',
+})
+```
+
+The signed-in user becomes the owner. `display_name` is limited to 128 characters and `description` to 256 characters.
+
+## Members
+
+```ts twoslash
+import { PackbaseSDK } from '@packbase/sdk-ts'
+const pb = new PackbaseSDK()
+// ---cut---
+const page = await pb.packs('pack-id').members({ limit: 50 })
+
+for (const member of page.data) {
+  console.log(member.username, member.membership_id, member.roles)
+}
+```
+
+Returns a `PackMemberPage` (`{ data, has_more, cursor? }`), default 50/max 100,
+ordered by descending membership ID. Fetch the next page on demand with
+`members({ cursor: page.cursor, limit: 50 })` when `has_more` is true. Membership IDs
+and cursors are decimal strings; never coerce them to numbers. Presence is per
+summary, not a promise of global activity ordering. The list omits `r18_tags`.
+
+For an explicit lookup, `await pb.packs('pack-id').findMember('user-id', { signal })`
+searches sequential pages until found/exhausted and supports cancellation. An
+absent member on page one is not proof of nonmembership. Ordinary list rendering
+should load pages on demand, not automatically traverse the whole pack.
+An empty initial visible list retains the server's 403; exhausted cursors return
+empty data. More than 100 role assignments returns 413 `MEMBER_ROLE_LIMIT`; reduce
+assignments rather than interpreting an incomplete permission set.
+
+## Join and leave
+
+```ts twoslash
+import { PackbaseSDK } from '@packbase/sdk-ts'
+const pb = new PackbaseSDK()
+// ---cut---
+const membership = await pb.packs('pack-id').join()
+console.log(membership.tenant_id, membership.user_id)
+
+await pb.packs('pack-id').leave()
+```
+
+Both methods require authentication. Pack owners cannot leave through this endpoint. Users also cannot leave if the target is their default pack.
+
+## Delete a pack
+
+`await pb.packs('pack-id').delete()` permanently deletes a pack and its posts, replies, memberships and roles. Only the pack's actual leader (`owner_id`) can delete it; management permissions alone are insufficient. Personal and system packs cannot be deleted.
+
+The SDK sends a bodyless `DELETE /pack/:id?confirm_pack_id=:id` and expects
+`204 No Content`. A missing or mismatched query confirmation is rejected.
+Leaving remains a separate membership operation and never deletes a Pack.
+
+Present an explicit irreversible-deletion warning before calling this method. Packbase's UI requires a continuous 10-second mouse, touch or keyboard hold; releasing, moving away or losing focus resets it. This hold is a UI safeguard, not a server-enforced timer. Refresh pack lists, feeds and default-pack references after success.
+
+## Edit pack details
+
+```ts twoslash
+import { PackbaseSDK } from '@packbase/sdk-ts'
+const pb = new PackbaseSDK()
+// ---cut---
+const updated = await pb.packs('pack-id').update({
+  display_name: 'New Name',
+  feed_type: 'gallery',
+  about: { bio: 'Updated description', flair: 'ART' },
+  images: { avatar: 'data:image/png;base64,...' },
+})
+```
+
+Packs expose `feed_type: PackFeedType` (`list` or `gallery`), defaulting to `list`. Updates may set `feed_type`; omitting it retains the current value. The preference controls the main pack feed and its topic feeds for all viewers.
+
+This operation requires the `ManagePack` permission. The response is a database `PackUpdateResult`, not a standard `Pack` object. Fetch the pack again if the user interface requires the formatted current state.
+
+## Settings
+
+```ts twoslash
+import { PackbaseSDK } from '@packbase/sdk-ts'
+const pb = new PackbaseSDK()
+// ---cut---
+const settings = await pb.packs('pack-id').settings()
+
+for (const setting of settings) {
+  console.log(setting.key, setting.value, setting.definition)
+}
+```
+
+`settings()` sends `GET /pack/:id/settings` and returns a discriminated `PackSetting[]`. Definitions contain `type`, a typed `default`, `user_modifiable`, and display metadata. They also contain type-specific fields such as `values` or `range`.
+
+This route is read-only. For a definition with `user_modifiable: true`, update the current user's value through `pb.me.settings()`:
+
+```ts twoslash
+import { PackbaseSDK } from '@packbase/sdk-ts'
+const pb = new PackbaseSDK()
+// ---cut---
+await pb.me.settings({ allow_rehowl: false })
+```
+
+## Roles
+
+Role management requires the `ManageRoles` permission. Permissions are numeric bit flags, and `|` combines several flags into one value.
+
+```ts twoslash
+import { PackbaseSDK, PackPermissionBits } from '@packbase/sdk-ts'
+const pb = new PackbaseSDK()
+const pack = pb.packs('pack-id')
+// ---cut---
+const role = await pack.createRole({
+  name: 'Moderator',
+  permissions: PackPermissionBits.BanMembers | PackPermissionBits.KickMembers,
+})
+
+const roles = await pack.roles()
+await pack.updateRole(role.id, {...role, name: 'Senior moderator'})
+await pack.setMemberRoles('user-id', [role.id])
+await pack.deleteRole(role.id)
+```
+
+`setMemberRoles()` takes the user's UUID, not the numeric membership record ID. The server strips the `Owner` permission bit from custom roles.
+
+## Moderate members
+
+```ts twoslash
+import { PackbaseSDK } from '@packbase/sdk-ts'
+const pb = new PackbaseSDK()
+const pack = pb.packs('pack-id')
+// ---cut---
+await pack.kick('user-id')
+await pack.ban('user-id')
+```
+
+Despite the route calling it `memberId`, the value passed to `kick()` and `ban()` is the user's UUID.
+
+## Pinned howls
+
+```ts twoslash
+import { PackbaseSDK } from '@packbase/sdk-ts'
+const pb = new PackbaseSDK()
+const pack = pb.packs('pack-id')
+// ---cut---
+const { data: pinned } = await pack.pins()
+await pack.pinHowl('howl-id', {expiresAt: '2026-12-31T23:59:00.000Z'})
+await pack.unpinHowl('howl-id')
+```
+
+Pinning requires `PinHowls`. A pack may have at most five active pins.
+
+## Report a pack
+
+```ts twoslash
+import { PackbaseSDK, ReportReason } from '@packbase/sdk-ts'
+const pb = new PackbaseSDK()
+// ---cut---
+const ticket = await pb.packs('pack-id').report(
+  ReportReason.HarassmentOrBullying,
+  'Additional context.',
+)
+```
+
+`report()` returns the created moderation ticket's `id` and `status`.
+
+## Host tools, Packchat, and emotes
+
+`pb.packs(id).host` supplies welcome content, versioned rules, insights, and Pack-rule reports. See [Pack-host toolkit](/reference/pack-host).
+`pb.packs(id).packchat` manages a linked Fluxer community and reads selected
+channels; see [Packchat](/reference/packchat).
+
+Pack image emotes are managed through `pb.packs(id).emotes`. See
+[Pack custom emotes](/reference/emotes) for uploads, membership restrictions,
+rendering, and the dedicated `ManageEmotes` permission. These resources have
+separate authorization rules; being a Pack member does not grant management.
+
+## Visibility and join requests
+
+Pack visibility uses the owner's relationships: `everyone`, `followers`, `following`, `friends` (mutuals), or `private` (Just Me). Every member retains access regardless of current relationships or `joined_via`. Join provenance is informational only.
+
+Set `visibility` and `allow_access_requests` during creation or update. When changing visibility, explicitly send `remove_ineligible_members: false` to keep members or `true` to remove those outside the new audience. Call `pack.visibilityPreview(visibility)` to retrieve `{ members }`, the number who would be removed under the proposed audience. Ask the person making the change before sending this choice.
+
+Inaccessible packs stay out of discovery. A direct link can use `pack.access()` to show only identity, current rules, and request status. After rules acceptance, call `pack.requestJoin(rulesVersion)`; `pack.cancelJoinRequest()` cancels it.
+
+Managers use `pack.joinRequests({ cursor })` for bounded pages and `pack.reviewJoinRequest(userId, approve)` to decide. Approval uses ordinary membership creation with a server-controlled join eligibility exception. New rules require renewed acceptance. Turning requests off closes pending requests and preserves members. Use ordinary kick/ban controls to remove members.
+
+## Default Pack
+
+```ts
+const { id } = await pb.packs.getDefault()
+await pb.packs.setDefault('owned-pack-uuid')
+```
+
+These methods use `GET` and `PATCH /packs/default`. Only Packs owned by the signed-in account can be selected. If the default Pack is deleted or transferred, the account falls back to its oldest remaining owned Pack (or no default) and receives an in-app notification. Both methods accept request options, including `signal`.

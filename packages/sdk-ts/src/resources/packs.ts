@@ -1,0 +1,354 @@
+import { PackHostResource } from './pack-host'
+import { PackchatResource } from './packchat'
+import { PackEmotesResource } from './emotes'
+import type { HttpClient } from '../http'
+import type { RequestOptions } from '../request'
+import type { Howl } from '../types/howl'
+import type {
+    Pack,
+    PackAccessStatus,
+    PackVisibility,
+    PackJoinRequestPage,
+    PackCreateInput,
+    PackEditInput,
+    PackList,
+    PackMember,
+    PackMemberPage,
+    PackRole,
+    PackRoleInput,
+    PackRoleSummary,
+    PackSetting,
+    PackUpdateResult,
+} from '../types/pack'
+import type { ReportReasonValue, ReportResult } from '../types/report'
+import { ThenableResource } from './base'
+
+/**
+ * A handle for a single pack. Await it to fetch the pack's details, or call
+ * one of its methods to perform actions on that pack.
+ *
+ * @example
+ * ```ts
+ * const pack = await pb.packs('pack-uuid')
+ * const { data } = await pb.packs('pack-uuid').members()
+ * await pb.packs('pack-uuid').join()
+ * await pb.packs('pack-uuid').ban('member-uuid')
+ * ```
+ */
+export class PackHandle extends ThenableResource<Pack> {
+    readonly host: PackHostResource
+    readonly packchat: PackchatResource
+    readonly emotes: PackEmotesResource
+    constructor(
+        private readonly http: HttpClient,
+        private readonly id: string,
+        private readonly requestOptions?: RequestOptions,
+    ) {
+        super(() => http.getVisibilityGeneration())
+        this.host = new PackHostResource(http, id, requestOptions)
+        this.packchat = new PackchatResource(http, id, requestOptions)
+        this.emotes = new PackEmotesResource(http, id, requestOptions)
+    }
+
+    /** Number of current members outside the proposed audience; requires ManagePack. */
+    visibilityPreview(visibility: PackVisibility, options?: RequestOptions): Promise<{ members: number }> {
+        return this.http.getFresh(`/pack/${encodeURIComponent(this.id)}/visibility-preview`, { ...this.requestOptions, ...options }, { visibility })
+    }
+
+    /** Minimal direct-link admission screen, without pack content. */
+    access(options?: RequestOptions): Promise<PackAccessStatus> {
+        return this.http.getFresh(`/pack/${encodeURIComponent(this.id)}/access`, { ...this.requestOptions, ...options })
+    }
+
+    requestJoin(rulesVersion: number, options?: RequestOptions): Promise<{ requested: boolean }> {
+        return this.http.post(`/pack/${encodeURIComponent(this.id)}/access/request`, { rules_version: rulesVersion }, undefined, { ...this.requestOptions, ...options })
+    }
+
+    cancelJoinRequest(options?: RequestOptions): Promise<void> {
+        return this.http.delete(`/pack/${encodeURIComponent(this.id)}/access/request`, undefined, { ...this.requestOptions, ...options })
+    }
+
+    joinRequests(options?: RequestOptions & { cursor?: string }): Promise<PackJoinRequestPage> {
+        return this.http.getFresh(`/pack/${encodeURIComponent(this.id)}/join-requests`, { ...this.requestOptions, ...options }, { cursor: options?.cursor })
+    }
+
+    reviewJoinRequest(userId: string, approve: boolean, options?: RequestOptions): Promise<{ approved: boolean }> {
+        return this.http.post(`/pack/${encodeURIComponent(this.id)}/join-requests/${encodeURIComponent(userId)}`, { approve }, undefined, { ...this.requestOptions, ...options })
+    }
+
+    /** One bounded page, newest membership first (default 50, maximum 100).
+     * Continue with the returned cursor when has_more is true. IDs stay strings.
+     */
+    async members(options?: PackMemberListOptions): Promise<PackMemberPage> {
+        const page = await this.http.get<PackMemberPage>(
+            `/pack/${this.id}/members`,
+            { cursor: options?.cursor, limit: options?.limit },
+            { ...this.requestOptions, ...options },
+        )
+        const validId = (value: unknown): value is string =>
+            typeof value === 'string' && /^[1-9][0-9]{0,18}$/.test(value) &&
+            BigInt(value) <= 9223372036854775807n
+        if (!page || !Array.isArray(page.data) || page.data.length > 100 ||
+            typeof page.has_more !== 'boolean' ||
+            page.data.some(member => !member || !validId(member.membership_id)) ||
+            (page.has_more && (!validId(page.cursor) ||
+                page.cursor !== page.data.at(-1)?.membership_id ||
+                (options?.cursor !== undefined && (!validId(options.cursor) ||
+                    BigInt(page.cursor) >= BigInt(options.cursor)))))) {
+            throw new TypeError('Invalid pack member page or cursor progression.')
+        }
+        return page
+    }
+
+    /** Explicit, sequential lookup across pages. Rendering should use members().
+     * Stops at a match/exhaustion and observes cancellation before every page.
+     */
+    async findMember(userId: string, options?: RequestOptions): Promise<PackMember | undefined> {
+        const signal = options?.signal ?? this.requestOptions?.signal
+        let cursor: string | undefined
+        do {
+            signal?.throwIfAborted()
+            const page = await this.members({ limit: 100, cursor, signal })
+            const member = page.data.find(candidate => candidate.id === userId)
+            if (member) return member
+            if (!page.has_more) return undefined
+            cursor = page.cursor
+        } while (cursor)
+        return undefined
+    }
+
+    /** Lists roles for this pack (`GET /pack/:id/roles`). */
+    roles(options?: RequestOptions): Promise<PackRole[]> {
+        return this.http.get<PackRole[]>(`/pack/${this.id}/roles`, undefined, options)
+    }
+
+    /** Creates a role for this pack (`POST /pack/:id/roles`). */
+    createRole(data: PackRoleInput, options?: RequestOptions): Promise<PackRole> {
+        return this.http.post<PackRole>(`/pack/${this.id}/roles`, data, undefined, options)
+    }
+
+    /** Updates a role for this pack (`PUT /pack/:id/roles/:roleId`). */
+    updateRole(roleId: string, data: PackRoleInput, options?: RequestOptions): Promise<PackRole> {
+        return this.http.put<PackRole>(`/pack/${this.id}/roles/${roleId}`, data, options)
+    }
+
+    /** Deletes a role from this pack (`DELETE /pack/:id/roles/:roleId`). */
+    deleteRole(roleId: string, options?: RequestOptions): Promise<{ success: boolean }> {
+        return this.http.delete<{ success: boolean }>(`/pack/${this.id}/roles/${roleId}`, undefined, options)
+    }
+
+    /** Replaces the roles assigned to a member (`PUT /pack/:id/member/:memberId/roles`). */
+    setMemberRoles(memberId: string, roleIds: string[], options?: RequestOptions): Promise<{ roles: PackRoleSummary[]; permissions: number }> {
+        return this.http.put<{ roles: PackRoleSummary[]; permissions: number }>(`/pack/${this.id}/member/${memberId}/roles`, {
+            role_ids: roleIds,
+        }, options)
+    }
+
+    /**
+     * Joins this pack as a member (`POST /pack/:id/join`).
+     *
+     * Throws `PackbaseError` with `isConflict: true` if you are already a member.
+     *
+     * @returns The pack and user IDs for the new membership.
+     */
+    join(options?: PackJoinOptions): Promise<{ tenant_id: string; user_id: string }> {
+        return this.http.post(`/pack/${this.id}/join`, options?.rulesVersion === undefined ? undefined : { rules_version: options.rulesVersion }, undefined, { ...this.requestOptions, ...options })
+    }
+
+    /** Leaves this pack (`DELETE /pack/:id/join`). */
+    /** Permanently delete this pack and its posts. Only the leader may do this. */
+    delete(options?: RequestOptions): Promise<void> {
+        return this.http.delete<void>(`/pack/${this.id}`, { confirm_pack_id: this.id }, options)
+    }
+
+    leave(options?: RequestOptions): Promise<void> {
+        return this.http.delete<void>(`/pack/${this.id}/join`, undefined, options)
+    }
+
+    /**
+     * Updates pack metadata (`POST /pack/:id`).
+     *
+     * Requires the `ManagePack` permission. Only the fields you pass are changed.
+     *
+     * @param data - Fields to update.
+     * @returns The updated pack.
+     */
+    update(data: PackEditInput, options?: RequestOptions): Promise<PackUpdateResult> {
+        return this.http.post<PackUpdateResult>(`/pack/${this.id}`, data, undefined, options)
+    }
+
+    /**
+     * Fetches pack settings (`GET /pack/:id/settings`).
+     *
+     * @returns Settings together with their schema definitions.
+     */
+    settings(options?: RequestOptions): Promise<PackSetting[]> {
+        return this.http.get<PackSetting[]>(`/pack/${this.id}/settings`, undefined, options)
+    }
+
+    /**
+     * Bans a member from this pack (`POST /pack/:id/member/:memberId/ban`).
+     *
+     * Requires moderation permissions.
+     *
+     * @param memberId - The user's UUID.
+     */
+    ban(memberId: string, options?: RequestOptions): Promise<void> {
+        return this.http.post<void>(`/pack/${this.id}/member/${memberId}/ban`, undefined, undefined, options)
+    }
+
+    /**
+     * Kicks a member from this pack (`POST /pack/:id/member/:memberId/kick`).
+     *
+     * Requires moderation permissions.
+     *
+     * @param memberId - The user's UUID.
+     */
+    kick(memberId: string, options?: RequestOptions): Promise<void> {
+        return this.http.post<void>(`/pack/${this.id}/member/${memberId}/kick`, undefined, undefined, options)
+    }
+
+    /**
+     * Reports this pack for a violation (`POST /pack/:id/report`).
+     *
+     * @param reason - The reason for the report. Use a `ReportReason` value.
+     * @param notes - Optional extra context to include with the report.
+     * @returns Resolves when the report is submitted.
+     *
+     * @example
+     * ```ts
+     * import { ReportReason } from '@packbase/sdk-ts'
+     *
+     * await pb.packs('pack-id').report(ReportReason.HarassmentOrBullying)
+     * await pb.packs('pack-id').report(ReportReason.Other, 'Additional context.')
+     * ```
+     */
+    report(reason: ReportReasonValue, notes?: string, options?: RequestOptions): Promise<ReportResult> {
+        return this.http.post<ReportResult>(`/pack/${this.id}/report`, { reason, notes }, undefined, options)
+    }
+
+    /**
+     * Lists pinned howls for this pack (`GET /pack/:id/pins`).
+     *
+     * @returns The pinned howls, ordered by pin time.
+     */
+    pins(options?: RequestOptions): Promise<{ data: Howl[] }> {
+        return this.http.get<{ data: Howl[] }>(`/pack/${this.id}/pins`, undefined, options)
+    }
+
+    /**
+     * Pins a howl to this pack's feed (`POST /pack/:id/pins/:howlId`).
+     *
+     * Requires the `PinHowls` permission. Packs support up to 5 pins.
+     *
+     * @param howlId - The howl UUID to pin.
+     */
+    pinHowl(howlId: string, options?: PinHowlOptions): Promise<{ success: boolean }> {
+        return this.http.post<{ success: boolean }>(`/pack/${this.id}/pins/${howlId}`, {
+            expires_at: options?.expiresAt instanceof Date
+                ? options.expiresAt.toISOString()
+                : (options?.expiresAt ?? null),
+        }, undefined, options)
+    }
+
+    /**
+     * Removes a pinned howl from this pack (`DELETE /pack/:id/pins/:howlId`).
+     *
+     * Requires the `PinHowls` permission.
+     *
+     * @param howlId - The howl UUID to unpin.
+     */
+    unpinHowl(howlId: string, options?: RequestOptions): Promise<{ success: boolean }> {
+        return this.http.delete<{ success: boolean }>(`/pack/${this.id}/pins/${howlId}`, undefined, options)
+    }
+
+    /** Fetches `GET /pack/:id` using the pack UUID. */
+    protected fetch(): Promise<Pack> {
+        return this.http.get<Pack>(`/pack/${this.id}`, undefined, this.requestOptions)
+    }
+}
+
+export interface PinHowlOptions extends RequestOptions {
+    expiresAt?: string | Date | null
+}
+
+export interface PackMemberListOptions extends RequestOptions {
+    /** Opaque decimal string returned by the previous page. */
+    cursor?: string
+    /** Integer between 1 and 100; the server defaults to 50. */
+    limit?: number
+}
+
+export interface PackListOptions extends RequestOptions {
+    search?: string
+}
+
+/**
+ * The type of `pb.packs`.
+ *
+ * Call it with a UUID to get a `PackHandle`, or use the static methods
+ * to list or create packs:
+ *
+ * ```ts
+ * pb.packs('pack-uuid')        // returns PackHandle
+ * pb.packs.list()              // returns Promise<PackList>
+ * pb.packs.create({ ... })     // returns Promise<Pack>
+ * ```
+ */
+export type PacksFn = {
+    (id: string, options?: RequestOptions): PackHandle
+    /**
+     * Fetches all packs (`GET /packs`).
+     *
+     * @returns The pack list together with hidden-pack metadata.
+     */
+    list(options?: PackListOptions): Promise<PackList>
+    /** Read the authenticated account's persisted default Pack. */
+    getDefault(options?: RequestOptions): Promise<{ id: string | null }>
+    /** Select an owned Pack. Ownership is validated by the server. */
+    setDefault(packId: string, options?: RequestOptions): Promise<Record<string, never>>
+    /**
+     * Creates a new pack (`POST /pack/create`).
+     *
+     * @param data - Required pack creation fields.
+     * @returns The newly created pack.
+     */
+    create(data: PackCreateInput, options?: RequestOptions): Promise<Pack>
+}
+
+/**
+ * Builds the `packs` callable used on `PackbaseSDK`.
+ *
+ * @param http - The shared `HttpClient` instance.
+ * @returns A callable that accepts a pack UUID and returns a `PackHandle`,
+ *          with `list` and `create` attached as static methods.
+ */
+export function makePacks(http: HttpClient): PacksFn {
+    function packs(id: string, options?: RequestOptions): PackHandle {
+        return new PackHandle(http, id, options)
+    }
+
+    packs.list = async (options?: PackListOptions): Promise<PackList> => {
+        const result = await http.get<PackList & {has_more?: boolean}>('/packs', {
+            search: options?.search,
+        }, options)
+        const {has_more: _hasMore, ...list} = result
+        return list
+    }
+
+    packs.create = (data: PackCreateInput, options?: RequestOptions): Promise<Pack> =>
+        http.post<Pack>('/pack/create', data, undefined, options)
+
+    packs.getDefault = async (options?: RequestOptions): Promise<{ id: string | null }> => {
+        const result = await http.getFresh<{ id?: string | null }>('/packs/default', options)
+        // Ordinary API responses omit null fields.
+        return { id: result.id ?? null }
+    }
+    packs.setDefault = (packId: string, options?: RequestOptions) =>
+        http.patch<Record<string, never>>('/packs/default', { pack_id: packId }, options)
+
+    return packs as PacksFn
+}
+
+/** Existing RequestOptions remain valid; rulesVersion records explicitly reviewed rules. */
+export interface PackJoinOptions extends RequestOptions { rulesVersion?: number }

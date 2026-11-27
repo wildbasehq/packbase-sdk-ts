@@ -1,0 +1,155 @@
+---
+title: Pagination
+description: Load long lists in pages with cursors, offsets, and page numbers.
+---
+
+An API usually does not return thousands of items in one response. It returns a smaller set of items called a **page**. The response also contains a method to request the next page. This process is pagination.
+
+Packbase uses different pagination methods for different resources. The inbox uses a cursor. Search uses an offset. Some endpoints return the full list.
+
+## Cursor-based pagination
+
+The inbox uses cursor-based pagination. A cursor is a bookmark that the server returns. Do not read or change the cursor. Save the value and send it unchanged in the next request.
+
+The first request does not require a cursor. Its response contains a `cursor` for the next request. The `has_more` Boolean shows whether another page is available.
+
+This method lets new notifications arrive while you request older notifications.
+
+### `Paginated<T>` shape
+
+```ts twoslash
+import type { Paginated, Notification } from "@packbase/sdk-ts";
+
+// Paginated<T> wraps any list response
+type InboxPage = Paginated<Notification>;
+```
+
+- `data`: the items in this page.
+- `has_more`: `true` if another page is available.
+- `cursor`: the bookmark to pass with the next request.
+- `total_count`: the total number of matching items, when the endpoint provides it.
+
+### Example: fetch all inbox notifications
+
+```ts twoslash
+import { PackbaseSDK } from "@packbase/sdk-ts";
+const pb = new PackbaseSDK({ apiKey: "my-key" });
+// ---cut---
+async function fetchAllNotifications() {
+  const notifications = [];
+  let cursor: string | undefined;
+
+  let has_more = true;
+  do {
+    const page = await pb.inbox.fetch({ limit: 50, cursor });
+    //    ^?
+    notifications.push(...page.data);
+    cursor = page.cursor;
+    has_more = page.has_more;
+  } while (has_more);
+
+  return notifications;
+}
+```
+
+The loop always makes one request. After each response, it saves the cursor and checks `has_more`. A large inbox can cause this loop to make many requests. For a large inbox, use a "Load more" button.
+
+### Pack members use cursors
+
+Pack member pages default to 50 and are capped at 100. Request subsequent pages
+on demand; keep the membership IDs and cursors as strings:
+
+```ts twoslash
+import { PackbaseSDK } from "@packbase/sdk-ts";
+const pb = new PackbaseSDK();
+// ---cut---
+async function fetchMemberPage(packId: string, cursor?: string) {
+  return pb.packs(packId).members({ limit: 50, cursor });
+}
+```
+
+### "Load more" UI pattern
+
+For a button interface, keep the loaded items, latest cursor, and `hasMore` value in the application state. This example omits framework-specific state code:
+
+```ts twoslash
+import { PackbaseSDK, type Notification } from "@packbase/sdk-ts";
+const pb = new PackbaseSDK();
+
+let items: Notification[] = [];
+let cursor: string | undefined = undefined;
+let hasMore = true;
+// ---cut---
+async function loadMore() {
+  const page = await pb.inbox.fetch({ limit: 20, cursor });
+  //    ^?
+  items = [...items, ...page.data];
+  cursor = page.cursor;
+  hasMore = page.has_more;
+}
+```
+
+Call `loadMore()` once for the first page and again whenever the user asks for more. Disable or hide the button when `hasMore` becomes `false`.
+
+## Offset pagination with the search builder
+
+Search uses offset-based pagination. An offset is the number of matching items to omit. `.take(25).skip(0)` requests the first 25 items. `.take(25).skip(25)` requests the next 25 items.
+
+Calculate these numbers with `.skip()` and `.take()`. Alternatively, use `.page()`:
+
+```ts twoslash
+import { from } from "@packbase/sdk-ts";
+// ---cut---
+// Page 1 (items 0-24)
+const page1 = from("packs").orderBy("created_at").take(25).skip(0).build();
+
+// Page 2 (items 25-49)
+const page2 = from("packs").orderBy("created_at").take(25).skip(25).build();
+
+// Or use the helper (1-indexed)
+const page3 = from("packs").orderBy("created_at").page(3, 25).build();
+// Equivalent: take(25).skip(50)
+```
+
+You can request multiple pages at the same time with `Promise.all()`. Most interfaces request a page only when it is necessary:
+
+```ts twoslash
+import { PackbaseSDK, from } from "@packbase/sdk-ts";
+const pb = new PackbaseSDK();
+// ---cut---
+const [{ p1 }, { p2 }] = await Promise.all([
+  pb.search({ p1: from("packs").page(1, 20).build() }),
+  pb.search({ p2: from("packs").page(2, 20).build() }),
+]);
+```
+
+## Custom feed pages
+
+A [`runFeed()`](/reference/search#runfeedid-opts-render-a-custom-feed) result pages by number: pass `page` (from 1, at most 1000) and continue while `has_more` is true. Page 1 returns the feed's `presentation` and every declared query; later pages return only the primary query. The feed's owner also chooses how readers page, and every result reports it as `pagination`:
+
+```ts
+const { feed } = await pb.search({ feed: runFeed(feedId, { page }) })
+if (!isErrorEntry(feed)) {
+  if (feed.pagination === 'paged') {
+    // Show this page alone, with Previous (page > 1) and Next (feed.has_more).
+  } else {
+    // 'infinite': append this page and request page + 1 when the reader scrolls near the end.
+  }
+}
+```
+
+Keep page 1's `presentation` for the templates of later pages. See [`feed.json` pagination](/atelier/manifests#pagination).
+
+## Select the pagination method
+
+The endpoint specifies the pagination method. Examine the return value and use the applicable continuation value:
+
+| Resource                                                 | Strategy    | Key                                     |
+| -------------------------------------------------------- | ----------- | --------------------------------------- |
+| Inbox                                                    | Cursor      | `cursor` + `has_more`                   |
+| Pack members                                             | Cursor      | `cursor` + `has_more`; decimal strings  |
+| Access codes                                             | Cursor      | `next_cursor`; stop when absent or null |
+| Pack reports, unanswered posts, tag and username history | Cursor      | `cursor` + `has_more`                   |
+| Feeds                                                    | Page number | `page`, starting at 1, and `has_more`   |
+| Custom feed runs                                         | Page number | `page` + `has_more`; `pagination` mode  |
+| Search                                                   | Offset      | `.skip()` / `.page()`                   |

@@ -1,0 +1,181 @@
+---
+title: Repository themes
+description: Manage private theme repositories, previews, and publication.
+---
+
+Use `pb.themes("profile", profileId)` or `pb.themes("pack", packId)` with the
+owner UUID. Custom feed repositories use `pb.themes("feed", feedId)` for editing,
+preview and publishing, and render through [`runFeed`](/reference/search#runfeedid-opts-render-a-custom-feed)
+instead of `page()`. For the editor, file layout, template language and manifests, see [Atelier](/atelier). Management calls require a normal Packbase session. Pack management
+requires Manage Pack permission. Generated repository passwords are for HTTPS
+Git transport only and cannot publish themes.
+
+```ts
+const theme = pb.themes("profile", profileId);
+await theme.create();
+const status = await theme.status();
+const credential = await theme.rotateCredential(); // Show once, never store in logs or URLs.
+const revisions = await theme.revisions();
+const files = await theme.files(revisions[0].revision);
+const file = await theme.file(revisions[0].revision, "pages/profile.html");
+// The expected revision must be the current head; stale saves return a conflict.
+const saved = await theme.saveFile(
+  status.repository!.head_revision!,
+  "pages/profile.html",
+  "<section><h2>My space</h2></section>",
+);
+// Wait for validation before previewing or publishing the saved revision.
+const preview = await theme.preview(saved.revision, "profile");
+await theme.publish(
+  saved.revision,
+  status.repository?.published_revision ?? null,
+);
+await theme.disable(saved.revision);
+await theme.revokeCredential();
+```
+
+Each method accepts request cancellation through its final `{ signal }` argument.
+`publish` also rolls back to a previously validated revision. Pass the current
+published revision as `expectedRevision`; reload on conflict instead of silently
+replacing another editor's publication.
+
+`theme.page(page, maturityConfirmed)` reads currently published output subject to
+the viewer's permissions. A profile's `pages/profile.html` appears below its header;
+a pack's `pages/page.html` appears above its feed. Nested `pages/about/page.html`
+creates an `about` custom page. HTML is sanitized with DOMPurify and CSS is validated
+separately. CSS affects the surrounding UI only while viewing the theme. Add
+`?theme=off` to bypass it. No author JavaScript executes.
+
+### Handlebars pages
+
+A theme page can be a `.hbs` template next to `.html` pages. `page()` and `preview()`
+return a `RenderedTheme`, which is either a `RenderedHtmlTheme` (`html`, `css`, `pages`
+and `policy_version`, unchanged) or a `RenderedTemplateTheme`. Narrow the union with
+`theme.kind === "template"`:
+
+```ts
+const rendered = await theme.page("about");
+if (rendered?.kind === "template") {
+  // { repository_id, revision, kind, entry, templates, css, context: { owner, page }, results }
+  const context: ThemeTemplateContext = {
+    ...rendered.context,
+    results: rendered.results,
+    viewer: { signedIn: true },
+  };
+}
+```
+
+A theme can declare up to 6 `queries` in `theme.json`, with the same grammar and
+[viewer placeholders](/reference/search#viewer-placeholders) as search. The page request
+runs them as the reader and returns `results`, so no extra search call is needed. The
+client renders `entry` from `templates` with a `ThemeTemplateContext` of
+`{ owner, page, results, viewer: { signedIn } }`, using the same helpers, built-in partials
+and `data-pb-action` values as [custom feeds](/reference/custom-feeds#template-guide).
+`owner` is the public profile or pack.
+
+Repository source and private previews are available only to managers. Passwords
+are per person and per repository, generated once and revocable. Edit through the
+in-app file editor or push `main` from a local checkout, inspect validation, preview,
+then publish through Packbase.
+
+`saveFile(expectedRevision, path, content)` edits an existing `.html`, `.css`, `.json`,
+`.md`, or `.txt` file and creates a private revision. It uses session authentication,
+rechecks management permission before committing, and leaves the published theme
+unchanged. File and repository size limits also apply to in-app saves. A stale head
+returns HTTP 409; keep the user's draft and reload rather than overwriting newer work.
+New revisions are validated by the repository worker before preview or publication.
+
+
+Legacy clients can use `changeFiles(expectedRevision, change)` for immediate private commits:
+
+```ts
+const created = await theme.changeFiles(headRevision, {
+  action: "create_folder",
+  path: "pages/projects",
+});
+const page = await theme.changeFiles(created.revision, {
+  action: "create_file",
+  path: "pages/projects/page.html",
+  content: "<h2>Projects</h2>",
+});
+// Rename/delete support either entry_kind: "file" or "folder".
+await theme.changeFiles(page.revision, {
+  action: "rename",
+  entry_kind: "folder",
+  path: "pages/projects",
+  destination: "pages/work",
+});
+```
+
+Folder operations include their descendants and reject collisions or moves into
+itself. Empty folders use empty `.gitkeep` markers in Git; `files()` exposes those
+as `{ path, kind: "folder", size: 0 }` instead of editable marker files. File
+entries have `kind: "file"`. Operations preserve publication and use the same
+management checks, repository limits, and stale-head conflicts as file saves.
+
+`revisions()` includes actual Git commit messages, authors, commit dates and
+parent hashes. `changes(revision, path?, { signal })` returns server-generated
+JSON for the selected commit against its first parent (or the empty root):
+changed file statuses, rename sources, and bounded diff lines with their type,
+text, and old/new line numbers. Binary and truncated diffs are flagged explicitly.
+The server invokes Git without a shell, with literal pathspecs and external diff
+and text conversion disabled. The browser renders text from this JSON; it does
+not invoke Git or recreate repository history from local edits.
+
+
+The in-app editor uses the server working copy instead of the immediate-commit
+methods. Autosave and file/folder operations leave `main` and publication alone:
+
+```ts
+const working = await theme.workspace();
+const saved = await theme.changeWorkspace(working.version, {
+  action: "save",
+  path: "style.css",
+  content: "body { color: rebeccapurple; }",
+});
+const changes = await theme.workspaceChanges(saved.version);
+const diff = await theme.workspaceChanges(saved.version, "style.css");
+const source = await theme.workspaceFile(saved.version, "style.css");
+const committed = await theme.commitWorkspace(saved.version, "Update theme");
+```
+
+Workspace versions are opaque compare-and-set generations, not commit hashes.
+Reads and writes require normal management permission. A stale version or a
+branch move with uncommitted edits returns a conflict; preserve local drafts.
+Working copies survive closing the editor or restarting the service. Explicit
+Commit records all saved changes as one real Git commit, then the usual worker
+validates it before preview/publication. All methods accept `{ signal }` last.
+
+### Staging and selective commits
+
+`workspace()` includes `staged_paths` and `partially_staged_paths`. Staging snapshots the saved
+server contents, so later autosaves remain unstaged. Pass both the old and new paths to stage a rename.
+
+```ts
+let working = await theme.workspace()
+working = await theme.stageWorkspace(working.version, ['style.css'], true)
+const stagedDiff = await theme.stagedWorkspaceChanges(working.version, 'style.css')
+const committed = await theme.commitStagedWorkspace(working.version, 'Update styles')
+working = committed.workspace
+```
+
+Use `stageWorkspace(version, paths, false)` to unstage without changing files.
+`commitStagedWorkspace` rejects an empty selection and preserves unstaged/newer content. The returned
+workspace is captured atomically with the commit. The legacy `commitWorkspace` still commits all
+working files, and now also returns the remaining workspace.
+
+### Browser-owned staging
+
+The editor stages locally. Read `workspaceSnapshot(version, path)` to capture exact base64 bytes
+(`content`, `base_content`, `content_hash`) and retain them in browser storage. It is a read-only GET.
+At commit time call `commitLocalWorkspace(version, message, { base_revision, files })`, where each
+file is `{ path, content }` and `content: null` means deletion. No Stage/Unstage POST is needed.
+The server validates the base, version, decoded paths, bytes and quotas, and preserves newer working
+contents. The prior server-staging methods remain available for compatibility.
+
+### Discarding the working copy
+
+Call `discardWorkspace(version)` after confirmation to restore all working files to the latest
+Git commit and clear server staging. It checks the workspace generation and leaves Git history
+and publication unchanged. Clear browser-owned staging separately after success. The editor also
+clears pending local drafts and reloads working sources without reusing old cached contents.
